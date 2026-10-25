@@ -98,3 +98,8 @@
       (then (return (i32.add (local.get $r) (i32.const 1)))))
     (br_if $l (i32.ge_s (local.tee $r (i32.sub (local.get $r) (i32.const 1))) (i32.const 0))))
   (i32.const 1))
+
+;; 1 when units more would still fit: used + units <= cap. Wrap-safe even if used > cap
+;; (e.g. after demolishing a Warehouse). Callers gate every storage add on this.
+(func $storage_fits (param $units i32) (result i32)
+  (i32.le_u (i32.add (call $storage_used) (local.get $units)) (call $storage_cap)))

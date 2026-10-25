@@ -63,7 +63,7 @@
   (local.set $u (call $bal (global.get $T_CROP) (local.get $c) (i32.const 2)))
   (if (call $event_active (global.get $EV_BUMPER))
     (then (local.set $u (i32.div_u (i32.mul (local.get $u) (call $k (global.get $K_BUMPER_BP))) (i32.const 10000)))))
-  (if (i32.gt_u (local.get $u) (i32.sub (call $storage_cap) (call $storage_used)))
+  (if (i32.eqz (call $storage_fits (local.get $u)))
     (then (return (global.get $E_STORAGE_FULL))))
   (call $inv_add (local.get $c) (local.get $u))
   (if (i32.eq (i32.load8_u (local.get $p)) (i32.const 1))

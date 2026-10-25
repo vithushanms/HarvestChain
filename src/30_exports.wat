@@ -51,3 +51,4 @@
 (export "t_sat_recover"  (func $sat_recover))
 (export "t_set_sat"      (func $t_set_sat))
 (export "t_set_drift"    (func $t_set_drift))
+(export "t_storage_fits" (func $storage_fits))

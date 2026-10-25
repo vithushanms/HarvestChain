@@ -315,3 +315,29 @@ test('SELL_STAND', () => {
   fails(E.NO_STOCK, A.SELL, CORN, 1, 0);
 });
 function await_probe() { ex.init(7); const v = ex.t_sell_units(0, 0, 12); ex.init(42); ex.t_give(WHEAT, 10, 3); ex.t_give(WHEAT, 5, 0); return v; }
+
+test('storage_fits boundary', () => {
+  fresh();
+  ex.t_give(CORN, 25, 0); // cap 30
+  assert.equal(ex.t_storage_fits(5), 1);
+  assert.equal(ex.t_storage_fits(6), 0);
+  assert.equal(ex.t_storage_fits(0), 1);
+});
+
+test('over-cap storage after demolishing a Warehouse: harvest refused, nothing wraps', () => {
+  fresh(); ex.t_set_cash(1000);
+  setTile(3, 2, WAREHOUSE);
+  assert.equal(ex.storage_cap(), 70);
+  ex.t_give(CORN, 60, 0);
+  assert.equal(ex.act(A.DEMOLISH, 3, 0, 0), 0);
+  assert.equal(ex.storage_cap(), 30);
+  assert.ok(ex.storage_used() > ex.storage_cap());
+  assert.equal(ex.t_storage_fits(0), 0);
+  setTile(0, 1, WHEAT, 300);
+  fails(E.STORAGE_FULL, A.HARVEST, 0, 0, 0);
+  const before = snap();
+  assert.equal(ex.act(A.HARVEST_ALL, 0, 0, 0), 0);
+  assert.deepEqual(snap(), before);
+  assert.equal(st().tiles[0].kind, 1);
+  assert.equal(ex.storage_used(), 60);
+});
