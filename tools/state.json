@@ -1,0 +1,41 @@
+{
+  "base": 4096,
+  "length": 1024,
+  "fields": {
+    "magic":         { "off": 0,   "type": "u8",  "count": 2 },
+    "version":       { "off": 2,   "type": "u16" },
+    "seed":          { "off": 4,   "type": "u32" },
+    "rng":           { "off": 8,   "type": "u32" },
+    "day":           { "off": 12,  "type": "u16" },
+    "grid":          { "off": 14,  "type": "u8" },
+    "rep":           { "off": 15,  "type": "u8" },
+    "cash":          { "off": 16,  "type": "i32" },
+    "loanPrincipal": { "off": 20,  "type": "i32" },
+    "loanInterest":  { "off": 24,  "type": "i32" },
+    "grace":         { "off": 28,  "type": "u8" },
+    "flags":         { "off": 29,  "type": "u8" },
+    "truckCount":    { "off": 30,  "type": "u8" },
+    "inv":           { "off": 32,  "type": "u16", "count": 104 },
+    "drift":         { "off": 240, "type": "u16", "count": 13 },
+    "sat":           { "off": 272, "type": "u16", "count": 39 },
+    "trucks": { "off": 352, "count": 3, "stride": 48, "fields": {
+      "present":  { "off": 0, "type": "u8" },
+      "dest":     { "off": 1, "type": "u8" },
+      "phase":    { "off": 2, "type": "u8" },
+      "daysLeft": { "off": 3, "type": "u8" },
+      "upg":      { "off": 4, "type": "u8" },
+      "contract": { "off": 5, "type": "u8" },
+      "cashBack": { "off": 8, "type": "i32" },
+      "cargo": { "off": 16, "count": 8, "stride": 4, "fields": {
+        "good": { "off": 0, "type": "u8" },
+        "age":  { "off": 1, "type": "u8" },
+        "qty":  { "off": 2, "type": "u16" } } } } },
+    "tiles": { "off": 512, "count": 64, "stride": 8, "fields": {
+      "kind":     { "off": 0, "type": "u8" },
+      "id":       { "off": 1, "type": "u8" },
+      "progress": { "off": 2, "type": "u16" },
+      "ripeAge":  { "off": 4, "type": "u8" },
+      "flags":    { "off": 5, "type": "u8" },
+      "ghCrop":   { "off": 6, "type": "u8" } } }
+  }
+}
