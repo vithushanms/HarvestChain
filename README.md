@@ -82,6 +82,8 @@ The build **fails** if any of these break:
 3. Grow `$STATE_LEN` (and `"length"` in `state.json`).
 4. Once the game has public players, bump `$SAVE_VERSION` and add a migration in `$load`.
 
+`load` accepts only a save of exactly `$STATE_LEN` bytes with sane fields (non-zero RNG word, grid 4–8, 1–3 trucks), so growing the layout makes older saves fall back to New Game until a migration is written. Error codes: 1 length, 2 magic, 3 version, 4 out of bounds, 5 corrupt.
+
 **Adding a source file.** Name it with the right numeric prefix so it concatenates in the right place. Remember that WAT has no includes — everything is one module, so names (`$foo`) must be unique across all files.
 
 **Randomness.** Every random number must come from `$rng_next` / `$rng_range` in `src/01_rng.wat`. Never seed or roll anywhere else, or replays will diverge.

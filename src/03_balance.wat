@@ -27,7 +27,9 @@
 (global $K_START_CASH    i32 (i32.const 0))
 (global $K_START_STORAGE i32 (i32.const 1))
 (global $K_TRUCK_CAP     i32 (i32.const 2))
+(global $K_MAX_TRUCKS    i32 (i32.const 4))
 (global $K_START_GRID    i32 (i32.const 26))
+(global $K_MAX_GRID      i32 (i32.const 27))
 
 ;; Value at (row, col) of table $tbl.
 (func $bal (param $tbl i32) (param $row i32) (param $col i32) (result i32)

@@ -51,6 +51,8 @@
 (global $E_LOAD_LEN     i32 (i32.const 1))
 (global $E_LOAD_MAGIC   i32 (i32.const 2))
 (global $E_LOAD_VERSION i32 (i32.const 3))
+(global $E_LOAD_BOUNDS  i32 (i32.const 4))
+(global $E_LOAD_CORRUPT i32 (i32.const 5))
 
 ;; Fresh game, spec §5 starting state.
 (func $init (param $seed i32)
@@ -94,18 +96,38 @@
     (local.set $p (i32.add (local.get $p) (global.get $TILE_STRIDE)))
     (br_if $wheat (local.tee $i (i32.sub (local.get $i) (i32.const 1))))))
 
-;; Restore a save image of $len bytes at $ptr. Returns 0 or an E_LOAD_* code;
-;; on error the current state is left untouched.
+;; Restore a save image of $len bytes at $ptr. Returns 0 or an E_LOAD_* code.
+;; Everything is validated from the source bytes before the state is touched, so on
+;; error the current state is unchanged. A v1 save must be exactly $STATE_LEN bytes:
+;; zero is not a valid default for sentinel fields, so short saves are rejected.
 (func $load (param $ptr i32) (param $len i32) (result i32)
-  (if (i32.or (i32.lt_u (local.get $len) (i32.const 4))
-              (i32.gt_u (local.get $len) (global.get $STATE_SIZE)))
+  (local $v i32)
+  (if (i32.ne (local.get $len) (global.get $STATE_LEN))
     (then (return (global.get $E_LOAD_LEN))))
+  ;; ptr + len must lie inside memory; written as ptr <= size - len to avoid overflow.
+  (if (i32.gt_u (local.get $ptr)
+                (i32.sub (i32.shl (memory.size) (i32.const 16)) (local.get $len)))
+    (then (return (global.get $E_LOAD_BOUNDS))))
   (if (i32.ne (i32.load16_u (local.get $ptr)) (global.get $MAGIC_HC))
     (then (return (global.get $E_LOAD_MAGIC))))
   (if (i32.ne (i32.load16_u offset=2 (local.get $ptr)) (global.get $SAVE_VERSION))
     (then (return (global.get $E_LOAD_VERSION))))
-  (memory.fill (global.get $R_STATE) (i32.const 0) (global.get $STATE_SIZE))
+  ;; Field sanity: a zero RNG word would freeze every roll; grid and truck count
+  ;; index fixed arrays later.
+  (if (i32.eqz (i32.load offset=0x008 (local.get $ptr)))
+    (then (return (global.get $E_LOAD_CORRUPT))))
+  (local.set $v (i32.load8_u offset=0x00E (local.get $ptr)))
+  (if (i32.or (i32.lt_u (local.get $v) (call $k (global.get $K_START_GRID)))
+              (i32.gt_u (local.get $v) (call $k (global.get $K_MAX_GRID))))
+    (then (return (global.get $E_LOAD_CORRUPT))))
+  (local.set $v (i32.load8_u offset=0x01E (local.get $ptr)))
+  (if (i32.or (i32.eqz (local.get $v))
+              (i32.gt_u (local.get $v) (call $k (global.get $K_MAX_TRUCKS))))
+    (then (return (global.get $E_LOAD_CORRUPT))))
+  ;; Copy first (memory.copy is overlap-safe), then clear the tail of the region.
   (memory.copy (global.get $R_STATE) (local.get $ptr) (local.get $len))
+  (memory.fill (i32.add (global.get $R_STATE) (local.get $len)) (i32.const 0)
+               (i32.sub (global.get $STATE_SIZE) (local.get $len)))
   (i32.const 0))
 
 (func $save_ptr (result i32) (global.get $R_STATE))
