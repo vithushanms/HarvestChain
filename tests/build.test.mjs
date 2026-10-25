@@ -24,6 +24,17 @@ test('float token in source fails the build', () => {
   assert.match(r.stderr, /f32|f64/);
 });
 
+test('sim RNG call in a presentation file (prefix >= 20) fails the build', () => {
+  const r = build('tests/fixtures/rng');
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /presentation code must not use the sim RNG.*21b_bad\.wat/);
+});
+
+test('sim RNG mentioned only in a comment is allowed in a presentation file', () => {
+  const r = build('tests/fixtures/rng_comment');
+  assert.equal(r.status, 0, r.stderr);
+});
+
 test('SIMD instruction fails the build', () => {
   const r = build('tests/fixtures/simd');
   assert.notEqual(r.status, 0);
