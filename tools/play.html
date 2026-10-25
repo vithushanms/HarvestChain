@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HarvestChain — dev harness</title>
+<!--
+  Throwaway developer harness: plays the real game.wasm sim through its exports with
+  plain HTML controls. Not part of the shipped game, not counted in any budget.
+  Run from the repo root:  npm run build && npx serve .   then open /tools/play.html
+-->
+<style>
+  :root { --bg:#f6f1e7; --fg:#2b2118; --mut:#7a6a58; --card:#fffaf0; --line:#d8ccb8;
+          --soil:#c9a77c; --crop:#8fbf5a; --ripe:#e0b23a; --bld:#b4553e; --sel:#2f6fb0; --bad:#b0302f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1d1a16; --fg:#efe6d8; --mut:#a8987f; --card:#27231e; --line:#3d362d;
+            --soil:#5d4a33; --crop:#4f7a2c; --ripe:#9a7a1e; --bld:#8a3b2a; --sel:#5b9be0; --bad:#e06b6a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:12px 16px 40px; background:var(--bg); color:var(--fg);
+         font:14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  h1 { font-size:16px; margin:0 0 4px; } h2 { font-size:13px; margin:0 0 6px; text-transform:uppercase; color:var(--mut); }
+  .bar { display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center; margin-bottom:10px; }
+  .cols { display:grid; grid-template-columns: minmax(0,1fr); gap:12px; }
+  @media (min-width: 900px) { .cols { grid-template-columns: minmax(0,420px) minmax(0,1fr); } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:10px; overflow-x:auto; }
+  .grid { display:grid; gap:3px; }
+  .tile { aspect-ratio:1; border:2px solid transparent; border-radius:4px; background:var(--soil); color:var(--fg);
+          font:11px/1.15 inherit; padding:2px; cursor:pointer; overflow:hidden; text-align:center; min-height:44px; }
+  .tile.crop { background:var(--crop); } .tile.ripe { background:var(--ripe); } .tile.bld { background:var(--bld); color:#fff; }
+  .tile.sel { border-color:var(--sel); } .tile.off { opacity:.25; cursor:default; }
+  button, select, input { font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line);
+          border-radius:4px; padding:6px 8px; min-height:36px; }
+  button { cursor:pointer; } button.primary { background:var(--sel); color:#fff; border-color:var(--sel); }
+  button:disabled { opacity:.4; cursor:default; }
+  input[type=number] { width:5.5em; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:6px 0; }
+  table { border-collapse:collapse; width:100%; } td, th { padding:2px 6px; border-bottom:1px solid var(--line); text-align:right; }
+  td:first-child, th:first-child { text-align:left; }
+  #log { max-height:220px; overflow-y:auto; white-space:pre-wrap; }
+  .bad { color:var(--bad); } .mut { color:var(--mut); }
+</style>
+</head>
+<body>
+<h1>HarvestChain <span class="mut">dev harness (real game.wasm, no graphics)</span></h1>
+<div class="bar" id="status">loading…</div>
+<div class="row">
+  <button class="primary" id="endday">End Day (E)</button>
+  <button id="harvestall">Harvest All (H)</button>
+  <button id="buyland">Buy land</button>
+  <button id="newgame">New game</button>
+  <label>seed <input id="seed" type="number" value="42"></label>
+</div>
+<div class="cols">
+  <div>
+    <div class="card"><h2>Farm</h2><div class="grid" id="grid"></div></div>
+    <div class="card" style="margin-top:12px"><h2>Tile <span id="tilename"></span></h2>
+      <div id="tileinfo" class="mut">tap a tile</div>
+      <div class="row"><select id="crop"></select><button id="plant">Plant</button><button id="harvest">Harvest</button></div>
+      <div class="row"><select id="bld"></select><button id="build">Build</button><button id="upgrade">Upgrade</button><button id="demolish">Demolish</button></div>
+      <div class="row"><select id="recipe"></select><button id="setrecipe">Set recipe</button></div>
+    </div>
+    <div class="card" style="margin-top:12px"><h2>Any action</h2>
+      <div class="row"><select id="actid"></select>
+        <input id="aa" type="number" value="0" title="a"><input id="ab" type="number" value="0" title="b"><input id="ac" type="number" value="0" title="c">
+        <button id="doact">Do</button></div>
+      <div class="mut">Trucks, contracts and loans arrive as phase 2 tasks land; until then they return E_BAD_ARG.</div>
+    </div>
+  </div>
+  <div>
+    <div class="card"><h2>Storage &amp; Farm Stand</h2><table id="inv"></table></div>
+    <div class="card" style="margin-top:12px"><h2>Prices</h2><table id="prices"></table></div>
+    <div class="card" style="margin-top:12px"><h2>Trucks · events · contracts</h2><div id="extra"></div></div>
+    <div class="card" style="margin-top:12px"><h2>Log</h2><div id="log"></div></div>
+  </div>
+</div>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const [STATE, BAL, bytes] = await Promise.all([
+  fetch('./state.json').then(r => r.json()),
+  fetch('./balance.json').then(r => r.json()),
+  fetch('../build/game.wasm').then(r => { if (!r.ok) throw new Error('build/game.wasm missing — run npm run build'); return r.arrayBuffer(); }),
+]);
+const { instance } = await WebAssembly.instantiate(bytes, {});
+const ex = instance.exports;
+const E = BAL.enums, T = BAL.tables;
+const bal = (t, row, col) => ex.t_bal(T[t].id, row, T[t].cols.indexOf(col));
+const WEATHER = ['Sunny', 'Rain', 'Drought', 'Storm', 'Frost', 'Heatwave'];
+const EVENTS = ['-', 'Surge', 'Glut', 'Road closure', 'Festival', 'Fuel spike', 'Bumper'];
+const STATUS = ['Playing', 'Results', 'Endless', 'Game over'];
+
+// --- state decoding (mirrors tests/helpers.mjs) ---
+const READ = { u8: 'getUint8', u16: 'getUint16', u32: 'getUint32', i32: 'getInt32', i16: 'getInt16' };
+const SIZE = { u8: 1, u16: 2, u32: 4, i32: 4, i16: 2 };
+function decode(dv, base, fields) {
+  const out = {};
+  for (const [name, f] of Object.entries(fields)) {
+    const at = base + f.off;
+    if (f.fields) out[name] = Array.from({ length: f.count ?? 1 }, (_, i) => decode(dv, at + i * (f.stride ?? 0), f.fields));
+    else if (f.count) out[name] = Array.from({ length: f.count }, (_, i) => dv[READ[f.type]](at + i * SIZE[f.type], true));
+    else out[name] = dv[READ[f.type]](at, true);
+  }
+  return out;
+}
+const state = () => decode(new DataView(ex.memory.buffer), STATE.base, STATE.fields);
+
+// --- persistence: same format the real loader will use ---
+function save() {
+  const b = new Uint8Array(ex.memory.buffer, ex.save_ptr(), ex.save_len());
+  try { localStorage.setItem('hc.dev', btoa(String.fromCharCode(...b))); } catch {}
+}
+function restore() {
+  let s; try { s = localStorage.getItem('hc.dev'); } catch {}
+  if (!s) return false;
+  const b = Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  new Uint8Array(ex.memory.buffer).set(b, ex.io_buf());
+  return ex.load(ex.io_buf(), b.length) === 0;
+}
+
+// --- actions ---
+const log = (msg, bad) => { const d = document.createElement('div'); d.textContent = msg; if (bad) d.className = 'bad'; $('log').prepend(d); };
+function act(name, a = 0, b = 0, c = 0) {
+  const id = E.actions.indexOf(name);
+  const rc = ex.act(id, a, b, c);
+  log(`${name}(${a}, ${b}, ${c}) → ${E.errors[rc] ?? rc}`, rc !== 0);
+  render(); save();
+  return rc;
+}
+let sel = -1;
+
+$('endday').onclick = () => {
+  if (!ex.end_day) { log('end_day not built yet (phase 2 Task 5 in progress)', true); return; }
+  const before = state().cash;
+  const rc = ex.end_day();
+  const s = state();
+  log(`END DAY → ${E.errors[rc] ?? rc}; now day ${s.day}, cash ${before} → ${s.cash}`, rc !== 0);
+  render(); save();
+};
+$('harvestall').onclick = () => act('HARVEST_ALL');
+$('buyland').onclick = () => act('BUY_LAND');
+$('newgame').onclick = () => { if (confirm('Start a new game? Current dev save is replaced.')) { ex.init(+$('seed').value | 0); sel = -1; log(`NEW GAME seed ${$('seed').value}`); render(); save(); } };
+$('plant').onclick = () => act('PLANT', sel, +$('crop').value);
+$('harvest').onclick = () => act('HARVEST', sel);
+$('build').onclick = () => act('BUILD', sel, +$('bld').value);
+$('upgrade').onclick = () => act('UPGRADE_BLD', sel);
+$('demolish').onclick = () => act('DEMOLISH', sel);
+$('setrecipe').onclick = () => act('SET_RECIPE', sel, +$('recipe').value);
+$('doact').onclick = () => act(E.actions[+$('actid').value], +$('aa').value, +$('ab').value, +$('ac').value);
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'e' || e.key === 'E') $('endday').click();
+  if (e.key === 'h' || e.key === 'H') $('harvestall').click();
+});
+
+// --- selects ---
+const opt = (sel, items) => { sel.innerHTML = items.map(([v, t]) => `<option value="${v}">${t}</option>`).join(''); };
+opt($('crop'), E.goods.slice(0, 5).map((g, i) => [i, `${g} $${bal('CROP', i, 'seed')}`]));
+opt($('bld'), E.buildings.map((b, i) => [i, `${b} $${bal('BLD', i, 'cost')}`]));
+opt($('recipe'), [[255, 'none'], ...Array.from({ length: T.RECIPE.rows }, (_, r) =>
+  [r, `${E.buildings[bal('RECIPE', r, 'building')]}: ${bal('RECIPE', r, 'inQty')} ${E.goods[bal('RECIPE', r, 'inGood')]} → ${E.goods[bal('RECIPE', r, 'outGood')]}`])]);
+opt($('actid'), E.actions.map((a, i) => [i, `${i} ${a}`]).slice(1));
+
+// --- render ---
+function tileText(t) {
+  if (t.kind === 1) {
+    const mature = t.id === 3 && (t.flags & 1);
+    const target = (mature ? bal('CROP', t.id, 'regrowDays') : bal('CROP', t.id, 'growDays')) * 100;
+    return { cls: t.progress >= target ? 'ripe' : 'crop', txt: `${E.goods[t.id]}<br>${(t.progress / 100).toFixed(1)}/${target / 100}${t.progress >= target ? '<br>RIPE' : ''}` };
+  }
+  if (t.kind === 2) {
+    let txt = E.buildings[t.id] + (t.flags & 2 ? ' II' : '');
+    if (t.recipe) txt += `<br>→${E.goods[bal('RECIPE', t.recipe - 1, 'outGood')]}`;
+    if (t.ghCrop) txt += `<br>${E.goods[t.ghCrop - 1]} ${(t.progress / 100).toFixed(1)}`;
+    return { cls: 'bld', txt };
+  }
+  return { cls: '', txt: '·' };
+}
+function render() {
+  const s = state();
+  const season = E.seasons[ex.season()];
+  $('status').innerHTML = [
+    `<b>Day ${s.day}</b> ${season}, Y${Math.floor((s.day - 1) / 80) + 1}`,
+    `<b>$${s.cash}</b>`, `★${ex.rank ? ex.rank() : '?'} (${s.rep} pts)`,
+    `today ${WEATHER[s.weatherToday]} · forecast ${WEATHER[s.forecast]}`,
+    `storage ${ex.storage_used()}/${ex.storage_cap()}`,
+    s.loanPrincipal || s.loanInterest ? `loan $${s.loanPrincipal}+${s.loanInterest}` : '',
+    `<span class="${s.status ? 'bad' : ''}">${STATUS[s.status]}</span>`,
+  ].filter(Boolean).join(' · ');
+
+  const g = $('grid'); g.style.gridTemplateColumns = `repeat(8, minmax(0, 1fr))`; g.innerHTML = '';
+  s.tiles.forEach((t, i) => {
+    const x = i % 8, y = (i / 8) | 0, inGrid = x < s.grid && y < s.grid;
+    const b = document.createElement('button');
+    const { cls, txt } = tileText(t);
+    b.className = `tile ${cls} ${inGrid ? '' : 'off'} ${i === sel ? 'sel' : ''}`;
+    b.innerHTML = inGrid ? txt : '';
+    b.disabled = !inGrid;
+    b.onclick = () => { sel = i; render(); };
+    g.append(b);
+  });
+  $('tilename').textContent = sel >= 0 ? `#${sel} (${sel % 8},${(sel / 8) | 0})` : '';
+  $('tileinfo').textContent = sel >= 0 ? JSON.stringify(s.tiles[sel]) : 'tap a tile';
+
+  // inventory: sum ages, show perishable age spread
+  const rows = E.goods.map((name, gd) => {
+    const ages = s.inv.slice(gd * 8, gd * 8 + 8);
+    const n = ages.reduce((a, b) => a + b, 0);
+    return { name, gd, n, ages };
+  }).filter(r => r.n > 0);
+  $('inv').innerHTML = '<tr><th>good</th><th>qty</th><th>ages 0..7</th><th>stand $</th><th></th></tr>' + (rows.length ? rows.map(r =>
+    `<tr><td>${r.name}</td><td>${r.n}</td><td class="mut">${r.ages.join(' ')}</td><td>${ex.price(0, r.gd)}</td>
+     <td><input type="number" min="1" value="${r.n}" id="q${r.gd}"> <button data-sell="${r.gd}">Sell</button></td></tr>`).join('')
+    : '<tr><td colspan="5" class="mut">empty</td></tr>');
+  document.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => act('SELL_STAND', +b.dataset.sell, +$('q' + b.dataset.sell).value));
+
+  $('prices').innerHTML = `<tr><th>good</th>${E.markets.map(m => `<th>${m}</th>`).join('')}<th>drift</th></tr>` +
+    E.goods.map((name, gd) => `<tr><td>${name}</td>${E.markets.map((_, m) => `<td>${ex.price(m, gd)}</td>`).join('')}
+      <td class="mut">${(s.drift[gd] / 100).toFixed(0)}% ${s.driftNext[gd] > 0 ? '▲' : s.driftNext[gd] < 0 ? '▼' : '·'}</td></tr>`).join('');
+
+  const ev = (s.events || []).filter(e => e.kind).map(e => `${EVENTS[e.kind]} ${E.markets[e.market] ?? ''} ${E.goods[e.good] ?? ''} (${e.daysLeft}d)`);
+  const tr = (s.trucks || []).filter(t => t.present).map((t, i) => `truck ${i}: ${['home', 'outbound', 'returning'][t.phase]}${t.phase ? ` to ${E.markets[t.dest]}, ${t.daysLeft}d` : ''}`);
+  const ct = (s.board || []).filter(c => c.qty).map((c, i) => `board ${i}: ${c.qty} ${E.goods[c.good]} → ${E.markets[c.market]} by day ${c.deadline} for $${c.payout}`);
+  const ac = (s.accepted || []).filter(c => c.qty).map((c, i) => `accepted ${i}: ${c.qty} ${E.goods[c.good]} → ${E.markets[c.market]} by day ${c.deadline} for $${c.payout}`);
+  $('extra').innerHTML = [...tr, ...ev, ...ct, ...ac].map(l => `<div>${l}</div>`).join('') || '<span class="mut">nothing yet</span>';
+}
+
+if (restore()) log('restored dev save'); else { ex.init(42); log('new game seed 42'); }
+render();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Pre-implementation. The only source of truth is `requirement-spec.md` (game design spec, rev 2). Read the relevant section before changing behaviour; section numbers (§) below refer to it. Update this file once the build script, tests and directory layout actually exist — the commands below are what the spec prescribes, not yet verified.
+Phase 1 of 6 done (sim foundation: build pipeline, RNG, balance tables, state/save). Plans live in `docs/superpowers/plans/`. The source of truth is `requirement-spec.md` (game design spec, rev 2). Read the relevant section before changing behaviour; section numbers (§) below refer to it.
 
 ## What this is
 
@@ -58,14 +58,17 @@ Key cross-file rules:
 - **Input**: one state machine in `22_ui.wat` (idle → pressed → drag|tap, 8 px slop, 300 ms long-press) shared by touch and mouse.
 - All text is templated from short string tables, not prose.
 
-## Build & test (as specified; confirm once scripts exist)
+## Build & test
 
-Toolchain: `wat2wasm` (wabt), `wasm-opt -Oz` (Binaryen), Node (built-in `node:test`, no framework), Playwright for browser smoke.
+Toolchain is pinned npm devDependencies (`wabt` for `wat2wasm`, `binaryen` for `wasm-opt`); no global installs. Node 24, `node:test` only. Playwright arrives in phase 4.
 
-Pipeline: concat `src/*.wat` → `build/game.wat` → `wat2wasm` → `wasm-opt -Oz` → `game.wasm`; build prints raw + gz sizes and fails on budget breach.
+- `npm install`
+- `npm run build` — `tools/build.mjs`: wraps `src/*.wat` (filename order) in `(module …)` → `build/game.wat` → `wat2wasm` → `wasm-opt -Oz` → `build/game.wasm`. Prints raw/gz sizes. Fails on any `f32`/`f64` token, disallowed Wasm feature, or budget breach.
+- `npm test` — build, then all `tests/**/*.test.mjs` (tests load `build/game.wasm`, so build first if running files directly).
+- One file: `node --test tests/state.test.mjs`
+- One test: `node --test --test-name-pattern="round-trip" tests/state.test.mjs`
 
-- Run tests: `node --test` (loads `build/game.wasm` directly)
-- Single test: `node --test --test-name-pattern="<name>" <file>`
+`src/*.wat` files are fragments: never write `(module` in them. Tests reach internals through `t_*` exports and decode state via `tests/helpers.mjs` `readState()` (driven by `tools/state.json`); balance table/column names are in `tools/balance.json`.
 
 Test expectations (§14.5): every action's error codes; End Day step order on fixed seeds; spoilage (tile/storage/truck, Cold Store/Refrigeration exemptions); saturation + recovery; contracts/reputation; bankruptcy/loans/net worth; save→load byte-identical; determinism golden hashes for three 80-day runs; framebuffer hash tests per screen (any visual change fails them — update hashes deliberately); Playwright at 360×640 and 1280×800.
 

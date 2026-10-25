@@ -1,0 +1,24 @@
+{
+  "enums": {
+    "goods": ["Wheat", "Corn", "Tomato", "Apple", "Grape", "Flour", "Cornmeal", "Sauce", "AppleJuice", "GrapeJuice", "Bread", "Cornbread", "Wine"],
+    "buildings": ["Mill", "Cannery", "Press", "Bakery", "Cellar", "Warehouse", "ColdStore", "Greenhouse", "Well", "Garage"],
+    "markets": ["Stand", "Town", "City"],
+    "seasons": ["Spring", "Summer", "Autumn", "Winter"],
+    "unlockKinds": ["None", "OwnsBuilding", "RepRank", "DayReached"],
+    "actions": ["NONE", "PLANT", "HARVEST", "HARVEST_ALL", "BUILD", "DEMOLISH", "UPGRADE_BLD", "SET_RECIPE", "BUY_LAND", "SELL_STAND", "TRUCK_LOAD", "TRUCK_UNLOAD", "TRUCK_SEND", "BUY_TRUCK", "UPGRADE_TRUCK", "ACCEPT", "DECLINE", "LOAN_TAKE", "LOAN_REPAY", "CONTINUE"],
+    "errors": ["OK", "E_BAD_ARG", "E_STATUS", "E_TILE_OUT", "E_TILE_BUSY", "E_SEASON", "E_CASH", "E_LOCKED", "E_NOT_RIPE", "E_STORAGE_FULL", "E_NO_STOCK", "E_TRUCK_AWAY", "E_TRUCK_FULL", "E_NO_SLOT", "E_MAX", "E_NEED_GARAGE", "E_CONTRACT", "E_DEADLINE", "E_LOAN", "E_NOT_BUILDING"]
+  },
+  "tables": {
+    "CROP":   { "id": 0, "rows": 5,  "rowEnum": "goods", "cols": ["seed", "growDays", "yield", "regrowDays", "spoilDays", "seasonMask", "good"] },
+    "GOOD":   { "id": 1, "rows": 13, "rowEnum": "goods", "cols": ["basePrice", "perishDays", "tier"] },
+    "BLD":    { "id": 2, "rows": 10, "rowEnum": "buildings", "cols": ["cost", "upkeep", "inputCap", "storageBonus", "unlockKind", "unlockArg"] },
+    "RECIPE": { "id": 3, "rows": 8,  "cols": ["building", "inGood", "inQty", "outGood", "ageDays"] },
+    "MKT":    { "id": 4, "rows": 3,  "rowEnum": "markets", "cols": ["multRawBp", "multProcBp", "travelDays", "satPerUnitBp", "recoverBp"] },
+    "LAND":   { "id": 5, "rows": 4,  "cols": ["ringCost"] },
+    "REP":    { "id": 6, "rows": 5,  "cols": ["pointsForRank"] },
+    "MILE":   { "id": 7, "rows": 7,  "cols": ["payout"] },
+    "K":      { "id": 8, "rows": 1,  "cols": ["startCash", "startStorage", "truckCap", "truckPrice", "maxTrucks", "truckCapUpgCost", "truckCapUpgAmt", "truckCapUpgMax", "fridgeCost", "fastCost", "loanMax", "loanRateBp", "graceDays", "daysPerSeason", "runDays", "bldUpgPctBp", "driftStepBp", "driftMinBp", "driftMaxBp", "satFloorBp", "contractMultBp", "latePenaltyBp", "netWorthTarget", "netWorthBldBp", "netWorthLandBp", "cellarHold", "startGrid", "maxGrid",
+      "fuelCost", "bumperBp", "surgeBp", "glutBp", "festivalDays", "contractRefreshDays", "coldPerStore", "warehouseStorage", "mileWorth1", "mileContracts", "mileWorthY1", "mileRank", "mileWine", "mileWorthRun", "repScore", "contractScore", "boardVisibleLow", "boardVisibleHigh", "boardHighRank", "repGain", "repLoss", "bldUpgCapMult", "fastDays", "offSeasonPct", "rainBonus", "firstEventDay"] },
+    "WEATHER": { "id": 9, "rows": 4, "rowEnum": "seasons", "cols": ["Sunny", "Rain", "Drought", "Storm", "Frost", "Heatwave"] }
+  }
+}
