@@ -117,7 +117,7 @@
 ;; Step 2: crops grow, ripe perishables on tiles age, then storage perishables age.
 (func $step_grow
   (local $w i32) (local $well i32) (local $i i32) (local $p i32) (local $c i32) (local $gh i32)
-  (local $t i32) (local $g i32) (local $prot i32) (local $step i32) (local $v i32)
+  (local $t i32) (local $g i32) (local $prot i32) (local $step i32) (local $v i32) (local $was i32)
   (local.set $w (i32.load8_u (global.get $S_WEATHER)))
   (local.set $well (i32.ne (call $count_bld (global.get $BLD_WELL)) (i32.const 0)))
   (local.set $step (select (i32.const 2) (i32.const 1) (i32.eq (local.get $w) (global.get $W_HEAT))))
@@ -129,6 +129,8 @@
         (if (i32.ge_s (local.get $c) (i32.const 0))
           (then
             (local.set $gh (i32.eq (i32.load8_u (local.get $p)) (i32.const 2)))
+            ;; only crops already ripe when the step starts age; the ripening day is age 0
+            (local.set $was (call $tile_ripe (local.get $p)))
             (local.set $t (call $grow_target (local.get $p) (local.get $c)))
             (local.set $v (i32.add (i32.load16_u offset=2 (local.get $p))
               (call $grow_rate (local.get $c) (local.get $gh) (local.get $w) (local.get $well))))
@@ -136,7 +138,7 @@
             ;; progress never moves backwards (a tile already past its target keeps its value)
             (if (i32.gt_u (local.get $v) (i32.load16_u offset=2 (local.get $p)))
               (then (i32.store16 offset=2 (local.get $p) (local.get $v))))
-            (if (i32.and (call $tile_ripe (local.get $p))
+            (if (i32.and (local.get $was)
                          (i32.ne (call $bal (global.get $T_CROP) (local.get $c) (i32.const 4)) (i32.const 0)))
               (then (i32.store8 offset=4 (local.get $p)
                 (i32.add (i32.load8_u offset=4 (local.get $p))

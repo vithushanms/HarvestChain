@@ -346,3 +346,18 @@ test('determinism: same seed and weather, byte-identical after several days', ()
   assert.deepEqual(a, b);
   assert.equal(st().day, 31);
 });
+
+test('ripe timer starts the day after ripening (two harvest mornings for a tomato)', () => {
+  fresh();
+  setTile(0, 1, TOMATO, 200);
+  setTile(1, 2, GREENHOUSE, 200, 0, TOMATO + 1);
+  day(W.SUNNY);
+  assert.equal(st().tiles[0].progress, 300); assert.equal(st().tiles[0].ripeAge, 0);
+  assert.equal(st().tiles[1].ripeAge, 0);
+  day(W.SUNNY);
+  assert.equal(st().tiles[0].kind, 1); assert.equal(st().tiles[0].ripeAge, 1);
+  assert.equal(st().tiles[1].ripeAge, 1);
+  day(W.SUNNY);
+  assert.equal(st().tiles[0].kind, 0);
+  assert.equal(st().tiles[1].ghCrop, 0);
+});
