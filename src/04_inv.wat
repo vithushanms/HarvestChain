@@ -87,3 +87,14 @@
 (func $year (result i32)
   (i32.div_u (i32.sub (i32.load16_u (global.get $S_DAY)) (i32.const 1))
              (i32.mul (call $k (global.get $K_DAYS_PER_SEASON)) (i32.const 4))))
+
+;; Reputation rank 1..5 from rep points (T_REP pointsForRank thresholds).
+(func $rank (result i32)
+  (local $r i32) (local $rep i32)
+  (local.set $rep (i32.load8_u (global.get $S_REP)))
+  (local.set $r (i32.const 4))
+  (loop $l
+    (if (i32.ge_u (local.get $rep) (call $bal (global.get $T_REP) (local.get $r) (i32.const 0)))
+      (then (return (i32.add (local.get $r) (i32.const 1)))))
+    (br_if $l (i32.ge_s (local.tee $r (i32.sub (local.get $r) (i32.const 1))) (i32.const 0))))
+  (i32.const 1))

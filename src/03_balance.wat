@@ -57,6 +57,7 @@
 (global $K_BOARD_HIGH_RANK i32 (i32.const 46))
 (global $K_REP_GAIN      i32 (i32.const 47))
 (global $K_REP_LOSS      i32 (i32.const 48))
+(global $K_BLD_UPG_PCT    i32 (i32.const 15))
 (global $K_BLD_UPG_CAP_MULT i32 (i32.const 49))
 (global $K_FAST_DAYS     i32 (i32.const 50))
 (global $K_OFF_SEASON_PCT i32 (i32.const 51))

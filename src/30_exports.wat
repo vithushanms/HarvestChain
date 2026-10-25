@@ -8,6 +8,8 @@
 (export "storage_cap"  (func $storage_cap))
 (export "storage_used" (func $storage_used))
 (export "season"       (func $season))
+(export "rank"         (func $rank))
+(export "act"          (func $act))
 
 ;; Test hooks.
 (export "t_rng_seed"  (func $rng_seed))

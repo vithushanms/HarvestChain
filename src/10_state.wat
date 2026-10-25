@@ -54,6 +54,7 @@
 (global $S_SEED        i32 (i32.const 0x1004))
 (global $S_DAY         i32 (i32.const 0x100C))
 (global $S_GRID        i32 (i32.const 0x100E))
+(global $S_REP         i32 (i32.const 0x100F))
 (global $S_CASH        i32 (i32.const 0x1010))
 (global $S_TRUCK_COUNT i32 (i32.const 0x101E))
 (global $S_INV         i32 (i32.const 0x1020))
