@@ -1,0 +1,13 @@
+{
+  "name": "harvestchain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "npm run build && node --test \"tests/**/*.test.mjs\""
+  },
+  "devDependencies": {
+    "binaryen": "132.0.0",
+    "wabt": "1.0.39"
+  }
+}
