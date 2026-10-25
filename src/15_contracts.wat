@@ -137,6 +137,11 @@
   (if (i32.lt_u (call $cargo_of (local.get $p) (i32.load8_u (local.get $a))) (i32.load8_u offset=2 (local.get $a)))
     (then (return)))
   (drop (call $cargo_take (local.get $p) (i32.load8_u (local.get $a)) (i32.load8_u offset=2 (local.get $a))))
+  ;; delivered goods count as sold for the first-processed-good and Wine milestones
+  (if (call $bal (global.get $T_GOOD) (i32.load8_u (local.get $a)) (i32.const 2))
+    (then (call $ctr_add (global.get $S_PROC_SOLD) (i32.load8_u offset=2 (local.get $a)))))
+  (if (i32.eq (i32.load8_u (local.get $a)) (global.get $GOOD_WINE))
+    (then (call $ctr_add (global.get $S_WINE_SOLD) (i32.load8_u offset=2 (local.get $a)))))
   (i32.store (global.get $S_CASH)
     (i32.add (i32.load (global.get $S_CASH)) (i32.load16_u offset=6 (local.get $a))))
   (local.set $r (i32.add (i32.load8_u (global.get $S_REP)) (call $k (global.get $K_REP_GAIN))))

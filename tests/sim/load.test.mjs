@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadGame, stateBytes } from '../helpers.mjs';
+import { loadGame, stateBytes, STATE } from '../helpers.mjs';
 
 const { ex, mem } = await loadGame();
-const LEN = 0x5B0;
+const LEN = STATE.length;
 const CORRUPT = 5;
 
 // A realistic save: a few days in, with a loan, a building and trucks populated.

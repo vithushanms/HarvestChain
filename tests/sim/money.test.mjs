@@ -279,3 +279,29 @@ test('hint goods are always goods 0..12 and may coincide', () => {
   fresh(); noEvent();
   for (let d = 0; d < 60; d++) { setU16(0x140A, 1000); ex.end_day(); assert.ok(mem()[0x1407] <= 12 && mem()[0x1408] <= 12); }
 });
+
+// --- final-fix rulings ---
+test('net worth includes cashBack held by returning trucks (sum over present trucks); cargo excluded', () => {
+  fresh();
+  const base = ex.net_worth();
+  const cb = (t, v) => dv().setInt32(0x1160 + 48 * t + 8, v, true);
+  cb(0, 120); mem()[0x1160 + 2] = 2;
+  assert.equal(ex.net_worth(), base + 120);
+  // a second present truck adds to the sum
+  mem()[0x101E] = 3; mem()[0x1160 + 48] = 1; cb(1, 80);
+  assert.equal(ex.net_worth(), base + 200);
+  // an absent truck's stray cashBack never counts
+  mem()[0x1160 + 96] = 0; cb(2, 999);
+  assert.equal(ex.net_worth(), base + 200);
+  // cargo never counts
+  dv().setUint16(0x1160 + 16 + 2, 50, true);
+  assert.equal(ex.net_worth(), base + 200);
+  assert.equal(ex.score(), base + 200 + 0);
+});
+
+test('day counter saturates at 65535 (no wrap) in step 10', () => {
+  fresh(); setStatus(2); setDay(65534); noEvent();
+  assert.equal(ex.end_day(), 0); assert.equal(st().day, 65535);
+  setU16(0x140A, 65535); assert.equal(ex.end_day(), 0); assert.equal(st().day, 65535);
+  assert.equal(ex.end_day(), 0); assert.equal(st().day, 65535);
+});

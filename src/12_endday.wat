@@ -324,9 +324,9 @@
 
 ;; Net worth (spec §12, Decision 21): cash + netWorthBldBp of the build cost of standing buildings
 ;; (+ bldUpgPctBp of the cost for upgraded ones) + netWorthLandBp of the land rings bought
-;; - everything owed on the loan. Inventory is excluded.
+;; + cashBack held by present trucks - everything owed on the loan. Inventory and cargo are excluded.
 (func $net_worth (result i32)
-  (local $i i32) (local $p i32) (local $c i32) (local $b i32) (local $l i32)
+  (local $i i32) (local $p i32) (local $c i32) (local $b i32) (local $l i32) (local $cb i32)
   (loop $tiles
     (local.set $p (call $tile_ptr (local.get $i)))
     (if (i32.eq (i32.load8_u (local.get $p)) (i32.const 2))
@@ -337,6 +337,13 @@
           (then (local.set $b (i32.add (local.get $b)
             (i32.div_u (i32.mul (local.get $c) (call $k (global.get $K_BLD_UPG_PCT))) (i32.const 10000))))))))
     (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
+  ;; cash held by trucks on the way back is already earned; cargo is inventory and stays out
+  (local.set $i (i32.const 0))
+  (loop $trucks
+    (local.set $p (call $truck_ptr (local.get $i)))
+    (if (local.get $p)
+      (then (local.set $cb (i32.add (local.get $cb) (i32.load offset=8 (local.get $p))))))
+    (br_if $trucks (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
   (local.set $i (i32.load8_u (global.get $S_RINGS)))
   (loop $rings
     (if (local.get $i)
@@ -346,7 +353,7 @@
         (br $rings))))
   (i32.sub
     (i32.add
-      (i32.add (i32.load (global.get $S_CASH))
+      (i32.add (i32.add (i32.load (global.get $S_CASH)) (local.get $cb))
                (i32.div_u (i32.mul (local.get $b) (call $k (global.get $K_NW_BLD_BP))) (i32.const 10000)))
       (i32.div_u (i32.mul (local.get $l) (call $k (global.get $K_NW_LAND_BP))) (i32.const 10000)))
     (call $loan_owed)))
@@ -402,7 +409,7 @@
   (call $weather_advance)
   (i32.store8 (global.get $S_HINT) (call $rng_range (i32.const 13)))
   (i32.store8 offset=1 (global.get $S_HINT) (call $rng_range (i32.const 13)))
-  (i32.store16 (global.get $S_DAY) (i32.add (i32.load16_u (global.get $S_DAY)) (i32.const 1)))
+  (call $ctr_add (global.get $S_DAY) (i32.const 1))
   (if (i32.eqz (i32.rem_u (i32.load16_u (global.get $S_DAY)) (call $k (global.get $K_CONTRACT_REFRESH))))
     (then (call $board_refresh)))
   (call $check_run))

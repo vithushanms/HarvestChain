@@ -468,3 +468,41 @@ test('refresh empties board slots that are no longer visible after a rank drop',
   assert.deepEqual(board()[2], ZERO);
   assert.ok(board()[0].qty > 0 && board()[1].qty > 0);
 });
+
+// --- final-fix ruling: contract deliveries count toward procSold / wineSold ---
+const procSold = () => dv().getUint16(0x1410, true);
+const wineSold = () => dv().getUint16(0x140E, true);
+const WINE = 12, FLOUR = 5;
+
+test('contract delivery of tier>=1 goods adds the delivered quantity to procSold (exactly, nothing sold at market)', () => {
+  fresh();
+  setRec(ACC, 0, { good: FLOUR, market: 1, qty: 6, active: 1, deadline: 10, payout: 198 });
+  giveLoad(0, FLOUR, 6); assert.equal(ex.act(SEND, 0, 1, 0), 0);
+  assert.equal(procSold(), 0);
+  assert.equal(day(), 0);
+  assert.equal(procSold(), 6); assert.equal(wineSold(), 0);
+  assert.equal(done(), 1);
+});
+
+test('contract delivery of raw goods leaves procSold alone', () => {
+  deliverRun({ qty: 10, payout: 105 });
+  assert.equal(procSold(), 0); assert.equal(wineSold(), 0);
+});
+
+test('contract delivery of Wine counts toward both wineSold and procSold; saturates at 65535', () => {
+  fresh();
+  setRec(ACC, 0, { good: WINE, market: 2, qty: 7, active: 1, deadline: 20, payout: 1260 });
+  giveLoad(0, WINE, 7); assert.equal(ex.act(SEND, 0, 2, 0), 0);
+  dv().setUint16(0x140E, 65532, true); dv().setUint16(0x1410, 3, true);
+  for (let i = 0; i < 2; i++) assert.equal(day(), 0);
+  assert.equal(wineSold(), 65535); assert.equal(procSold(), 10);
+});
+
+test('a spoiled-away (undelivered) contract does not touch the sold counters', () => {
+  fresh();
+  setRec(ACC, 0, { good: FLOUR, market: 1, qty: 6, active: 1, deadline: 10, payout: 198 });
+  giveLoad(0, FLOUR, 6); assert.equal(ex.act(SEND, 0, 1, 0), 0);
+  mem().fill(0, 0x1160 + 16, 0x1160 + 48);   // cargo vanishes en route
+  day();
+  assert.equal(procSold(), 0); assert.equal(done(), 0);
+});
