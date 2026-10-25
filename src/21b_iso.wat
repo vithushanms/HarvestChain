@@ -30,8 +30,9 @@
 ;; Painter's order is the caller's job: back to front by wx+wy, then wz.
 ;;
 ;; Writes go through one sink, $span: modes $pmode 0 = store, 1 = blend50 (shadow),
-;; 2 = increment the pixel word (test hook: coverage counting). $force != 0 overrides colour,
-;; ($odx,$ody) shift every write (outline passes).
+;; 2 = increment the pixel word (test hook: coverage counting), 3 = two-tone speckle (a
+;; per-pixel hash of the address and $dseed picks $c2 with probability $dlev/16; terrain).
+;; $force != 0 overrides colour, ($odx,$ody) shift every write (outline passes).
 
 (global $iso_ox (mut i32) (i32.const 0))
 (global $iso_oy (mut i32) (i32.const 0))
@@ -45,6 +46,11 @@
 (global $force (mut i32) (i32.const 0))
 (global $odx (mut i32) (i32.const 0))
 (global $ody (mut i32) (i32.const 0))
+(global $c2 (mut i32) (i32.const 0))       ;; pmode 3: second tone
+(global $dlev (mut i32) (i32.const 0))     ;; pmode 3: share of second tone, 0..16
+(global $dseed (mut i32) (i32.const 0))    ;; pmode 3: speckle seed
+(global $bclip (mut i32) (i32.const 0x3FFFFFFF)) ;; blob rows below this screen y are skipped (domes)
+(global $cy0 (mut i32) (i32.const -0x3FFFFFFF))  ;; rows above this screen y are clipped (horizon)
 (global $xl (mut i32) (i32.const 0))
 (global $xr (mut i32) (i32.const 0))
 ;; shape parameters: p0..p2 position, p3..p5 size, p6 hue, p7 axis
@@ -92,6 +98,7 @@
   (local $p i32) (local $e i32)
   (local.set $y (i32.add (local.get $y) (global.get $ody)))
   (if (i32.ge_u (local.get $y) (global.get $fb_h)) (then (return)))
+  (if (i32.lt_s (local.get $y) (global.get $cy0)) (then (return)))
   (local.set $e (i32.add (global.get $R_FB) (i32.shl (i32.mul (local.get $y) (global.get $fb_w)) (i32.const 2))))
   (local.set $p (i32.add (local.get $e) (i32.shl
     (call $clamp (i32.add (local.get $x0) (global.get $odx)) (i32.const 0) (global.get $fb_w)) (i32.const 2))))
@@ -104,7 +111,12 @@
       (if (result i32) (global.get $pmode)
         (then (if (result i32) (i32.eq (global.get $pmode) (i32.const 1))
           (then (call $blend50 (i32.load (local.get $p)) (local.get $c)))
-          (else (i32.add (i32.load (local.get $p)) (i32.const 1)))))
+          (else (if (result i32) (i32.eq (global.get $pmode) (i32.const 3))
+            (then (select (global.get $c2) (local.get $c)
+              (i32.lt_u (i32.shr_u (i32.mul (i32.xor (i32.mul (local.get $p) (i32.const 0x9E3779B1)) (global.get $dseed))
+                                            (i32.const 0x2C1B3C6D)) (i32.const 28))
+                        (global.get $dlev))))
+            (else (i32.add (i32.load (local.get $p)) (i32.const 1)))))))
         (else (local.get $c))))
     (local.set $p (i32.add (local.get $p) (i32.const 4)))
     (br $l))))
@@ -206,6 +218,7 @@
     (then ;; sphere: highlight centre at (-bho, -bho)
       (if (i32.gt_s (i32.add (local.get $t) (i32.mul (local.get $dy) (local.get $dy))) (global.get $brr))
         (then (return (i32.const 0))))
+      (if (global.get $force) (then (return (i32.const 1))))
       (local.set $dx (i32.add (local.get $dx) (global.get $bho)))
       (local.set $dy (i32.add (local.get $dy) (global.get $bho)))
       (local.set $d (i32.add (i32.mul (local.get $dx) (local.get $dx)) (i32.mul (local.get $dy) (local.get $dy))))
@@ -217,6 +230,10 @@
   ;; cylinder: top ellipse at dy = -bH, base ellipse at dy = 0; ellipse dx^2 + 4dy^2 <= rr
   (if (i32.gt_s (local.get $t) (global.get $brr)) (then (return (i32.const 0))))
   (local.set $d (i32.add (local.get $dy) (global.get $bH)))
+  (if (global.get $force) (then
+    (return (i32.or (i32.le_s (i32.add (local.get $t) (i32.shl (i32.mul (local.get $d) (local.get $d)) (i32.const 2))) (global.get $brr))
+      (i32.or (i32.and (i32.le_s (local.get $dy) (i32.const 0)) (i32.ge_s (local.get $d) (i32.const 0)))
+              (i32.le_s (i32.add (local.get $t) (i32.shl (i32.mul (local.get $dy) (local.get $dy)) (i32.const 2))) (global.get $brr)))))))
   (if (i32.le_s (i32.add (local.get $t) (i32.shl (i32.mul (local.get $d) (local.get $d)) (i32.const 2))) (global.get $brr))
     (then (return (call $ramp (global.get $p6)
       (i32.sub (i32.const 60) (i32.shr_s (i32.mul (local.get $dx) (global.get $binv)) (i32.const 13)))
@@ -233,6 +250,7 @@
   (local $x i32) (local $y i32) (local $x1 i32) (local $y1 i32) (local $c i32)
   (local.set $y (call $clamp (i32.sub (i32.sub (global.get $bcy) (global.get $bH)) (global.get $brx)) (i32.const -1) (global.get $fb_h)))
   (local.set $y1 (call $clamp (i32.add (global.get $bcy) (global.get $brx)) (i32.const -1) (global.get $fb_h)))
+  (if (i32.lt_s (global.get $bclip) (local.get $y1)) (then (local.set $y1 (global.get $bclip))))
   (block $dy (loop $ly
     (br_if $dy (i32.gt_s (local.get $y) (local.get $y1)))
     (local.set $x (call $clamp (i32.sub (global.get $bcx) (global.get $brx)) (i32.const -1) (global.get $fb_w)))

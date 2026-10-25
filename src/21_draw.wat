@@ -56,9 +56,30 @@
     (select (local.get $hi) (local.get $v) (i32.gt_s (local.get $v) (local.get $hi)))
     (i32.lt_s (local.get $v) (local.get $lo))))
 
-;; Palette entry -> pixel word.
+;; Scene colour grade: when $tint_a (0..16) != 0 every palette lookup is mixed toward the
+;; pixel word $tint_c by tint_a/16 (season / weather looks; integer SWAR, no floats).
+(global $tint_c (mut i32) (i32.const 0))
+(global $tint_a (mut i32) (i32.const 0))
+
+;; Per-channel c + (t - c) * a / 16 on opaque pixel words (r,b in one lane pair, g in another).
+(func $mix (param $c i32) (param $t i32) (param $a i32) (result i32)
+  (local $n i32)
+  (local.set $n (i32.sub (i32.const 16) (local.get $a)))
+  (i32.or (i32.const 0xFF000000) (i32.or
+    (i32.and (i32.shr_u (i32.add (i32.mul (i32.and (local.get $c) (i32.const 0xFF00FF)) (local.get $n))
+                                 (i32.mul (i32.and (local.get $t) (i32.const 0xFF00FF)) (local.get $a))) (i32.const 4))
+             (i32.const 0xFF00FF))
+    (i32.and (i32.shr_u (i32.add (i32.mul (i32.and (local.get $c) (i32.const 0xFF00)) (local.get $n))
+                                 (i32.mul (i32.and (local.get $t) (i32.const 0xFF00)) (local.get $a))) (i32.const 4))
+             (i32.const 0xFF00)))))
+
+;; Palette entry -> pixel word (graded by the scene tint when one is active).
 (func $pal (param $i i32) (result i32)
-  (i32.load (i32.add (global.get $PAL_ADDR) (i32.shl (i32.and (local.get $i) (i32.const 63)) (i32.const 2)))))
+  (local $c i32)
+  (local.set $c (i32.load (i32.add (global.get $PAL_ADDR) (i32.shl (i32.and (local.get $i) (i32.const 63)) (i32.const 2)))))
+  (if (result i32) (global.get $tint_a)
+    (then (call $mix (local.get $c) (global.get $tint_c) (global.get $tint_a)))
+    (else (local.get $c))))
 ;; hue/step -> pixel word.
 (func $hc (param $hue i32) (param $step i32) (result i32)
   (call $pal (i32.add (i32.shl (local.get $hue) (i32.const 2)) (local.get $step))))

@@ -96,3 +96,10 @@
 (export "t_iso_sphere" (func $iso_sphere))
 (export "t_iso_shadow" (func $iso_shadow))
 (export "t_iso_demo"   (func $iso_demo))
+;; Scene (21c_scene.wat).
+(export "t_scene_draw"     (func $scene_draw))
+(export "t_scene_time"     (func $scene_time))
+(export "t_scene_viewport" (func $scene_viewport))
+(export "t_scene_flags"    (func $t_scene_flags))
+(export "t_tile_at"        (func $tile_at))
+(export "t_tile_rect"      (func $t_tile_rect))
