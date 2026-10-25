@@ -31,3 +31,12 @@
 (export "t_put_bld"  (func $t_put_bld))
 (export "t_take"     (func $inv_take))
 (export "t_count"    (func $inv_count))
+
+;; Weather and events (14_weather.wat).
+(export "t_set_weather"     (func $t_set_weather))
+(export "t_weather_roll"    (func $weather_roll))
+(export "t_weather_advance" (func $weather_advance))
+(export "t_events_tick"     (func $events_tick))
+(export "t_event_mod"       (func $event_mod))
+(export "t_event_active"    (func $event_active))
+(export "t_put_event"       (func $t_put_event))

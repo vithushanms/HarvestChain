@@ -132,7 +132,10 @@
     (i32.store8 (local.get $p) (i32.const 1))
     (i32.store16 offset=2 (local.get $p) (i32.const 200))
     (local.set $p (i32.add (local.get $p) (global.get $TILE_STRIDE)))
-    (br_if $wheat (local.tee $i (i32.sub (local.get $i) (i32.const 1))))))
+    (br_if $wheat (local.tee $i (i32.sub (local.get $i) (i32.const 1)))))
+
+  ;; Day 1 weather: roll tomorrow, then the forecast, from the Spring table (Decision 2).
+  (call $weather_prime (i32.const 1)))
 
 ;; Restore a save image of $len bytes at $ptr. Returns 0 or an E_LOAD_* code.
 ;; Everything is validated from the source bytes before the state is touched, so on
