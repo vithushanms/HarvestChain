@@ -177,9 +177,12 @@
   (if (i32.eqz (call $cargo_total (local.get $p))) (then (return (global.get $E_NO_STOCK))))
   ;; Task 7 replaces this with contract-tag validation.
   (if (i32.ne (local.get $c) (global.get $NO_CONTRACT)) (then (return (global.get $E_CONTRACT))))
-  (if (call $event_active (global.get $EV_FUEL_SPIKE)) (then (local.set $fuel (call $k (global.get $K_FUEL_COST)))))
-  (if (i32.lt_s (i32.load (global.get $S_CASH)) (local.get $fuel)) (then (return (global.get $E_CASH))))
-  (i32.store (global.get $S_CASH) (i32.sub (i32.load (global.get $S_CASH)) (local.get $fuel)))
+  ;; Fuel is charged (and cash checked) only under a FuelSpike, so debt never blocks a send.
+  (if (call $event_active (global.get $EV_FUEL_SPIKE))
+    (then
+      (local.set $fuel (call $k (global.get $K_FUEL_COST)))
+      (if (i32.lt_s (i32.load (global.get $S_CASH)) (local.get $fuel)) (then (return (global.get $E_CASH))))
+      (i32.store (global.get $S_CASH) (i32.sub (i32.load (global.get $S_CASH)) (local.get $fuel)))))
   (local.set $days (call $bal (global.get $T_MKT) (local.get $m) (i32.const 2)))
   (if (i32.and (i32.eq (local.get $m) (global.get $MKT_CITY)) (call $event_active (global.get $EV_ROAD_CLOSURE)))
     (then (local.set $days (i32.add (local.get $days) (i32.const 1)))))

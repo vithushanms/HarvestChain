@@ -49,7 +49,6 @@ test('load/unload moves oldest-first and keeps ages', () => {
   assert.deepEqual(slots().map((c) => [c.good, c.age, c.qty]), [[AJ, 1, 5]]);
   assert.equal(ex.act(UNLOAD, 0, AJ, 5), 0);
   assert.equal(slots().length, 0);
-  assert.equal(ex.t_count(AJ), 12 - 4 + 4 - 0 + 0 | 0 ? ex.t_count(AJ) : 0);
   assert.equal(ex.t_count(AJ), 10);
 });
 
@@ -265,4 +264,70 @@ test('actions are blocked outside Playing/Endless', () => {
   fresh(); mem()[0x1400] = 3;
   fails(2, LOAD, 0, WHEAT, 1);
   fails(2, BUY, 0, 0, 0);
+});
+
+test('fuel check applies only under FuelSpike (negative cash may still send)', () => {
+  fresh(); ex.t_give(WHEAT, 10, 0);
+  assert.equal(ex.act(LOAD, 0, WHEAT, 10), 0);
+  ex.t_set_cash(-5);
+  assert.equal(ex.act(SEND, 0, 1, 255), 0);
+  assert.equal(cash(), -5);
+
+  fresh(); ex.t_put_event(0, 5, 0, 0, 9); ex.t_give(WHEAT, 10, 0);
+  assert.equal(ex.act(LOAD, 0, WHEAT, 10), 0);
+  ex.t_set_cash(19);
+  fails(E.CASH, SEND, 0, 1, 255);
+  ex.t_set_cash(20);
+  assert.equal(ex.act(SEND, 0, 1, 255), 0);
+  assert.equal(cash(), 0);
+});
+
+// Reference: sell the same cargo directly on an identical fresh state, then apply the
+// step-8 recovery that runs later in the same end_day.
+const reference = (market, lots) => {
+  fresh();
+  let total = 0;
+  for (const [g, q] of lots) total += ex.t_sell_units(market, g, q);
+  ex.t_sat_recover();
+  return { total, sat: st().sat.slice() };
+};
+const arrival = (market, lots, give) => {
+  fresh(); ex.t_set_cash(1000);
+  for (const [g, q, a] of give) ex.t_give(g, q, a);
+  for (const [g, q] of lots) assert.equal(ex.act(LOAD, 0, g, q), 0);
+  assert.equal(ex.act(SEND, 0, market, 255), 0);
+  const days = market === 1 ? 1 : 2;
+  for (let i = 0; i < days; i++) day();
+  return { back: truck().cashBack, sat: st().sat.slice() };
+};
+
+test('arrival sale pins dollars and saturation, Town and City', () => {
+  for (const market of [1, 2]) {
+    const lots = [[WHEAT, 10]];
+    const ref = reference(market, lots);
+    const got = arrival(market, lots, [[WHEAT, 10, 0]]);
+    assert.ok(ref.total > 0);
+    assert.equal(got.back, ref.total, `market ${market}`);
+    assert.deepEqual(got.sat, ref.sat, `sat market ${market}`);
+    assert.notEqual(ref.sat[market * 13 + WHEAT], 10000);
+  }
+  // different markets give different prices, so "always Town" cannot pass for City
+  assert.notEqual(reference(1, [[WHEAT, 10]]).total, reference(2, [[WHEAT, 10]]).total);
+});
+
+test('two-slot cargo: every slot sold in order, saturation compounds on the second', () => {
+  for (const market of [1, 2]) {
+    // different goods
+    let lots = [[WHEAT, 5], [CORN, 4]];
+    let ref = reference(market, lots);
+    let got = arrival(market, lots, [[WHEAT, 5, 0], [CORN, 4, 0]]);
+    assert.equal(got.back, ref.total);
+    assert.deepEqual(got.sat, ref.sat);
+    // same good, two ages: the second slot sells into already-lowered saturation
+    lots = [[AJ, 6]];
+    ref = reference(market, [[AJ, 3], [AJ, 3]]);
+    got = arrival(market, lots, [[AJ, 3, 2], [AJ, 3, 0]]);
+    assert.equal(got.back, ref.total);
+    assert.deepEqual(got.sat, ref.sat);
+  }
 });
