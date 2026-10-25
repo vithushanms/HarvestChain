@@ -5,7 +5,8 @@
 ;;
 ;; Placement (0x0000-0x0FFF region): 0x000-0x0FF scratch (free), 0x100 palette (256 B),
 ;; 0x200 Bayer 4x4 (16 B), 0x210 body font 5x7 (67 glyphs x 5 B), 0x360 badge font 3x5
-;; (67 glyphs x 2 B), 0x400 demo strings. 0x6800-0x7FFF stays free for icons / string tables.
+;; (67 glyphs x 2 B), 0x400 demo strings, 0x600 iso face table (36 B, in 21b_iso.wat).
+;; 0x6800-0x7FFF stays free for icons / string tables.
 ;;
 ;; Palette: 64 entries x RGBA bytes (r,g,b,255) = little-endian 0xAABBGGRR pixel words.
 ;; Colour index = hue*4 + step (step 0 darkest .. 3 lightest). Hue indices ($H_*):

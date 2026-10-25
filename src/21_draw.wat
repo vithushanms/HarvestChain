@@ -35,8 +35,10 @@
   ;; grow memory to fit pixels + canary
   (local.set $need (i32.add (i32.add (global.get $R_FB) (i32.shl (i32.mul (local.get $lw) (local.get $lh)) (i32.const 2))) (i32.const 4)))
   (local.set $pages (i32.sub (i32.shr_u (i32.add (local.get $need) (i32.const 65535)) (i32.const 16)) (memory.size)))
+  ;; on grow failure (-1) fall back to an empty 0x0 framebuffer, never a stale size
   (if (i32.gt_s (local.get $pages) (i32.const 0))
-    (then (drop (memory.grow (local.get $pages)))))
+    (then (if (i32.lt_s (memory.grow (local.get $pages)) (i32.const 0)) (then
+      (global.set $fb_w (i32.const 0)) (global.set $fb_h (i32.const 0)) (return)))))
   (global.set $fb_w (local.get $lw))
   (global.set $fb_h (local.get $lh))
   (i32.store (i32.sub (local.get $need) (i32.const 4)) (global.get $CANARY)))
@@ -47,6 +49,12 @@
 (func $canary_ok (result i32)
   (i32.eq (i32.load (i32.add (global.get $R_FB) (i32.shl (i32.mul (global.get $fb_w) (global.get $fb_h)) (i32.const 2))))
           (global.get $CANARY)))
+
+;; Clamp v to [lo, hi] (signed).
+(func $clamp (param $v i32) (param $lo i32) (param $hi i32) (result i32)
+  (select (local.get $lo)
+    (select (local.get $hi) (local.get $v) (i32.gt_s (local.get $v) (local.get $hi)))
+    (i32.lt_s (local.get $v) (local.get $lo))))
 
 ;; Palette entry -> pixel word.
 (func $pal (param $i i32) (result i32)
@@ -102,13 +110,20 @@
 (func $vline (param $x i32) (param $y i32) (param $h i32) (param $c i32)
   (call $rect (local.get $x) (local.get $y) (i32.const 1) (local.get $h) (local.get $c)))
 
-;; Rect with corners cut by r (r=2: the top/bottom rows inset 2 and 1). Falls back to a
-;; plain rect when too small for the radius.
+;; Rect with corners cut by r (r=2: the top/bottom rows inset 2 and 1). r is clamped to
+;; min(r, w/2, h/2, 32) (>= 0); fully off-screen or empty rects return at once.
 (func $rrect (param $x i32) (param $y i32) (param $w i32) (param $h i32) (param $r i32) (param $c i32)
   (local $i i32) (local $in i32)
-  (if (i32.or (i32.lt_s (local.get $w) (i32.shl (local.get $r) (i32.const 1)))
-              (i32.lt_s (local.get $h) (i32.shl (local.get $r) (i32.const 1))))
-    (then (call $rect (local.get $x) (local.get $y) (local.get $w) (local.get $h) (local.get $c)) (return)))
+  (if (i32.or (i32.or (i32.le_s (local.get $w) (i32.const 0)) (i32.le_s (local.get $h) (i32.const 0)))
+              (i32.or (i32.ge_s (local.get $x) (global.get $fb_w)) (i32.ge_s (local.get $y) (global.get $fb_h))))
+    (then (return)))
+  ;; x, y < 0 and w, h > 0 here, so the sums cannot overflow
+  (if (i32.or (i32.and (i32.lt_s (local.get $x) (i32.const 0)) (i32.le_s (i32.add (local.get $x) (local.get $w)) (i32.const 0)))
+              (i32.and (i32.lt_s (local.get $y) (i32.const 0)) (i32.le_s (i32.add (local.get $y) (local.get $h)) (i32.const 0))))
+    (then (return)))
+  (local.set $r (call $clamp (local.get $r) (i32.const 0) (i32.const 32)))
+  (local.set $r (call $clamp (local.get $r) (i32.const 0) (i32.shr_s (local.get $w) (i32.const 1))))
+  (local.set $r (call $clamp (local.get $r) (i32.const 0) (i32.shr_s (local.get $h) (i32.const 1))))
   (call $rect (local.get $x) (i32.add (local.get $y) (local.get $r)) (local.get $w)
     (i32.sub (local.get $h) (i32.shl (local.get $r) (i32.const 1))) (local.get $c))
   (block $done (loop $l
@@ -168,6 +183,7 @@
 ;; font 0 = body 5x7 (advance 6), 1 = badge 3x5 (advance 4).
 (func $glyph (param $x i32) (param $y i32) (param $g i32) (param $c i32) (param $font i32)
   (local $w i32) (local $h i32) (local $nb i32) (local $base i32) (local $n i32) (local $tot i32)
+  (local.set $font (i32.and (local.get $font) (i32.const 1)))
   (local.set $w (i32.sub (i32.const 5) (i32.shl (local.get $font) (i32.const 1))))
   (local.set $h (i32.sub (i32.const 7) (i32.shl (local.get $font) (i32.const 1))))
   (local.set $nb (i32.sub (i32.const 5) (i32.mul (local.get $font) (i32.const 3))))
@@ -185,6 +201,7 @@
 
 (func $text_w (param $s i32) (param $font i32) (result i32)
   (local $n i32)
+  (local.set $font (i32.and (local.get $font) (i32.const 1)))
   (block $done (loop $l
     (br_if $done (i32.eqz (i32.load8_u (i32.add (local.get $s) (local.get $n)))))
     (local.set $n (i32.add (local.get $n) (i32.const 1)))
@@ -196,6 +213,7 @@
 ;; Draws a zero-terminated string; returns its width in pixels.
 (func $text (param $x i32) (param $y i32) (param $s i32) (param $c i32) (param $font i32) (result i32)
   (local $ch i32) (local $g i32) (local $adv i32) (local $x0 i32)
+  (local.set $font (i32.and (local.get $font) (i32.const 1)))
   (local.set $adv (i32.sub (i32.const 6) (i32.shl (local.get $font) (i32.const 1))))
   (local.set $x0 (local.get $x))
   (block $done (loop $l
@@ -219,9 +237,10 @@
   (local.set $h (i32.mul (i32.xor (local.get $h) (i32.shr_u (local.get $h) (i32.const 12))) (i32.const 0x297A2D39)))
   (i32.xor (local.get $h) (i32.shr_u (local.get $h) (i32.const 15))))
 
-;; Ordered dither: 1 when pixel (x,y) is "on" at coverage level 0..16 (Bayer 4x4).
+;; Ordered dither: 1 when pixel (x,y) is "on" at coverage level 0..16 (Bayer 4x4). The signed
+;; compare against entries 0..15 makes any level < 0 act as 0 and > 16 as 16.
 (func $dither (param $x i32) (param $y i32) (param $level i32) (result i32)
-  (i32.lt_u
+  (i32.lt_s
     (i32.load8_u (i32.add (global.get $BAYER_ADDR)
       (i32.add (i32.shl (i32.and (local.get $y) (i32.const 3)) (i32.const 2)) (i32.and (local.get $x) (i32.const 3)))))
     (local.get $level)))

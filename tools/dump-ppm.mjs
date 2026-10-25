@@ -1,6 +1,7 @@
 // Dev tool: render a canned scene headlessly and write a PNG (node:zlib only).
 // Usage: node tools/dump-ppm.mjs <scene> <w_css> <h_css> [dpr_x100=100] [--zoom N]
-//   scenes: demo (palette swatches, fonts, shapes)
+//   scenes: demo (palette swatches, fonts, shapes), iso (isometric 3D showcase),
+//           iso-small (the iso showcase at 180x320 logical; size args ignored)
 // Output: build/<scene>-<w>x<h>.png (nearest-neighbour zoomed, default 2x).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -42,9 +43,11 @@ export async function renderScene(scene, w, h, dpr = 100) {
   const { instance } = await WebAssembly.instantiate(readFileSync(join(root, 'build', 'game.wasm')), {});
   const ex = instance.exports;
   ex.init(1);
-  ex.resize(w, h, dpr);
+  if (scene === 'iso-small') ex.resize(180, 320, 100);
+  else ex.resize(w, h, dpr);
   if (scene === 'demo') ex.t_demo(0);
-  else throw new Error(`unknown scene "${scene}" (available: demo)`);
+  else if (scene === 'iso' || scene === 'iso-small') ex.t_iso_demo(0);
+  else throw new Error(`unknown scene "${scene}" (available: demo, iso, iso-small)`);
   const fw = ex.fb_w(), fh = ex.fb_h();
   return { w: fw, h: fh, rgba: new Uint8Array(ex.memory.buffer.slice(ex.fb_ptr(), ex.fb_ptr() + fw * fh * 4)) };
 }
@@ -60,7 +63,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const src = new Uint32Array(img.rgba.buffer);
   for (let y = 0; y < zh; y++) for (let x = 0; x < zw; x++) out[y * zw + x] = src[((y / zoom) | 0) * img.w + ((x / zoom) | 0)];
   mkdirSync(join(root, 'build'), { recursive: true });
-  const file = join(root, 'build', `${scene}-${w}x${h}.png`);
+  const file = join(root, 'build', `${scene}-${img.w}x${img.h}.png`);
   writeFileSync(file, encodePng(zw, zh, new Uint8Array(out.buffer)));
   console.log(`${file}  logical ${img.w}x${img.h}  png ${zw}x${zh}`);
 }

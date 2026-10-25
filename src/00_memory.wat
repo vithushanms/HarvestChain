@@ -1,6 +1,7 @@
 ;; Memory and region map (spec §14.3). One linear memory, fixed layout, no allocator.
 ;;   0x00000  4 KB   scratch (0x000-0x0FF free), palette 0x100, Bayer 0x200, fonts 0x210/0x360,
-;;                   demo strings 0x400 (see 02_data.wat); 0x600-0xFFF and 0x6800-0x7FFF free
+;;                   demo strings 0x400 (see 02_data.wat), iso face table 0x600 (36 B, 21b_iso.wat);
+;;                   0x624-0xFFF and 0x6800-0x7FFF free
 ;;   0x01000  16 KB  game state = save image
 ;;   0x05000  4 KB   replay / input log
 ;;   0x06000  8 KB   balance tables
