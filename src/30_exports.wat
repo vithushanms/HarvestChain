@@ -10,6 +10,7 @@
 (export "season"       (func $season))
 (export "rank"         (func $rank))
 (export "act"          (func $act))
+(export "end_day"      (func $end_day))
 
 ;; Test hooks.
 (export "t_rng_seed"  (func $rng_seed))

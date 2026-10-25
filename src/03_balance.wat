@@ -30,6 +30,7 @@
 (global $K_TRUCK_CAP     i32 (i32.const 2))
 (global $K_MAX_TRUCKS    i32 (i32.const 4))
 (global $K_DAYS_PER_SEASON i32 (i32.const 13))
+(global $K_CELLAR_HOLD   i32 (i32.const 25))
 (global $K_DRIFT_STEP    i32 (i32.const 16))
 (global $K_DRIFT_MIN     i32 (i32.const 17))
 (global $K_DRIFT_MAX     i32 (i32.const 18))
