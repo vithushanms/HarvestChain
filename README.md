@@ -86,6 +86,8 @@ The build **fails** if any of these break:
 
 **Adding a source file.** Name it with the right numeric prefix so it concatenates in the right place. Remember that WAT has no includes — everything is one module, so names (`$foo`) must be unique across all files.
 
+**Golden hashes.** `tests/golden.json` pins the state after 80 bot days (seeds 1-3). A missing file fails the test; after a deliberate rule change run `UPDATE_GOLDEN=1 npm test`, review why the hashes moved, and commit the file.
+
 **Randomness.** Every random number must come from `$rng_next` / `$rng_range` in `src/01_rng.wat`. Never seed or roll anywhere else, or replays will diverge.
 
 **Exports.** The public surface is in `src/30_exports.wat`. Exports prefixed `t_` are test hooks; they stay in the shipping binary because they cost only a few bytes.

@@ -165,7 +165,7 @@
 
 ;; True when the phase 2 fields of the save image at $s hold an impossible value.
 (func $state_bad (param $s i32) (result i32)
-  (local $i i32) (local $p i32) (local $v i32) (local $step i32)
+  (local $i i32) (local $p i32) (local $v i32) (local $step i32) (local $seen i32)
   (local.set $step (call $k (global.get $K_DRIFT_STEP)))
   (if (i32.or
         (i32.or
@@ -198,9 +198,20 @@
         (call $bad8 (i32.add (local.get $s) (i32.const 0x470)) (i32.const 320) (i32.const 1) (call $k (global.get $K_CELLAR_HOLD)))
         (i32.or (call $bad8 (i32.add (local.get $s) (i32.const 0x01C)) (i32.const 1) (i32.const 1)
                   (i32.add (call $k (global.get $K_GRACE_DAYS)) (i32.const 1)))
-                (i32.or (i32.lt_s (i32.load offset=0x014 (local.get $s)) (i32.const 0))
-                        (i32.lt_s (i32.load offset=0x018 (local.get $s)) (i32.const 0)))))
+                ;; loan: principal <= loanMax, interest and the owed total <= 2^30 (the saturation cap)
+                (i32.or (i32.gt_u (i32.load offset=0x014 (local.get $s)) (call $k (global.get $K_LOAN_MAX)))
+                        (i32.or (i32.gt_u (i32.load offset=0x018 (local.get $s)) (i32.const 0x40000000))
+                                (i32.gt_u (i32.add (i32.load offset=0x014 (local.get $s))
+                                                   (i32.load offset=0x018 (local.get $s)))
+                                          (i32.const 0x40000000))))))
     (then (return (i32.const 1))))
+  ;; an active event has at least one day left
+  (loop $events
+    (local.set $p (i32.add (i32.add (local.get $s) (i32.const 0x42C)) (i32.shl (local.get $i) (i32.const 2))))
+    (if (i32.and (i32.ne (i32.load8_u (local.get $p)) (i32.const 0)) (i32.eqz (i32.load8_u offset=3 (local.get $p))))
+      (then (return (i32.const 1))))
+    (br_if $events (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
+  (local.set $i (i32.const 0))
   ;; trucks: slots below truckCount are present, the rest are not
   (loop $trucks
     (local.set $p (i32.add (i32.add (local.get $s) (i32.const 0x160)) (i32.mul (local.get $i) (global.get $TRUCK_STRIDE))))
@@ -209,11 +220,17 @@
           (i32.or (i32.ne (i32.load8_u (local.get $p))
                           (i32.lt_u (local.get $i) (i32.load8_u offset=0x01E (local.get $s))))
                   (call $bad8 (i32.add (local.get $p) (i32.const 1)) (i32.const 2) (i32.const 1) (i32.const 2)))
-          (i32.or
-            (i32.and (i32.gt_u (local.get $v) (i32.const 2)) (i32.ne (local.get $v) (global.get $NO_CONTRACT)))
-            (i32.or (call $bad8 (i32.add (local.get $p) (i32.const 16)) (i32.const 8) (i32.const 4) (i32.const 12))
-                    (call $bad8 (i32.add (local.get $p) (i32.const 17)) (i32.const 8) (i32.const 4) (i32.const 7)))))
+          (i32.or (call $bad8 (i32.add (local.get $p) (i32.const 16)) (i32.const 8) (i32.const 4) (i32.const 12))
+                  (call $bad8 (i32.add (local.get $p) (i32.const 17)) (i32.const 8) (i32.const 4) (i32.const 7))))
       (then (return (i32.const 1))))
+    ;; a contract tag needs an outbound truck, an active accepted slot, and is carried once
+    (if (i32.ne (local.get $v) (global.get $NO_CONTRACT))
+      (then
+        (if (i32.or (i32.or (i32.ne (i32.load8_u offset=2 (local.get $p)) (i32.const 1)) (i32.gt_u (local.get $v) (i32.const 2)))
+                    (i32.or (i32.eqz (i32.load8_u (i32.add (i32.add (local.get $s) (i32.const 0x45B)) (i32.shl (local.get $v) (i32.const 3)))))
+                            (i32.and (local.get $seen) (i32.shl (i32.const 1) (local.get $v)))))
+          (then (return (i32.const 1))))
+        (local.set $seen (i32.or (local.get $seen) (i32.shl (i32.const 1) (local.get $v))))))
     (br_if $trucks (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
   ;; tiles: kind 0..2, crop id 0..4 or building id 0..9, ghCrop 0..5, recipe 0..8
   (local.set $i (i32.const 0))

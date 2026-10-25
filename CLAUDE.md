@@ -67,7 +67,7 @@ Key cross-file rules:
 - **Step 10 RNG order** (part of the determinism contract, golden hashes pin it): events_tick, weather_advance, hint goods (`rng_range(13)` twice, hintGood[0] then [1]), day += 1, board refresh when day % 5 == 0, then milestones + run end while Playing. Milestones use ONE net worth snapshot before any payout; milestone 3 only on the rollover into day 81; milestone 6 (net worth 50,000) or day > 240 -> Results. Endless runs no milestones or run-end checks.
 - **Net worth** = cash + 50% of building cost (+80% of cost again for upgraded) + 50% of land rings - everything owed; inventory excluded. `score` = net worth + 100 x rep + 50 x contractsDone.
 - **`select` evaluates both value operands**: never put a call that consumes RNG or mutates state inside a `select`; use `if/else`. Also never `i32.and` a 0/1 boolean with a mask other than 1.
-- **Tests:** `tests/sim/*.test.mjs`; `tests/sim/bot.mjs` is a deterministic scripted player; `tests/golden.json` holds SHA-256 of the state after 80 bot days for seeds 1-3 (delete it to regenerate after a deliberate rule change, and review why it moved).
+- **Tests:** `tests/sim/*.test.mjs`; `tests/sim/bot.mjs` is a deterministic scripted player; `tests/golden.json` holds SHA-256 of the state after 80 bot days for seeds 1-3 (a missing file FAILS the test; regenerate only with `UPDATE_GOLDEN=1` after a deliberate rule change, and review why it moved).
 
 ## Build & test
 

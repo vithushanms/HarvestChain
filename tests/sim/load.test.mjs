@@ -94,11 +94,22 @@ rejects('grace 4 (graceDays 3 + 1)', [[0x01C, 5]]);
 rejects('negative principal', [[0x014, -1, 4]]);
 rejects('negative interest', [[0x018, -1, 4]]);
 
+rejects('principal above loanMax', [[0x014, 1501, 4]]);
+rejects('principal + interest above 2^30', [[0x014, 1500, 4], [0x018, 0x40000000 - 1499, 4]]);
+rejects('principal = interest = 0x7FFFFFFF (owed wraps)', [[0x014, 0x7FFFFFFF, 4], [0x018, 0x7FFFFFFF, 4]]);
+rejects('a home truck holding a contract tag', [[TRUCK(0) + 5, 0], [0x458 + 3, 1]]);
+rejects('a returning truck holding a contract tag', [[TRUCK(0) + 2, 2], [TRUCK(0) + 5, 0], [0x458 + 3, 1]]);
+rejects('an outbound truck tagged with an inactive accepted slot', [[TRUCK(0) + 2, 1], [TRUCK(0) + 5, 1]]);
+rejects('two trucks carrying the same tag', [[0x01E, 2], [TRUCK(0) + 2, 1], [TRUCK(0) + 5, 0], [TRUCK(1), 1], [TRUCK(1) + 2, 1], [TRUCK(1) + 5, 0], [0x458 + 3, 1]]);
+rejects('an active event with daysLeft 0', [[0x42C, 3], [0x42F, 0]]);
+accepts('an outbound truck tagged with an active accepted slot', [[TRUCK(0) + 2, 1], [TRUCK(0) + 5, 0], [0x458 + 3, 1]]);
+accepts('two outbound trucks with different tags', [[0x01E, 2], [TRUCK(0) + 2, 1], [TRUCK(0) + 5, 0], [TRUCK(1), 1], [TRUCK(1) + 2, 1], [TRUCK(1) + 5, 1], [0x458 + 3, 1], [0x458 + 8 + 3, 1]]);
+
 accepts('boundary values of every range', [
   [0x400, 3], [0x401, 5], [0x402, 5], [0x403, 5], [0x00C, 1, 2], [0x405, 4], [0x406, 0x7F],
   [0x407, 12], [0x408, 12], [0x0F0, 7000, 2], [0x0F0 + 24, 13000, 2], [0x110, 10000, 2], [0x110, 0, 2],
-  [0x412, 500, 2], [0x412 + 2, -500, 2], [0x42C, 6], [0x42D, 2], [0x42E, 12],
-  [0x441, 2], [0x440, 12], [0x443, 1], [TRUCK(0) + 1, 2], [TRUCK(0) + 2, 2], [TRUCK(0) + 5, 255], [TRUCK(0) + 5, 2],
+  [0x412, 500, 2], [0x412 + 2, -500, 2], [0x42C, 6], [0x42F, 1], [0x42D, 2], [0x42E, 12],
+  [0x441, 2], [0x440, 12], [0x443, 1], [TRUCK(0) + 1, 2], [TRUCK(0) + 2, 1], [TRUCK(0) + 5, 2], [0x458 + 16 + 3, 1],
   [TRUCK(0) + 16, 12], [TRUCK(0) + 17, 7], [TILE(1), 1], [TILE(1) + 1, 4], [TILE(2), 2], [TILE(2) + 1, 9],
-  [TILE(2) + 6, 5], [TILE(2) + 7, 8], [0x470, 10], [0x01C, 4], [0x014, 0, 4], [0x018, 0, 4],
+  [TILE(2) + 6, 5], [TILE(2) + 7, 8], [0x470, 10], [0x01C, 4], [0x014, 1500, 4], [0x018, 1000, 4],
 ]);

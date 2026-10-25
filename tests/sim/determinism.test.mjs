@@ -42,10 +42,11 @@ test('golden SHA-256 of the state after 80 bot days, seeds 1-3', async () => {
   const got = {};
   for (const seed of [1, 2, 3]) got[seed] = sha(bytes(await play(seed, 80)));
   assert.equal(new Set(Object.values(got)).size, 3);
-  if (!existsSync(GOLDEN)) {
+  if (process.env.UPDATE_GOLDEN === '1') {
     writeFileSync(GOLDEN, JSON.stringify(got, null, 2) + '\n');
     console.log(`wrote ${GOLDEN}`);
   }
+  assert.ok(existsSync(GOLDEN), `${GOLDEN} is missing: run with UPDATE_GOLDEN=1 to create it, then review and commit`);
   assert.deepEqual(got, JSON.parse(readFileSync(GOLDEN, 'utf8')));
 });
 

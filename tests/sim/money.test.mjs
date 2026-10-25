@@ -243,6 +243,15 @@ test('run end: new day > 240 -> Results; day 240 -> 241 is the last End Day', ()
   const b = snap(); assert.equal(ex.end_day(), E.STATUS); assert.deepEqual(snap(), b);
 });
 
+test('precedence: the End Day that reaches day 241 sets Results and skips step 11, even at the last warning day', () => {
+  fresh(); setDay(240); setCash(-1000); setLoan(100, 0); setGrace(3); noEvent();
+  assert.equal(ex.end_day(), 0);
+  const s = st();
+  assert.equal(s.day, 241); assert.equal(s.status, 1); assert.equal(s.grace, 3);
+  fresh(); setDay(239); setCash(-1000); setLoan(100, 0); setGrace(3); noEvent();   // control: mid-run it is Game Over
+  ex.end_day(); assert.equal(st().status, 3);
+});
+
 test('Endless: no run end and no milestones, but bankruptcy still applies', () => {
   fresh(); setDay(300); setStatus(2); setCash(60000); setU16(0x1410, 1); step();
   assert.equal(st().status, 2); assert.equal(milestones(), 0); assert.equal(st().cash, 60000);
