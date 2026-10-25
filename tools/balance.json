@@ -1,0 +1,20 @@
+{
+  "enums": {
+    "goods": ["Wheat", "Corn", "Tomato", "Apple", "Grape", "Flour", "Cornmeal", "Sauce", "AppleJuice", "GrapeJuice", "Bread", "Cornbread", "Wine"],
+    "buildings": ["Mill", "Cannery", "Press", "Bakery", "Cellar", "Warehouse", "ColdStore", "Greenhouse", "Well", "Garage"],
+    "markets": ["Stand", "Town", "City"],
+    "seasons": ["Spring", "Summer", "Autumn", "Winter"],
+    "unlockKinds": ["None", "OwnsBuilding", "RepRank", "DayReached"]
+  },
+  "tables": {
+    "CROP":   { "id": 0, "rows": 5,  "rowEnum": "goods", "cols": ["seed", "growDays", "yield", "regrowDays", "spoilDays", "seasonMask", "good"] },
+    "GOOD":   { "id": 1, "rows": 13, "rowEnum": "goods", "cols": ["basePrice", "perishDays", "tier"] },
+    "BLD":    { "id": 2, "rows": 10, "rowEnum": "buildings", "cols": ["cost", "upkeep", "inputCap", "storageBonus", "unlockKind", "unlockArg"] },
+    "RECIPE": { "id": 3, "rows": 8,  "cols": ["building", "inGood", "inQty", "outGood", "ageDays"] },
+    "MKT":    { "id": 4, "rows": 3,  "rowEnum": "markets", "cols": ["multRawBp", "multProcBp", "travelDays", "satPerUnitBp", "recoverBp"] },
+    "LAND":   { "id": 5, "rows": 4,  "cols": ["ringCost"] },
+    "REP":    { "id": 6, "rows": 5,  "cols": ["pointsForRank"] },
+    "MILE":   { "id": 7, "rows": 7,  "cols": ["payout"] },
+    "K":      { "id": 8, "rows": 1,  "cols": ["startCash", "startStorage", "truckCap", "truckPrice", "maxTrucks", "truckCapUpgCost", "truckCapUpgAmt", "truckCapUpgMax", "fridgeCost", "fastCost", "loanMax", "loanRateBp", "graceDays", "daysPerSeason", "runDays", "bldUpgPctBp", "driftStepBp", "driftMinBp", "driftMaxBp", "satFloorBp", "contractMultBp", "latePenaltyBp", "netWorthTarget", "netWorthBldBp", "netWorthLandBp", "cellarHold", "startGrid", "maxGrid"] }
+  }
+}
