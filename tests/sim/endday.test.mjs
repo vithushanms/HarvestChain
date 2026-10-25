@@ -105,7 +105,7 @@ test('drought streak of 3 kills ~25% of crops; Well prevents it', () => {
   assert.equal(st().droughtStreak, 0);
   const left = alive();
   assert.ok(left >= 36 && left <= 60, `survivors ${left}`);
-  assert.equal(left, 46, 'seed 42 pinned survivor count'); // 18 killed
+  assert.equal(left, 48, 'seed 42 pinned survivor count'); // 16 killed (step 10 now draws 2 hint goods per day)
   // a non-drought day in between resets the streak
   fresh(); wheatField();
   day(W.DROUGHT); day(W.DROUGHT); day(W.SUNNY); day(W.DROUGHT);

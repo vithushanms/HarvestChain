@@ -119,10 +119,11 @@ test('send to City takes 4 end_days; Fast makes it 3', () => {
   ex.t_set_cash(1000); ex.t_give(WHEAT, 10, 0);
   assert.equal(ex.act(LOAD, 0, WHEAT, 10), 0);
   assert.equal(ex.act(SEND, 0, 2, 255), 0);
-  for (let i = 0; i < 2; i++) { day(); assert.equal(cash(), 1000); }
+  // the Garage costs $3 upkeep per End Day (step 9)
+  for (let i = 0; i < 2; i++) { day(); assert.equal(cash(), 1000 - 3 * (i + 1)); }
   assert.equal(truck().daysLeft, 1);
   day();
-  assert.equal(truck().phase, 0); assert.ok(cash() > 1000);
+  assert.equal(truck().phase, 0); assert.ok(cash() > 1000 - 9);
 });
 
 test('Fast does not shorten the Town leg', () => {

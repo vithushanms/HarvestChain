@@ -1,6 +1,6 @@
 ;; Player actions (spec §5-§9) and the act dispatcher. Every action validates first and
 ;; mutates only on success; a non-zero return leaves state bytes unchanged.
-;; act(id, a, b, c): ids per shared-context Actions table. Ids 17-18 are wired by later tasks.
+;; act(id, a, b, c): ids per shared-context Actions table. 
 ;; act consumes RNG only for ACCEPT/DECLINE (contract re-roll, 15_contracts.wat).
 
 (global $E_BAD_ARG       i32 (i32.const 1))
@@ -14,6 +14,7 @@
 (global $E_STORAGE_FULL  i32 (i32.const 9))
 (global $E_NO_STOCK      i32 (i32.const 10))
 (global $E_MAX           i32 (i32.const 14))
+(global $E_LOAN          i32 (i32.const 18))
 (global $E_NOT_BUILDING  i32 (i32.const 19))
 
 (global $BLD_GREENHOUSE  i32 (i32.const 7))
@@ -22,6 +23,7 @@
 (global $EV_BUMPER       i32 (i32.const 6))
 (global $ST_RESULTS      i32 (i32.const 1))
 (global $ST_ENDLESS      i32 (i32.const 2))
+(global $ST_GAMEOVER     i32 (i32.const 3))
 
 ;; Crop growing on the tile at ptr: crop id for a crop tile or a Greenhouse with ghCrop, else -1.
 (func $tile_crop (param $p i32) (result i32)
@@ -221,6 +223,30 @@
   (i32.store8 (global.get $S_STATUS) (global.get $ST_ENDLESS))
   (i32.const 0))
 
+;; Take the only loan: amount 1..loanMax while nothing is owed.
+(func $a_loan_take (param $amt i32) (result i32)
+  (if (i32.ge_u (i32.sub (local.get $amt) (i32.const 1)) (call $k (global.get $K_LOAN_MAX)))
+    (then (return (global.get $E_BAD_ARG))))
+  (if (i32.ne (call $loan_owed) (i32.const 0)) (then (return (global.get $E_LOAN))))
+  (i32.store (global.get $S_CASH) (i32.add (i32.load (global.get $S_CASH)) (local.get $amt)))
+  (i32.store (global.get $S_LOAN_P) (local.get $amt))
+  (i32.const 0))
+
+;; Repay up to the amount owed, interest first. Cash must cover the payment.
+(func $a_loan_repay (param $amt i32) (result i32)
+  (local $pay i32) (local $i i32)
+  (if (i32.le_s (local.get $amt) (i32.const 0)) (then (return (global.get $E_BAD_ARG))))
+  (if (i32.eqz (call $loan_owed)) (then (return (global.get $E_LOAN))))
+  (local.set $pay (local.get $amt))
+  (if (i32.gt_u (local.get $pay) (call $loan_owed)) (then (local.set $pay (call $loan_owed))))
+  (if (i32.lt_s (i32.load (global.get $S_CASH)) (local.get $pay)) (then (return (global.get $E_CASH))))
+  (i32.store (global.get $S_CASH) (i32.sub (i32.load (global.get $S_CASH)) (local.get $pay)))
+  (local.set $i (i32.load (global.get $S_LOAN_I)))
+  (if (i32.gt_u (local.get $i) (local.get $pay)) (then (local.set $i (local.get $pay))))
+  (i32.store (global.get $S_LOAN_I) (i32.sub (i32.load (global.get $S_LOAN_I)) (local.get $i)))
+  (i32.store (global.get $S_LOAN_P) (i32.sub (i32.load (global.get $S_LOAN_P)) (i32.sub (local.get $pay) (local.get $i))))
+  (i32.const 0))
+
 (func $act (param $id i32) (param $a i32) (param $b i32) (param $c i32) (result i32)
   (local $st i32)
   (local.set $st (i32.load8_u (global.get $S_STATUS)))
@@ -243,4 +269,6 @@
   (if (i32.eq (local.get $id) (i32.const 14)) (then (return (call $a_upgrade_truck (local.get $a) (local.get $b)))))
   (if (i32.eq (local.get $id) (i32.const 15)) (then (return (call $a_accept (local.get $a)))))
   (if (i32.eq (local.get $id) (i32.const 16)) (then (return (call $a_decline (local.get $a)))))
+  (if (i32.eq (local.get $id) (i32.const 17)) (then (return (call $a_loan_take (local.get $a)))))
+  (if (i32.eq (local.get $id) (i32.const 18)) (then (return (call $a_loan_repay (local.get $a)))))
   (global.get $E_BAD_ARG))

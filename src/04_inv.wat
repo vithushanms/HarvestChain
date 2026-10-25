@@ -36,7 +36,7 @@
 (func $inv_take (param $good i32) (param $qty i32) (result i32)
   (local $a i32) (local $p i32) (local $have i32) (local $t i32) (local $left i32)
   (local.set $left (local.get $qty))
-  (local.set $a (i32.const 7))
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
   (loop $l
     (if (local.get $left)
       (then

@@ -49,7 +49,8 @@ const K = { startCash: 500, startStorage: 30, truckCap: 20, truckPrice: 450, max
   repScore: 100, contractScore: 50, boardVisibleLow: 2, boardVisibleHigh: 3, boardHighRank: 3,
   repGain: 1, repLoss: 1, bldUpgCapMult: 2, fastDays: 1, offSeasonPct: 50, rainBonus: 10, firstEventDay: 5,
   contractQtyBase: 6, contractQtyRankMult: 3, contractQtySpread: 5, contractDeadlineBase: 6,
-  contractDeadlineSpread: 9, acceptedMax: 3, contractTierLow: 1, contractTierHigh: 2 };
+  contractDeadlineSpread: 9, acceptedMax: 3, contractTierLow: 1, contractTierHigh: 2,
+  stormOdds: 5, droughtOdds: 4, droughtKillStreak: 3, maxAge: 7 };
 
 test('crop table', () => assert.deepEqual(table('CROP'), CROP));
 test('goods table', () => assert.deepEqual(table('GOOD'), GOOD));
@@ -62,4 +63,11 @@ test('milestone payouts', () => assert.deepEqual(column('MILE'), MILE));
 test('scalar constants (u16 values above 32767 read unsigned)', () => {
   const [row] = table('K');
   assert.deepEqual(Object.fromEntries(BAL.tables.K.cols.map((c, i) => [c, row[i]])), K);
+});
+
+test('acceptedMax fits the 3-slot accepted list; maxAge is the top inventory age bucket', () => {
+  const [row] = table('K');
+  const col = (n) => row[BAL.tables.K.cols.indexOf(n)];
+  assert.ok(col('acceptedMax') <= 3);
+  assert.equal(col('maxAge'), 7);
 });

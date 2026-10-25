@@ -6,13 +6,13 @@ The full design is in [`requirement-spec.md`](requirement-spec.md).
 
 ## Status
 
-Phase 1 of 6 is done: build pipeline, seeded RNG, balance tables, game-state layout and save/load. There is **nothing to play in a browser yet** — the game is currently exercised only through its test suite. Plans for each phase live in [`docs/superpowers/plans/`](docs/superpowers/plans/).
+Phases 1 and 2 of 6 are done: the whole simulation (every player action and the full End Day pipeline, a complete 240-day run plus Endless mode) lives in `game.wasm` and is exercised by the test suite and by a scripted bot. There are no graphics yet; `tools/play.html` is a dev harness that drives the sim in a browser and now shows contracts, trucks, events and loans. Plans for each phase live in [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Memory map, RNG, balance data, state init, save/load | done |
-| 2 | Player actions + End Day pipeline (pricing, weather, contracts, trucks) | next |
-| 3 | Draw primitives, fonts, sprites | — |
+| 2 | Player actions + End Day pipeline (pricing, weather, contracts, trucks, loans, run end) | done |
+| 3 | Draw primitives, fonts, sprites | next |
 | 4 | Layout, UI, input, loader (`index.html`), browser smoke tests | — |
 | 5 | Save wiring, replays/share codes, stats overlay, QR | — |
 | 6 | Onboarding, polish, balance passes | — |
@@ -82,7 +82,7 @@ The build **fails** if any of these break:
 3. Grow `$STATE_LEN` (and `"length"` in `state.json`).
 4. Once the game has public players, bump `$SAVE_VERSION` and add a migration in `$load`.
 
-`load` accepts only a save of exactly `$STATE_LEN` bytes with sane fields (non-zero RNG word, grid 4–8, 1–3 trucks), so growing the layout makes older saves fall back to New Game until a migration is written. Error codes: 1 length, 2 magic, 3 version, 4 out of bounds, 5 corrupt.
+`load` accepts only a save of exactly `$STATE_LEN` bytes whose every field is in range (non-zero RNG word, grid 4–8, 1–3 trucks, status, weather, day, drift/saturation windows, event/board/truck/tile enums, cellar buckets, grace, loan amounts) and rejects the rest before touching state, so growing the layout makes older saves fall back to New Game until a migration is written. Error codes: 1 length, 2 magic, 3 version, 4 out of bounds, 5 corrupt.
 
 **Adding a source file.** Name it with the right numeric prefix so it concatenates in the right place. Remember that WAT has no includes — everything is one module, so names (`$foo`) must be unique across all files.
 
@@ -102,4 +102,4 @@ These are recorded in the phase 1 plan and get decided in later phases:
 
 - Spec §14.3 gives the framebuffer as "≤ 2.6 MB", but 1280 × 720 × 4 is 3.69 MB (phase 3).
 - The starting Wheat ripens after the first End Day, but onboarding expects a harvest on day 1 (phase 6).
-- The spec gives no numbers for weather odds or event frequency (phase 2).
+- Weather odds, event frequency and the other numbers the spec left open are fixed in the phase 2 plan's Decisions (`docs/superpowers/plans/`).

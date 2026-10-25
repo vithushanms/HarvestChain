@@ -11,6 +11,8 @@
 (export "rank"         (func $rank))
 (export "act"          (func $act))
 (export "end_day"      (func $end_day))
+(export "net_worth"    (func $net_worth))
+(export "score"        (func $score))
 (export "truck_cap"     (func $truck_cap))
 
 ;; Test hooks.

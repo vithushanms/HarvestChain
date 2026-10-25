@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phase 1 of 6 done (sim foundation: build pipeline, RNG, balance tables, state/save). Plans live in `docs/superpowers/plans/`. The source of truth is `requirement-spec.md` (game design spec, rev 2). Read the relevant section before changing behaviour; section numbers (§) below refer to it.
+Phases 1-2 of 6 done (sim foundation; then every action and the full End Day pipeline, playable via tests, `tests/sim/bot.mjs` and `tools/play.html`). Next: phase 3 (draw primitives). Plans live in `docs/superpowers/plans/`. The source of truth is `requirement-spec.md` (game design spec, rev 2). Read the relevant section before changing behaviour; section numbers (§) below refer to it.
 
 ## What this is
 
@@ -57,6 +57,17 @@ Key cross-file rules:
 - **Rendering** is immediate-mode per dirty frame; 16×16 4bpp sprites indexed into a 16-colour palette; integer nearest-neighbour scaling. Layouts (portrait/tablet/laptop/large-text) are data driving one renderer, not separate renderers.
 - **Input**: one state machine in `22_ui.wat` (idle → pressed → drag|tap, 8 px slop, 300 ms long-press) shared by touch and mouse.
 - All text is templated from short string tables, not prose.
+
+## Phase 2 facts (sim rules)
+
+- **Actions** `act(id,a,b,c)→err`: 1 PLANT, 2 HARVEST, 3 HARVEST_ALL, 4 BUILD, 5 DEMOLISH, 6 UPGRADE_BLD, 7 SET_RECIPE, 8 BUY_LAND, 9 SELL_STAND, 10 TRUCK_LOAD, 11 TRUCK_UNLOAD, 12 TRUCK_SEND, 13 BUY_TRUCK, 14 UPGRADE_TRUCK, 15 ACCEPT, 16 DECLINE, 17 LOAN_TAKE, 18 LOAN_REPAY, 19 CONTINUE. Errors: 0 OK, 1 BAD_ARG, 2 STATUS, 3 TILE_OUT, 4 TILE_BUSY, 5 SEASON, 6 CASH, 7 LOCKED, 8 NOT_RIPE, 9 STORAGE_FULL, 10 NO_STOCK, 11 TRUCK_AWAY, 12 TRUCK_FULL, 13 NO_SLOT, 14 MAX, 15 NEED_GARAGE, 16 CONTRACT, 17 DEADLINE, 18 LOAN, 19 NOT_BUILDING. A failing action never changes state bytes. Only Playing (0) and Endless (2) accept actions; Results (1) accepts only CONTINUE (-> Endless); GameOver (3) accepts nothing. Enums are in `tools/balance.json`.
+- **Exports** beyond phase 1: `act, end_day, price, storage_cap/used, net_worth, score, rank, season, truck_cap` plus `t_*` hooks. `end_day` returns E_STATUS (2) outside Playing/Endless.
+- **State** fields appended at 0x400+ (status, weather x3, droughtStreak, ringsBought, milestones, hintGood x2, nextEventDay, contractsDone, wineSold, procSold, driftNext, events, board, accepted, cellar); loan/grace live in the phase 1 block (0x14, 0x18, 0x1C). `load` validates every field and returns E_LOAD_CORRUPT (5) before touching state.
+- **End Day order** (`12_endday.wat`): 1 weather, 2 grow+age, 3 process, 4 cellar, 5 spoil, 6 trucks, 7 contracts, 8 drift+saturation, 9 money (upkeep, then 1% compounding loan interest, floor), 10 roll day, 11 bankruptcy (loan outstanding + cash < 0 -> grace+1, Game Over once grace > graceDays; cash >= 0 resets it; negative cash without a loan is ignored).
+- **Step 10 RNG order** (part of the determinism contract, golden hashes pin it): events_tick, weather_advance, hint goods (`rng_range(13)` twice, hintGood[0] then [1]), day += 1, board refresh when day % 5 == 0, then milestones + run end while Playing. Milestones use ONE net worth snapshot before any payout; milestone 3 only on the rollover into day 81; milestone 6 (net worth 50,000) or day > 240 -> Results. Endless runs no milestones or run-end checks.
+- **Net worth** = cash + 50% of building cost (+80% of cost again for upgraded) + 50% of land rings - everything owed; inventory excluded. `score` = net worth + 100 x rep + 50 x contractsDone.
+- **`select` evaluates both value operands**: never put a call that consumes RNG or mutates state inside a `select`; use `if/else`. Also never `i32.and` a 0/1 boolean with a mask other than 1.
+- **Tests:** `tests/sim/*.test.mjs`; `tests/sim/bot.mjs` is a deterministic scripted player; `tests/golden.json` holds SHA-256 of the state after 80 bot days for seeds 1-3 (delete it to regenerate after a deliberate rule change, and review why it moved).
 
 ## Build & test
 

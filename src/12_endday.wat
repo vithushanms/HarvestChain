@@ -2,7 +2,7 @@
 ;;   1 weather  2 grow + age  3 process  4 age cellar  5 spoil  6 trucks (Task 6)
 ;;   7 contracts (Task 7)  8 drift + saturation  9 money (Task 8)  10 events, weather, day+1
 ;;   11 bankruptcy (Task 8)
-;; Steps 6, 7, 9, 11 are empty stubs until their tasks. RNG call order is part of the
+;; RNG call order is part of the
 ;; spec: step 1 draws only on eligible tiles in index order, step 8 drift, step 10 events
 ;; then weather. $events_tick and $weather_advance run BEFORE day += 1 (they use day+1).
 ;; Aging of storage perishables happens in step 2 (controller ruling).
@@ -19,10 +19,6 @@
 (global $CROP_GRAPE  i32 (i32.const 4))
 (global $WINTER     i32 (i32.const 3))
 (global $GOOD_GJ    i32 (i32.const 9))
-(global $MAX_AGE    i32 (i32.const 7))
-(global $DROUGHT_KILL_STREAK i32 (i32.const 3))
-(global $STORM_ODDS   i32 (i32.const 5))
-(global $DROUGHT_ODDS i32 (i32.const 4))
 (global $CELLAR_BUCKETS i32 (i32.const 5))
 
 ;; A crop lost to storm or drought: Apple trees survive with progress reset, others are cleared.
@@ -43,7 +39,7 @@
                (i32.eqz (call $count_bld (global.get $BLD_WELL))))
     (then
       (local.set $s (i32.add (i32.load8_u (global.get $S_DROUGHT)) (i32.const 1)))
-      (if (i32.ge_u (local.get $s) (global.get $DROUGHT_KILL_STREAK))
+      (if (i32.ge_u (local.get $s) (call $k (global.get $K_DROUGHT_STREAK)))
         (then (local.set $strike (i32.const 1)) (local.set $s (i32.const 0))))
       (i32.store8 (global.get $S_DROUGHT) (local.get $s)))
     (else (i32.store8 (global.get $S_DROUGHT) (i32.const 0))))
@@ -55,14 +51,14 @@
           (then
             (local.set $c (i32.load8_u offset=1 (local.get $p)))
             (if (i32.eq (local.get $w) (global.get $W_STORM))
-              (then (if (i32.eqz (call $rng_range (global.get $STORM_ODDS)))
+              (then (if (i32.eqz (call $rng_range (call $k (global.get $K_STORM_ODDS))))
                 (then (call $lose_crop (local.get $i))))))
             (if (i32.eq (local.get $w) (global.get $W_FROST))
               (then (if (i32.or (i32.eq (local.get $c) (global.get $CROP_TOMATO))
                                 (i32.eq (local.get $c) (global.get $CROP_GRAPE)))
                 (then (call $clear_tile (local.get $i))))))
             (if (local.get $strike)
-              (then (if (i32.eqz (call $rng_range (global.get $DROUGHT_ODDS)))
+              (then (if (i32.eqz (call $rng_range (call $k (global.get $K_DROUGHT_ODDS))))
                 (then (call $lose_crop (local.get $i))))))))))
     (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64)))))
 
@@ -96,7 +92,7 @@
 ;; Buckets are visited oldest first, so a moved unit always lands in a bucket already settled.
 (func $age_good (param $g i32) (param $prot i32) (param $step i32) (result i32)
   (local $a i32) (local $p i32) (local $c i32) (local $keep i32) (local $to i32) (local $q i32)
-  (local.set $a (i32.const 7))
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
   (loop $l
     (local.set $p (call $inv_ptr (local.get $g) (local.get $a)))
     (local.set $c (i32.load16_u (local.get $p)))
@@ -107,7 +103,7 @@
     (if (i32.gt_u (local.get $c) (local.get $keep))
       (then
         (local.set $to (i32.add (local.get $a) (local.get $step)))
-        (if (i32.gt_u (local.get $to) (global.get $MAX_AGE)) (then (local.set $to (global.get $MAX_AGE))))
+        (if (i32.gt_u (local.get $to) (call $k (global.get $K_MAX_AGE))) (then (local.set $to (call $k (global.get $K_MAX_AGE)))))
         (local.set $q (call $inv_ptr (local.get $g) (local.get $to)))
         (i32.store16 (local.get $q)
           (i32.add (i32.load16_u (local.get $q)) (i32.sub (local.get $c) (local.get $keep))))))
@@ -256,7 +252,7 @@
       (then
         (local.set $a (local.get $d))
         (loop $ages
-          (if (i32.le_u (local.get $a) (global.get $MAX_AGE))
+          (if (i32.le_u (local.get $a) (call $k (global.get $K_MAX_AGE)))
             (then
               (i32.store16 (call $inv_ptr (local.get $g) (local.get $a)) (i32.const 0))
               (local.set $a (i32.add (local.get $a) (i32.const 1)))
@@ -282,19 +278,133 @@
                     (i32.store8 offset=4 (local.get $p) (i32.const 0))))))))))
     (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64)))))
 
-;; Steps filled by later tasks.
-(func $step_money)
-(func $step_bankrupt)
+;; Total owed on the loan (principal + interest).
+(func $loan_owed (result i32)
+  (i32.add (i32.load (global.get $S_LOAN_P)) (i32.load (global.get $S_LOAN_I))))
 
-;; Step 10 canonical RNG order: events_tick, weather_advance, [hint goods], day += 1,
-;; then the contract board refresh when the new day is a multiple of contractRefreshDays.
+;; Step 9: upkeep of every standing building (upgraded ones cost the same), then, if a loan is
+;; outstanding, interest = floor((principal + interest) * loanRateBp / 10000) added to the
+;; interest. The product runs in i64 and the owed total saturates at 2^30 so a loan that is
+;; never repaid cannot wrap i32.
+(func $step_money
+  (local $i i32) (local $p i32) (local $sum i32) (local $add i64)
+  (loop $tiles
+    (local.set $p (call $tile_ptr (local.get $i)))
+    (if (i32.eq (i32.load8_u (local.get $p)) (i32.const 2))
+      (then (local.set $sum (i32.add (local.get $sum)
+        (call $bal (global.get $T_BLD) (i32.load8_u offset=1 (local.get $p)) (i32.const 1))))))
+    (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
+  (i32.store (global.get $S_CASH) (i32.sub (i32.load (global.get $S_CASH)) (local.get $sum)))
+  (if (i32.gt_s (call $loan_owed) (i32.const 0))
+    (then
+      (local.set $add (i64.div_u (i64.mul (i64.extend_i32_u (call $loan_owed))
+                                          (i64.extend_i32_u (call $k (global.get $K_LOAN_RATE))))
+                                 (i64.const 10000)))
+      (if (i64.gt_u (i64.add (i64.extend_i32_u (call $loan_owed)) (local.get $add)) (i64.const 0x40000000))
+        (then (local.set $add (i64.sub (i64.const 0x40000000) (i64.extend_i32_u (call $loan_owed))))))
+      (if (i64.lt_s (local.get $add) (i64.const 0)) (then (local.set $add (i64.const 0))))
+      (i32.store (global.get $S_LOAN_I)
+        (i32.add (i32.load (global.get $S_LOAN_I)) (i32.wrap_i64 (local.get $add)))))))
+
+;; Step 11 (only while Playing/Endless): negative cash with a loan outstanding burns grace, and
+;; grace beyond graceDays is Game Over. Cash >= 0 resets grace. No loan: negative cash is ignored.
+(func $step_bankrupt
+  (local $st i32)
+  (local.set $st (i32.load8_u (global.get $S_STATUS)))
+  (if (i32.and (i32.ne (local.get $st) (i32.const 0)) (i32.ne (local.get $st) (global.get $ST_ENDLESS)))
+    (then (return)))
+  (if (i32.ge_s (i32.load (global.get $S_CASH)) (i32.const 0))
+    (then (i32.store8 (global.get $S_GRACE) (i32.const 0)) (return)))
+  (if (i32.gt_s (call $loan_owed) (i32.const 0))
+    (then
+      (i32.store8 (global.get $S_GRACE) (i32.add (i32.load8_u (global.get $S_GRACE)) (i32.const 1)))
+      (if (i32.gt_u (i32.load8_u (global.get $S_GRACE)) (call $k (global.get $K_GRACE_DAYS)))
+        (then (i32.store8 (global.get $S_STATUS) (global.get $ST_GAMEOVER)))))))
+
+;; Net worth (spec §12, Decision 21): cash + netWorthBldBp of the build cost of standing buildings
+;; (+ bldUpgPctBp of the cost for upgraded ones) + netWorthLandBp of the land rings bought
+;; - everything owed on the loan. Inventory is excluded.
+(func $net_worth (result i32)
+  (local $i i32) (local $p i32) (local $c i32) (local $b i32) (local $l i32)
+  (loop $tiles
+    (local.set $p (call $tile_ptr (local.get $i)))
+    (if (i32.eq (i32.load8_u (local.get $p)) (i32.const 2))
+      (then
+        (local.set $c (call $bal (global.get $T_BLD) (i32.load8_u offset=1 (local.get $p)) (i32.const 0)))
+        (local.set $b (i32.add (local.get $b) (local.get $c)))
+        (if (i32.and (i32.load8_u offset=5 (local.get $p)) (i32.const 2))
+          (then (local.set $b (i32.add (local.get $b)
+            (i32.div_u (i32.mul (local.get $c) (call $k (global.get $K_BLD_UPG_PCT))) (i32.const 10000))))))))
+    (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
+  (local.set $i (i32.load8_u (global.get $S_RINGS)))
+  (loop $rings
+    (if (local.get $i)
+      (then
+        (local.set $i (i32.sub (local.get $i) (i32.const 1)))
+        (local.set $l (i32.add (local.get $l) (call $bal (global.get $T_LAND) (local.get $i) (i32.const 0))))
+        (br $rings))))
+  (i32.sub
+    (i32.add
+      (i32.add (i32.load (global.get $S_CASH))
+               (i32.div_u (i32.mul (local.get $b) (call $k (global.get $K_NW_BLD_BP))) (i32.const 10000)))
+      (i32.div_u (i32.mul (local.get $l) (call $k (global.get $K_NW_LAND_BP))) (i32.const 10000)))
+    (call $loan_owed)))
+
+(func $score (result i32)
+  (i32.add (call $net_worth)
+    (i32.add (i32.mul (i32.load8_u (global.get $S_REP)) (call $k (global.get $K_REP_SCORE)))
+             (i32.mul (i32.load16_u (global.get $S_CONTRACTS_DONE)) (call $k (global.get $K_CONTRACT_SCORE))))))
+
+;; Milestone i (T_MILE[i], thresholds from T_K) given the net worth snapshot.
+(func $mile_ok (param $i i32) (param $nw i32) (result i32)
+  (if (i32.eqz (local.get $i)) (then (return (i32.ne (i32.load16_u (global.get $S_PROC_SOLD)) (i32.const 0)))))
+  (if (i32.eq (local.get $i) (i32.const 1)) (then (return (i32.ge_s (local.get $nw) (call $k (global.get $K_MILE_WORTH1))))))
+  (if (i32.eq (local.get $i) (i32.const 2))
+    (then (return (i32.ge_u (i32.load16_u (global.get $S_CONTRACTS_DONE)) (call $k (global.get $K_MILE_CONTRACTS))))))
+  ;; 3: the rollover into Year 2 (day 4 seasons + 1) with enough net worth
+  (if (i32.eq (local.get $i) (i32.const 3))
+    (then (return (i32.and
+      (i32.eq (i32.load16_u (global.get $S_DAY))
+              (i32.add (i32.mul (call $k (global.get $K_DAYS_PER_SEASON)) (i32.const 4)) (i32.const 1)))
+      (i32.ge_s (local.get $nw) (call $k (global.get $K_MILE_WORTH_Y1)))))))
+  (if (i32.eq (local.get $i) (i32.const 4)) (then (return (i32.ge_u (call $rank) (call $k (global.get $K_MILE_RANK))))))
+  (if (i32.eq (local.get $i) (i32.const 5))
+    (then (return (i32.ge_u (i32.load16_u (global.get $S_WINE_SOLD)) (call $k (global.get $K_MILE_WINE))))))
+  (i32.ge_s (local.get $nw) (call $k (global.get $K_MILE_WORTH_RUN))))
+
+;; Step 10 tail while Playing: milestones 0..6 in order against ONE net worth snapshot taken
+;; before any payout, each paid once; milestone 6 or day > runDays ends the run (Results).
+(func $check_run
+  (local $i i32) (local $nw i32) (local $m i32)
+  (if (i32.ne (i32.load8_u (global.get $S_STATUS)) (i32.const 0)) (then (return)))
+  (local.set $nw (call $net_worth))
+  (local.set $m (i32.load8_u (global.get $S_MILESTONES)))
+  (loop $ms
+    (if (i32.and (i32.eqz (i32.and (local.get $m) (i32.shl (i32.const 1) (local.get $i))))
+                 (call $mile_ok (local.get $i) (local.get $nw)))
+      (then
+        (local.set $m (i32.or (local.get $m) (i32.shl (i32.const 1) (local.get $i))))
+        (i32.store (global.get $S_CASH)
+          (i32.add (i32.load (global.get $S_CASH)) (call $bal (global.get $T_MILE) (local.get $i) (i32.const 0))))
+        (if (i32.eq (local.get $i) (i32.const 6))
+          (then (i32.store8 (global.get $S_STATUS) (global.get $ST_RESULTS))))))
+    (br_if $ms (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 7))))
+  (i32.store8 (global.get $S_MILESTONES) (local.get $m))
+  (if (i32.gt_u (i32.load16_u (global.get $S_DAY)) (call $k (global.get $K_RUN_DAYS)))
+    (then (i32.store8 (global.get $S_STATUS) (global.get $ST_RESULTS)))))
+
+;; Step 10 canonical RNG order: events_tick, weather_advance, hint goods (two rng_range(13),
+;; in index order), day += 1, board refresh when the new day is a multiple of
+;; contractRefreshDays, then milestones and run end.
 (func $step_roll_day
   (call $events_tick)
   (call $weather_advance)
-  ;; HOOK (Task 8): roll the two Gazette hint goods here, after weather_advance and before the day increments.
+  (i32.store8 (global.get $S_HINT) (call $rng_range (i32.const 13)))
+  (i32.store8 offset=1 (global.get $S_HINT) (call $rng_range (i32.const 13)))
   (i32.store16 (global.get $S_DAY) (i32.add (i32.load16_u (global.get $S_DAY)) (i32.const 1)))
   (if (i32.eqz (i32.rem_u (i32.load16_u (global.get $S_DAY)) (call $k (global.get $K_CONTRACT_REFRESH))))
-    (then (call $board_refresh))))
+    (then (call $board_refresh)))
+  (call $check_run))
 
 (func $end_day (result i32)
   (local $st i32)

@@ -106,7 +106,7 @@
     (then (return (global.get $E_TRUCK_FULL))))
   ;; dry run: how many new slots does an oldest-first move need?
   (local.set $left (local.get $q))
-  (local.set $a (i32.const 7))
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
   (loop $dry
     (local.set $take (i32.load16_u (call $inv_ptr (local.get $g) (local.get $a))))
     (if (i32.gt_u (local.get $take) (local.get $left)) (then (local.set $take (local.get $left))))
@@ -119,7 +119,7 @@
   (if (i32.gt_u (local.get $need) (call $free_slots (local.get $p))) (then (return (global.get $E_TRUCK_FULL))))
   ;; move
   (local.set $left (local.get $q))
-  (local.set $a (i32.const 7))
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
   (loop $mv
     (local.set $bp (call $inv_ptr (local.get $g) (local.get $a)))
     (local.set $take (i32.load16_u (local.get $bp)))
@@ -148,7 +148,7 @@
   (if (i32.lt_u (call $cargo_of (local.get $p) (local.get $g)) (local.get $q)) (then (return (global.get $E_NO_STOCK))))
   (if (i32.eqz (call $storage_fits (local.get $q))) (then (return (global.get $E_STORAGE_FULL))))
   (local.set $left (local.get $q))
-  (local.set $a (i32.const 7))
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
   (loop $age
     (local.set $i (i32.const 0))
     (loop $slot
@@ -180,7 +180,7 @@
 (func $cargo_take (param $p i32) (param $g i32) (param $qty i32) (result i32)
   (local $a i32) (local $i i32) (local $s i32) (local $take i32) (local $left i32)
   (local.set $left (local.get $qty))
-  (local.set $a (i32.const 7))
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
   (loop $age
     (local.set $i (i32.const 0))
     (loop $slot
@@ -291,7 +291,7 @@
                   (if (i32.eqz (i32.and (i32.load8_u offset=4 (local.get $p)) (global.get $UPG_FRIDGE)))
                     (then
                       (local.set $age (i32.add (local.get $age) (local.get $step)))
-                      (if (i32.gt_u (local.get $age) (global.get $MAX_AGE)) (then (local.set $age (global.get $MAX_AGE))))
+                      (if (i32.gt_u (local.get $age) (call $k (global.get $K_MAX_AGE))) (then (local.set $age (call $k (global.get $K_MAX_AGE)))))
                       (i32.store8 offset=1 (local.get $s) (local.get $age))))
                   (if (i32.ge_u (local.get $age) (local.get $d))
                     (then (i32.store (local.get $s) (i32.const 0))))))))
