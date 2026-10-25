@@ -136,7 +136,10 @@
     (br_if $wheat (local.tee $i (i32.sub (local.get $i) (i32.const 1)))))
 
   ;; Day 1 weather: roll tomorrow, then the forecast, from the Spring table (Decision 2).
-  (call $weather_prime (i32.const 1)))
+  (call $weather_prime (i32.const 1))
+
+  ;; Contract board: roll every visible slot after the weather prime (Decision 17).
+  (call $board_refresh))
 
 ;; Restore a save image of $len bytes at $ptr. Returns 0 or an E_LOAD_* code.
 ;; Everything is validated from the source bytes before the state is touched, so on

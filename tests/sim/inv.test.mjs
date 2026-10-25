@@ -73,6 +73,6 @@ test('init sets status Playing, today Sunny, nextEventDay 5', () => {
   assert.deepEqual([s.status, s.weatherToday, s.nextEventDay, s.droughtStreak, s.ringsBought, s.milestones],
                    [0, 0, 5, 0, 0, 0]);
   assert.ok(s.driftNext.every(v => v === 0) && s.events.every(e => e.kind === 0));
-  assert.ok(s.board.every(b => b.qty === 0));
+  assert.ok(s.board[0].qty > 0 && s.board[1].qty > 0 && s.board[2].qty === 0); // Task 7: init rolls the visible board
   assert.ok(s.tiles.every(t => t.recipe === 0));
 });

@@ -39,7 +39,7 @@ test('dispatcher: unknown and unwired ids, status guard, continue', () => {
   fresh();
   fails(E.BAD_ARG, 0, 0, 0, 0);
   fails(E.BAD_ARG, 20, 0, 0, 0);
-  for (let id = 15; id <= 18; id++) fails(E.BAD_ARG, id, 0, 0, 0);
+  for (let id = 17; id <= 18; id++) fails(E.BAD_ARG, id, 0, 0, 0);
   fails(E.STATUS, A.CONTINUE, 0, 0, 0); // Playing
   for (const s of [1, 3]) { setStatus(s); fails(E.STATUS, A.PLANT, 0, WHEAT, 0); fails(E.STATUS, A.HARVEST_ALL, 0, 0, 0); }
   setStatus(1);

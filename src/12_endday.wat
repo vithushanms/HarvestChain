@@ -283,15 +283,18 @@
     (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64)))))
 
 ;; Steps filled by later tasks.
-(func $step_contracts)
 (func $step_money)
 (func $step_bankrupt)
 
-;; Step 10: events, then weather (both use day+1), then the day counter.
+;; Step 10 canonical RNG order: events_tick, weather_advance, [hint goods], day += 1,
+;; then the contract board refresh when the new day is a multiple of contractRefreshDays.
 (func $step_roll_day
   (call $events_tick)
   (call $weather_advance)
-  (i32.store16 (global.get $S_DAY) (i32.add (i32.load16_u (global.get $S_DAY)) (i32.const 1))))
+  ;; HOOK (Task 8): roll the two Gazette hint goods here, after weather_advance and before the day increments.
+  (i32.store16 (global.get $S_DAY) (i32.add (i32.load16_u (global.get $S_DAY)) (i32.const 1)))
+  (if (i32.eqz (i32.rem_u (i32.load16_u (global.get $S_DAY)) (call $k (global.get $K_CONTRACT_REFRESH))))
+    (then (call $board_refresh))))
 
 (func $end_day (result i32)
   (local $st i32)

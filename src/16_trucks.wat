@@ -168,28 +168,59 @@
     (br_if $age (i32.ge_s (local.tee $a (i32.sub (local.get $a) (i32.const 1))) (i32.const 0))))
   (i32.const 0))
 
+;; Outbound days to market m: travelDays, +1 for City while RoadClosure is active.
+(func $travel_days (param $m i32) (result i32)
+  (local $days i32)
+  (local.set $days (call $bal (global.get $T_MKT) (local.get $m) (i32.const 2)))
+  (if (i32.and (i32.eq (local.get $m) (global.get $MKT_CITY)) (call $event_active (global.get $EV_ROAD_CLOSURE)))
+    (then (local.set $days (i32.add (local.get $days) (i32.const 1)))))
+  (local.get $days))
+
+;; Remove up to qty units of good g from truck p's cargo, oldest first. Returns units taken.
+(func $cargo_take (param $p i32) (param $g i32) (param $qty i32) (result i32)
+  (local $a i32) (local $i i32) (local $s i32) (local $take i32) (local $left i32)
+  (local.set $left (local.get $qty))
+  (local.set $a (i32.const 7))
+  (loop $age
+    (local.set $i (i32.const 0))
+    (loop $slot
+      (local.set $s (call $slot_ptr (local.get $p) (local.get $i)))
+      (if (i32.and (i32.ne (i32.load16_u offset=2 (local.get $s)) (i32.const 0))
+                   (i32.and (i32.eq (i32.load8_u (local.get $s)) (local.get $g))
+                            (i32.eq (i32.load8_u offset=1 (local.get $s)) (local.get $a))))
+        (then
+          (local.set $take (i32.load16_u offset=2 (local.get $s)))
+          (if (i32.gt_u (local.get $take) (local.get $left)) (then (local.set $take (local.get $left))))
+          (i32.store16 offset=2 (local.get $s) (i32.sub (i32.load16_u offset=2 (local.get $s)) (local.get $take)))
+          (if (i32.eqz (i32.load16_u offset=2 (local.get $s))) (then (i32.store (local.get $s) (i32.const 0))))
+          (local.set $left (i32.sub (local.get $left) (local.get $take)))))
+      (br_if $slot (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (global.get $CARGO_SLOTS))))
+    (br_if $age (i32.ge_s (local.tee $a (i32.sub (local.get $a) (i32.const 1))) (i32.const 0))))
+  (i32.sub (local.get $qty) (local.get $left)))
+
 (func $a_truck_send (param $t i32) (param $m i32) (param $c i32) (result i32)
-  (local $p i32) (local $fuel i32) (local $days i32)
+  (local $p i32) (local $fuel i32) (local $days i32) (local $err i32)
   (if (i32.gt_u (i32.sub (local.get $m) (i32.const 1)) (i32.const 1)) (then (return (global.get $E_BAD_ARG))))
   (local.set $p (call $truck_ptr (local.get $t)))
   (if (i32.eqz (local.get $p)) (then (return (global.get $E_BAD_ARG))))
   (if (i32.load8_u offset=2 (local.get $p)) (then (return (global.get $E_TRUCK_AWAY))))
   (if (i32.eqz (call $cargo_total (local.get $p))) (then (return (global.get $E_NO_STOCK))))
-  ;; Task 7 replaces this with contract-tag validation.
-  (if (i32.ne (local.get $c) (global.get $NO_CONTRACT)) (then (return (global.get $E_CONTRACT))))
+  ;; Contract tag (255 = none): slot, market, not already carried, deadline, quantity.
+  (if (i32.ne (local.get $c) (global.get $NO_CONTRACT))
+    (then
+      (local.set $err (call $contract_check (local.get $p) (local.get $m) (local.get $c)))
+      (if (local.get $err) (then (return (local.get $err))))))
   ;; Fuel is charged (and cash checked) only under a FuelSpike, so debt never blocks a send.
   (if (call $event_active (global.get $EV_FUEL_SPIKE))
     (then
       (local.set $fuel (call $k (global.get $K_FUEL_COST)))
       (if (i32.lt_s (i32.load (global.get $S_CASH)) (local.get $fuel)) (then (return (global.get $E_CASH))))
       (i32.store (global.get $S_CASH) (i32.sub (i32.load (global.get $S_CASH)) (local.get $fuel)))))
-  (local.set $days (call $bal (global.get $T_MKT) (local.get $m) (i32.const 2)))
-  (if (i32.and (i32.eq (local.get $m) (global.get $MKT_CITY)) (call $event_active (global.get $EV_ROAD_CLOSURE)))
-    (then (local.set $days (i32.add (local.get $days) (i32.const 1)))))
+  (local.set $days (call $travel_days (local.get $m)))
   (i32.store8 offset=1 (local.get $p) (local.get $m))
   (i32.store8 offset=2 (local.get $p) (i32.const 1))
   (i32.store8 offset=3 (local.get $p) (local.get $days))
-  (i32.store8 offset=5 (local.get $p) (global.get $NO_CONTRACT))
+  (i32.store8 offset=5 (local.get $p) (local.get $c))
   (i32.const 0))
 
 (func $a_buy_truck (result i32)
@@ -271,7 +302,7 @@
 (func $truck_arrive (param $p i32)
   (local $i i32) (local $s i32) (local $m i32) (local $earn i32)
   (local.set $m (i32.load8_u offset=1 (local.get $p)))
-  ;; HOOK (Task 7): fulfil the tagged contract here, before the remaining cargo is sold.
+  (call $contract_fulfil (local.get $p))
   (loop $slots
     (local.set $s (call $slot_ptr (local.get $p) (local.get $i)))
     (if (i32.load16_u offset=2 (local.get $s))

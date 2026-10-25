@@ -1,7 +1,7 @@
 ;; Player actions (spec §5-§9) and the act dispatcher. Every action validates first and
 ;; mutates only on success; a non-zero return leaves state bytes unchanged.
-;; act(id, a, b, c): ids per shared-context Actions table. Ids 15-18 are wired by later tasks.
-;; act never consumes RNG here.
+;; act(id, a, b, c): ids per shared-context Actions table. Ids 17-18 are wired by later tasks.
+;; act consumes RNG only for ACCEPT/DECLINE (contract re-roll, 15_contracts.wat).
 
 (global $E_BAD_ARG       i32 (i32.const 1))
 (global $E_STATUS        i32 (i32.const 2))
@@ -241,4 +241,6 @@
   (if (i32.eq (local.get $id) (i32.const 12)) (then (return (call $a_truck_send (local.get $a) (local.get $b) (local.get $c)))))
   (if (i32.eq (local.get $id) (i32.const 13)) (then (return (call $a_buy_truck))))
   (if (i32.eq (local.get $id) (i32.const 14)) (then (return (call $a_upgrade_truck (local.get $a) (local.get $b)))))
+  (if (i32.eq (local.get $id) (i32.const 15)) (then (return (call $a_accept (local.get $a)))))
+  (if (i32.eq (local.get $id) (i32.const 16)) (then (return (call $a_decline (local.get $a)))))
   (global.get $E_BAD_ARG))
