@@ -76,6 +76,14 @@ The build **fails** if any of these break:
 | `index.html` ≤ 3 KB gz, `sw.js` ≤ 1 KB gz | Checked once those files exist. |
 | No sim-RNG call (`call $rng_...`) in presentation files (numeric prefix ≥ 20) | Drawing code must never consume the sim RNG, or visuals would change replays. Use a render-only hash noise function. |
 
+To look at the rendered farm (no browser needed), render the canned scenes in `tests/render/scenes.mjs` to PNG:
+
+```sh
+npm run build
+node tools/dump-ppm.mjs all                       # every farm-* scene at 360x640 and 1280x800 -> build/*.png
+node tools/dump-ppm.mjs farm-mid 360 640 --t 2500 # one scene at an animation time (--reduced, --zoom N, --crop x,y,w,h)
+```
+
 ## Looking after it
 
 **Changing game numbers (prices, costs, grow times…).** Every tunable number lives in `src/03_balance.wat` as u16 data, one commented row per entry. Edit the hex *and* the matching expected value in `tests/balance.test.mjs`; the test checks every value against the spec, so a typo shows up immediately. Values must fit in 0–65535. New scalars are appended as `T_K` columns at the end (and named in `tools/balance.json`); `warehouseStorage` is reserved and unused.
@@ -89,6 +97,8 @@ The build **fails** if any of these break:
 `load` accepts only a save of exactly `$STATE_LEN` bytes whose every field is in range (non-zero RNG word, grid 4–8, 1–3 trucks, status, weather, day, drift/saturation windows, event/board/truck/tile enums, cellar buckets, grace, loan amounts) and rejects the rest before touching state, so growing the layout makes older saves fall back to New Game until a migration is written. Error codes: 1 length, 2 magic, 3 version, 4 out of bounds, 5 corrupt.
 
 **Adding a source file.** Name it with the right numeric prefix so it concatenates in the right place. Remember that WAT has no includes — everything is one module, so names (`$foo`) must be unique across all files.
+
+**Changing the farm art.** Crop, building, truck and prop models are data: readable primitive lists in `tools/gen-models.mjs` (boxes, prisms, cylinders, spheres, stem tufts, line segments, with ripe / upgraded / season conditions). Edit them there, run `npm run gen` to rewrite the table in `src/21c_scene.wat`, look at the PNGs, then refresh the render goldens (`UPDATE_GOLDEN=1 node --test tests/render/`), review and commit. A test fails if the committed table drifts from the generator.
 
 **Golden hashes.** `tests/golden.json` pins the state after 80 bot days (seeds 1-3) and after 240 bot days (seed 1); the bot plays loans, every building, two trucks, contracts and Wine, and a test asserts which actions it covers. A missing file fails the test; after a deliberate rule change run `UPDATE_GOLDEN=1 npm test`, review why the hashes moved, and commit the file.
 

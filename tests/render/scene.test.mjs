@@ -105,7 +105,7 @@ test('buildings: each of the 10 models differs, upgraded and recipe-active varia
   for (let b = 0; b < 10; b++) base.push(await draw(b));
   assert.equal(new Set(base).size, 10);
   for (let b = 0; b < 10; b++) assert.notEqual(await draw(b, { upgraded: true }), base[b], `building ${b} upgraded`);
-  for (const b of [BLD.MILL, BLD.CANNERY, BLD.PRESS, BLD.BAKERY]) assert.notEqual(await draw(b, { recipe: 1 }), base[b], `building ${b} active`);
+  for (const b of [BLD.MILL, BLD.CANNERY, BLD.PRESS, BLD.BAKERY, BLD.CELLAR]) assert.notEqual(await draw(b, { recipe: 1 }), base[b], `building ${b} active`);
   assert.notEqual(await draw(BLD.GREENHOUSE, { gh: CROP.TOMATO + 1, progress: 100 }), base[BLD.GREENHOUSE], 'greenhouse crop visible');
 });
 
