@@ -50,7 +50,9 @@ const K = { startCash: 500, startStorage: 30, truckCap: 20, truckPrice: 450, max
   repGain: 1, repLoss: 1, bldUpgCapMult: 2, fastDays: 1, offSeasonPct: 50, rainBonus: 10, firstEventDay: 5,
   contractQtyBase: 6, contractQtyRankMult: 3, contractQtySpread: 5, contractDeadlineBase: 6,
   contractDeadlineSpread: 9, acceptedMax: 3, contractTierLow: 1, contractTierHigh: 2,
-  stormOdds: 5, droughtOdds: 4, droughtKillStreak: 3, maxAge: 7 };
+  stormOdds: 5, droughtOdds: 4, droughtKillStreak: 3, maxAge: 7,
+  forecastPct: 80, eventDurBase: 3, eventDurSpread: 5, eventGapBase: 4, eventGapSpread: 3,
+  startWheat: 4, startWheatProgress: 200, roadClosureDays: 1, heatAgeExtra: 1 };
 
 test('crop table', () => assert.deepEqual(table('CROP'), CROP));
 test('goods table', () => assert.deepEqual(table('GOOD'), GOOD));

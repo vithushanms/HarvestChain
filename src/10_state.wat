@@ -129,12 +129,12 @@
     (i32.store16 (i32.add (global.get $S_SAT) (i32.shl (local.get $i) (i32.const 1))) (global.get $BP_ONE))
     (br_if $sat (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 39))))
 
-  ;; Four Wheat on row 0, two days grown (kind 1 = crop, id 0 = Wheat).
+  ;; startWheat Wheat on row 0, pre-grown startWheatProgress (two days) (kind 1 = crop, id 0 = Wheat).
   (local.set $p (global.get $S_TILES))
-  (local.set $i (i32.const 4))
+  (local.set $i (call $k (global.get $K_START_WHEAT)))
   (loop $wheat
     (i32.store8 (local.get $p) (i32.const 1))
-    (i32.store16 offset=2 (local.get $p) (i32.const 200))
+    (i32.store16 offset=2 (local.get $p) (call $k (global.get $K_START_WHEAT_PROGRESS)))
     (local.set $p (i32.add (local.get $p) (global.get $TILE_STRIDE)))
     (br_if $wheat (local.tee $i (i32.sub (local.get $i) (i32.const 1)))))
 

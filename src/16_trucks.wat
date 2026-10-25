@@ -173,7 +173,7 @@
   (local $days i32)
   (local.set $days (call $bal (global.get $T_MKT) (local.get $m) (i32.const 2)))
   (if (i32.and (i32.eq (local.get $m) (global.get $MKT_CITY)) (call $event_active (global.get $EV_ROAD_CLOSURE)))
-    (then (local.set $days (i32.add (local.get $days) (i32.const 1)))))
+    (then (local.set $days (i32.add (local.get $days) (call $k (global.get $K_ROAD_CLOSURE_DAYS))))))
   (local.get $days))
 
 ;; Remove up to qty units of good g from truck p's cargo, oldest first. Returns units taken.
@@ -274,7 +274,8 @@
 ;; at or past perishDays are removed. Trucks in index order, home or away.
 (func $step_truck_spoil
   (local $t i32) (local $p i32) (local $i i32) (local $s i32) (local $g i32) (local $d i32) (local $age i32) (local $step i32)
-  (local.set $step (select (i32.const 2) (i32.const 1) (i32.eq (i32.load8_u (global.get $S_WEATHER)) (global.get $W_HEAT))))
+  (local.set $step (i32.add (i32.const 1)
+    (select (call $k (global.get $K_HEAT_AGE_EXTRA)) (i32.const 0) (i32.eq (i32.load8_u (global.get $S_WEATHER)) (global.get $W_HEAT)))))
   (loop $trucks
     (local.set $p (call $truck_ptr (local.get $t)))
     (if (local.get $p)

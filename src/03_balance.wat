@@ -11,7 +11,7 @@
 ;;   seasons    0 Spring 1 Summer 2 Autumn 3 Winter  (seasonMask bit = 1 << season)
 ;;   unlock     0 None 1 OwnsBuilding(arg = building) 2 RepRank(arg = rank) 3 DayReached(arg = day)
 ;;
-;; Region 0x6000-0x7FFF. Bytes used: 0x28e.
+;; Region 0x6000-0x7FFF. Bytes used: 0x2a0.
 
 (global $T_CROP   i32 (i32.const 0))
 (global $T_GOOD   i32 (i32.const 1))
@@ -84,6 +84,15 @@
 (global $K_DROUGHT_ODDS        i32 (i32.const 63))
 (global $K_DROUGHT_STREAK      i32 (i32.const 64))
 (global $K_MAX_AGE             i32 (i32.const 65))
+(global $K_FORECAST_PCT        i32 (i32.const 66))
+(global $K_EVENT_DUR_BASE      i32 (i32.const 67))
+(global $K_EVENT_DUR_SPREAD    i32 (i32.const 68))
+(global $K_EVENT_GAP_BASE      i32 (i32.const 69))
+(global $K_EVENT_GAP_SPREAD    i32 (i32.const 70))
+(global $K_START_WHEAT         i32 (i32.const 71))
+(global $K_START_WHEAT_PROGRESS i32 (i32.const 72))
+(global $K_ROAD_CLOSURE_DAYS   i32 (i32.const 73))
+(global $K_HEAT_AGE_EXTRA      i32 (i32.const 74))
 
 ;; Value at (row, col) of table $tbl.
 (func $bal (param $tbl i32) (param $row i32) (param $col i32) (result i32)
@@ -111,8 +120,8 @@
   "\ba\01\01\00" ;; 5 LAND: +0x1ba, 1 cols
   "\c2\01\01\00" ;; 6 REP: +0x1c2, 1 cols
   "\cc\01\01\00" ;; 7 MILE: +0x1cc, 1 cols
-  "\da\01\42\00" ;; 8 K: +0x1da, 66 cols
-  "\5e\02\06\00" ;; 9 WEATHER: +0x25e, 6 cols
+  "\da\01\4b\00" ;; 8 K: +0x1da, 75 cols
+  "\70\02\06\00" ;; 9 WEATHER: +0x270, 6 cols
 )
 
 ;; T_CROP (id 0) @ +0x40: seed growDays yield regrowDays spoilDays seasonMask good
@@ -202,7 +211,7 @@
   "\00\00" ;; $50,000 net worth (run complete): 0
 )
 
-;; T_K (id 8) @ +0x1da: 1 row x 66 scalars (cols 28.. appended in phase 2)
+;; T_K (id 8) @ +0x1da: 1 row x 75 scalars (cols 28.. appended in phase 2, 66.. in the final fix wave)
 (data (i32.const 0x61da)
   "\f4\01" ;; startCash = 500
   "\1e\00" ;; startStorage = 30
@@ -239,7 +248,7 @@
   "\02\00" ;; festivalDays = 2
   "\05\00" ;; contractRefreshDays = 5
   "\14\00" ;; coldPerStore = 20
-  "\28\00" ;; warehouseStorage = 40
+  "\28\00" ;; warehouseStorage = 40 (reserved/unused: the Warehouse bonus lives in T_BLD storageBonus)
   "\d0\07" ;; mileWorth1 = 2000
   "\03\00" ;; mileContracts = 3
   "\b8\0b" ;; mileWorthY1 = 3000
@@ -270,10 +279,19 @@
   "\04\00" ;; droughtOdds = 4
   "\03\00" ;; droughtKillStreak = 3
   "\07\00" ;; maxAge = 7
+  "\50\00" ;; forecastPct = 80
+  "\03\00" ;; eventDurBase = 3
+  "\05\00" ;; eventDurSpread = 5
+  "\04\00" ;; eventGapBase = 4
+  "\03\00" ;; eventGapSpread = 3
+  "\04\00" ;; startWheat = 4
+  "\c8\00" ;; startWheatProgress = 200
+  "\01\00" ;; roadClosureDays = 1
+  "\01\00" ;; heatAgeExtra = 1
 )
 
-;; T_WEATHER (id 9) @ +0x25e: percent weights per season (rows) for Sunny Rain Drought Storm Frost Heatwave
-(data (i32.const 0x625e)
+;; T_WEATHER (id 9) @ +0x270: percent weights per season (rows) for Sunny Rain Drought Storm Frost Heatwave
+(data (i32.const 0x6270)
   "\37\00\1e\00\00\00\0f\00\00\00\00\00" ;; Spring: 55 30 0 15 0 0
   "\32\00\0f\00\14\00\00\00\00\00\0f\00" ;; Summer: 50 15 20 0 0 15
   "\2d\00\19\00\00\00\0f\00\0f\00\00\00" ;; Autumn: 45 25 0 15 15 0
