@@ -1,41 +1,314 @@
 {
   "base": 4096,
-  "length": 1024,
+  "length": 1456,
   "fields": {
-    "magic":         { "off": 0,   "type": "u8",  "count": 2 },
-    "version":       { "off": 2,   "type": "u16" },
-    "seed":          { "off": 4,   "type": "u32" },
-    "rng":           { "off": 8,   "type": "u32" },
-    "day":           { "off": 12,  "type": "u16" },
-    "grid":          { "off": 14,  "type": "u8" },
-    "rep":           { "off": 15,  "type": "u8" },
-    "cash":          { "off": 16,  "type": "i32" },
-    "loanPrincipal": { "off": 20,  "type": "i32" },
-    "loanInterest":  { "off": 24,  "type": "i32" },
-    "grace":         { "off": 28,  "type": "u8" },
-    "flags":         { "off": 29,  "type": "u8" },
-    "truckCount":    { "off": 30,  "type": "u8" },
-    "inv":           { "off": 32,  "type": "u16", "count": 104 },
-    "drift":         { "off": 240, "type": "u16", "count": 13 },
-    "sat":           { "off": 272, "type": "u16", "count": 39 },
-    "trucks": { "off": 352, "count": 3, "stride": 48, "fields": {
-      "present":  { "off": 0, "type": "u8" },
-      "dest":     { "off": 1, "type": "u8" },
-      "phase":    { "off": 2, "type": "u8" },
-      "daysLeft": { "off": 3, "type": "u8" },
-      "upg":      { "off": 4, "type": "u8" },
-      "contract": { "off": 5, "type": "u8" },
-      "cashBack": { "off": 8, "type": "i32" },
-      "cargo": { "off": 16, "count": 8, "stride": 4, "fields": {
-        "good": { "off": 0, "type": "u8" },
-        "age":  { "off": 1, "type": "u8" },
-        "qty":  { "off": 2, "type": "u16" } } } } },
-    "tiles": { "off": 512, "count": 64, "stride": 8, "fields": {
-      "kind":     { "off": 0, "type": "u8" },
-      "id":       { "off": 1, "type": "u8" },
-      "progress": { "off": 2, "type": "u16" },
-      "ripeAge":  { "off": 4, "type": "u8" },
-      "flags":    { "off": 5, "type": "u8" },
-      "ghCrop":   { "off": 6, "type": "u8" } } }
+    "magic": {
+      "off": 0,
+      "type": "u8",
+      "count": 2
+    },
+    "version": {
+      "off": 2,
+      "type": "u16"
+    },
+    "seed": {
+      "off": 4,
+      "type": "u32"
+    },
+    "rng": {
+      "off": 8,
+      "type": "u32"
+    },
+    "day": {
+      "off": 12,
+      "type": "u16"
+    },
+    "grid": {
+      "off": 14,
+      "type": "u8"
+    },
+    "rep": {
+      "off": 15,
+      "type": "u8"
+    },
+    "cash": {
+      "off": 16,
+      "type": "i32"
+    },
+    "loanPrincipal": {
+      "off": 20,
+      "type": "i32"
+    },
+    "loanInterest": {
+      "off": 24,
+      "type": "i32"
+    },
+    "grace": {
+      "off": 28,
+      "type": "u8"
+    },
+    "flags": {
+      "off": 29,
+      "type": "u8"
+    },
+    "truckCount": {
+      "off": 30,
+      "type": "u8"
+    },
+    "inv": {
+      "off": 32,
+      "type": "u16",
+      "count": 104
+    },
+    "drift": {
+      "off": 240,
+      "type": "u16",
+      "count": 13
+    },
+    "sat": {
+      "off": 272,
+      "type": "u16",
+      "count": 39
+    },
+    "trucks": {
+      "off": 352,
+      "count": 3,
+      "stride": 48,
+      "fields": {
+        "present": {
+          "off": 0,
+          "type": "u8"
+        },
+        "dest": {
+          "off": 1,
+          "type": "u8"
+        },
+        "phase": {
+          "off": 2,
+          "type": "u8"
+        },
+        "daysLeft": {
+          "off": 3,
+          "type": "u8"
+        },
+        "upg": {
+          "off": 4,
+          "type": "u8"
+        },
+        "contract": {
+          "off": 5,
+          "type": "u8"
+        },
+        "cashBack": {
+          "off": 8,
+          "type": "i32"
+        },
+        "cargo": {
+          "off": 16,
+          "count": 8,
+          "stride": 4,
+          "fields": {
+            "good": {
+              "off": 0,
+              "type": "u8"
+            },
+            "age": {
+              "off": 1,
+              "type": "u8"
+            },
+            "qty": {
+              "off": 2,
+              "type": "u16"
+            }
+          }
+        }
+      }
+    },
+    "tiles": {
+      "off": 512,
+      "count": 64,
+      "stride": 8,
+      "fields": {
+        "kind": {
+          "off": 0,
+          "type": "u8"
+        },
+        "id": {
+          "off": 1,
+          "type": "u8"
+        },
+        "progress": {
+          "off": 2,
+          "type": "u16"
+        },
+        "ripeAge": {
+          "off": 4,
+          "type": "u8"
+        },
+        "flags": {
+          "off": 5,
+          "type": "u8"
+        },
+        "ghCrop": {
+          "off": 6,
+          "type": "u8"
+        },
+        "recipe": {
+          "off": 7,
+          "type": "u8"
+        }
+      }
+    },
+    "status": {
+      "off": 1024,
+      "type": "u8"
+    },
+    "weatherToday": {
+      "off": 1025,
+      "type": "u8"
+    },
+    "weatherTomorrow": {
+      "off": 1026,
+      "type": "u8"
+    },
+    "forecast": {
+      "off": 1027,
+      "type": "u8"
+    },
+    "droughtStreak": {
+      "off": 1028,
+      "type": "u8"
+    },
+    "ringsBought": {
+      "off": 1029,
+      "type": "u8"
+    },
+    "milestones": {
+      "off": 1030,
+      "type": "u8"
+    },
+    "hintGood": {
+      "off": 1031,
+      "type": "u8",
+      "count": 2
+    },
+    "nextEventDay": {
+      "off": 1034,
+      "type": "u16"
+    },
+    "contractsDone": {
+      "off": 1036,
+      "type": "u16"
+    },
+    "wineSold": {
+      "off": 1038,
+      "type": "u16"
+    },
+    "procSold": {
+      "off": 1040,
+      "type": "u16"
+    },
+    "driftNext": {
+      "off": 1042,
+      "type": "i16",
+      "count": 13
+    },
+    "events": {
+      "off": 1068,
+      "count": 3,
+      "stride": 4,
+      "fields": {
+        "kind": {
+          "off": 0,
+          "type": "u8"
+        },
+        "market": {
+          "off": 1,
+          "type": "u8"
+        },
+        "good": {
+          "off": 2,
+          "type": "u8"
+        },
+        "daysLeft": {
+          "off": 3,
+          "type": "u8"
+        }
+      }
+    },
+    "board": {
+      "off": 1088,
+      "count": 3,
+      "stride": 8,
+      "fields": {
+        "good": {
+          "off": 0,
+          "type": "u8"
+        },
+        "market": {
+          "off": 1,
+          "type": "u8"
+        },
+        "qty": {
+          "off": 2,
+          "type": "u8"
+        },
+        "active": {
+          "off": 3,
+          "type": "u8"
+        },
+        "deadline": {
+          "off": 4,
+          "type": "u16"
+        },
+        "payout": {
+          "off": 6,
+          "type": "u16"
+        }
+      }
+    },
+    "accepted": {
+      "off": 1112,
+      "count": 3,
+      "stride": 8,
+      "fields": {
+        "good": {
+          "off": 0,
+          "type": "u8"
+        },
+        "market": {
+          "off": 1,
+          "type": "u8"
+        },
+        "qty": {
+          "off": 2,
+          "type": "u8"
+        },
+        "active": {
+          "off": 3,
+          "type": "u8"
+        },
+        "deadline": {
+          "off": 4,
+          "type": "u16"
+        },
+        "payout": {
+          "off": 6,
+          "type": "u16"
+        }
+      }
+    },
+    "cellar": {
+      "off": 1136,
+      "count": 64,
+      "stride": 5,
+      "fields": {
+        "b": {
+          "off": 0,
+          "type": "u8",
+          "count": 5
+        }
+      }
+    }
   }
 }

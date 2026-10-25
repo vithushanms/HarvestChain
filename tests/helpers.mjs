@@ -9,8 +9,8 @@ export async function loadGame(path = 'build/game.wasm') {
   return { ex, mem: () => new Uint8Array(ex.memory.buffer) };
 }
 
-const READ = { u8: 'getUint8', u16: 'getUint16', u32: 'getUint32', i32: 'getInt32' };
-const SIZE = { u8: 1, u16: 2, u32: 4, i32: 4 };
+const READ = { u8: 'getUint8', u16: 'getUint16', i16: 'getInt16', u32: 'getUint32', i32: 'getInt32' };
+const SIZE = { u8: 1, u16: 2, i16: 2, u32: 4, i32: 4 };
 
 function decode(dv, base, fields) {
   const out = {};

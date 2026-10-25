@@ -11,7 +11,7 @@
 ;;   seasons    0 Spring 1 Summer 2 Autumn 3 Winter  (seasonMask bit = 1 << season)
 ;;   unlock     0 None 1 OwnsBuilding(arg = building) 2 RepRank(arg = rank) 3 DayReached(arg = day)
 ;;
-;; Region 0x6000-0x7FFF. Bytes used: 0x212.
+;; Region 0x6000-0x7FFF. Bytes used: 0x276.
 
 (global $T_CROP   i32 (i32.const 0))
 (global $T_GOOD   i32 (i32.const 1))
@@ -22,14 +22,42 @@
 (global $T_REP    i32 (i32.const 6))
 (global $T_MILE   i32 (i32.const 7))
 (global $T_K      i32 (i32.const 8))
+(global $T_WEATHER i32 (i32.const 9))
 
 ;; Column indices into $T_K.
 (global $K_START_CASH    i32 (i32.const 0))
 (global $K_START_STORAGE i32 (i32.const 1))
 (global $K_TRUCK_CAP     i32 (i32.const 2))
 (global $K_MAX_TRUCKS    i32 (i32.const 4))
+(global $K_DAYS_PER_SEASON i32 (i32.const 13))
 (global $K_START_GRID    i32 (i32.const 26))
 (global $K_MAX_GRID      i32 (i32.const 27))
+(global $K_FUEL_COST     i32 (i32.const 28))
+(global $K_BUMPER_BP     i32 (i32.const 29))
+(global $K_SURGE_BP      i32 (i32.const 30))
+(global $K_GLUT_BP       i32 (i32.const 31))
+(global $K_FESTIVAL_DAYS i32 (i32.const 32))
+(global $K_CONTRACT_REFRESH i32 (i32.const 33))
+(global $K_COLD_PER_STORE i32 (i32.const 34))
+(global $K_WAREHOUSE_STORAGE i32 (i32.const 35))
+(global $K_MILE_WORTH1   i32 (i32.const 36))
+(global $K_MILE_CONTRACTS i32 (i32.const 37))
+(global $K_MILE_WORTH_Y1 i32 (i32.const 38))
+(global $K_MILE_RANK     i32 (i32.const 39))
+(global $K_MILE_WINE     i32 (i32.const 40))
+(global $K_MILE_WORTH_RUN i32 (i32.const 41))
+(global $K_REP_SCORE     i32 (i32.const 42))
+(global $K_CONTRACT_SCORE i32 (i32.const 43))
+(global $K_BOARD_VIS_LOW i32 (i32.const 44))
+(global $K_BOARD_VIS_HIGH i32 (i32.const 45))
+(global $K_BOARD_HIGH_RANK i32 (i32.const 46))
+(global $K_REP_GAIN      i32 (i32.const 47))
+(global $K_REP_LOSS      i32 (i32.const 48))
+(global $K_BLD_UPG_CAP_MULT i32 (i32.const 49))
+(global $K_FAST_DAYS     i32 (i32.const 50))
+(global $K_OFF_SEASON_PCT i32 (i32.const 51))
+(global $K_RAIN_BONUS    i32 (i32.const 52))
+(global $K_FIRST_EVENT_DAY i32 (i32.const 53))
 
 ;; Value at (row, col) of table $tbl.
 (func $bal (param $tbl i32) (param $row i32) (param $col i32) (result i32)
@@ -57,7 +85,8 @@
   "\ba\01\01\00" ;; 5 LAND: +0x1ba, 1 cols
   "\c2\01\01\00" ;; 6 REP: +0x1c2, 1 cols
   "\cc\01\01\00" ;; 7 MILE: +0x1cc, 1 cols
-  "\da\01\1c\00" ;; 8 K: +0x1da, 28 cols
+  "\da\01\36\00" ;; 8 K: +0x1da, 54 cols
+  "\46\02\06\00" ;; 9 WEATHER: +0x246, 6 cols
 )
 
 ;; T_CROP (id 0) @ +0x40: seed growDays yield regrowDays spoilDays seasonMask good
@@ -147,7 +176,7 @@
   "\00\00" ;; $50,000 net worth (run complete): 0
 )
 
-;; T_K (id 8) @ +0x1da: 1 row x 28 scalars
+;; T_K (id 8) @ +0x1da: 1 row x 54 scalars (cols 28.. appended in phase 2)
 (data (i32.const 0x61da)
   "\f4\01" ;; startCash = 500
   "\1e\00" ;; startStorage = 30
@@ -177,5 +206,39 @@
   "\0a\00" ;; cellarHold = 10
   "\04\00" ;; startGrid = 4
   "\08\00" ;; maxGrid = 8
+  "\14\00" ;; fuelCost = 20
+  "\98\3a" ;; bumperBp = 15000
+  "\98\3a" ;; surgeBp = 15000
+  "\70\17" ;; glutBp = 6000
+  "\02\00" ;; festivalDays = 2
+  "\05\00" ;; contractRefreshDays = 5
+  "\14\00" ;; coldPerStore = 20
+  "\28\00" ;; warehouseStorage = 40
+  "\d0\07" ;; mileWorth1 = 2000
+  "\03\00" ;; mileContracts = 3
+  "\b8\0b" ;; mileWorthY1 = 3000
+  "\03\00" ;; mileRank = 3
+  "\0a\00" ;; mileWine = 10
+  "\50\c3" ;; mileWorthRun = 50000
+  "\64\00" ;; repScore = 100
+  "\32\00" ;; contractScore = 50
+  "\02\00" ;; boardVisibleLow = 2
+  "\03\00" ;; boardVisibleHigh = 3
+  "\03\00" ;; boardHighRank = 3
+  "\01\00" ;; repGain = 1
+  "\01\00" ;; repLoss = 1
+  "\02\00" ;; bldUpgCapMult = 2
+  "\01\00" ;; fastDays = 1
+  "\32\00" ;; offSeasonPct = 50
+  "\0a\00" ;; rainBonus = 10
+  "\05\00" ;; firstEventDay = 5
+)
+
+;; T_WEATHER (id 9) @ +0x246: percent weights per season (rows) for Sunny Rain Drought Storm Frost Heatwave
+(data (i32.const 0x6246)
+  "\37\00\1e\00\00\00\0f\00\00\00\00\00" ;; Spring: 55 30 0 15 0 0
+  "\32\00\0f\00\14\00\00\00\00\00\0f\00" ;; Summer: 50 15 20 0 0 15
+  "\2d\00\19\00\00\00\0f\00\0f\00\00\00" ;; Autumn: 45 25 0 15 15 0
+  "\32\00\14\00\00\00\00\00\1e\00\00\00" ;; Winter: 50 20 0 0 30 0
 )
 

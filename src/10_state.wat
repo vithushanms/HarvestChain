@@ -25,10 +25,29 @@
 ;;                                     +16 cargo 8 x {good u8, age u8, qty u16}
 ;;   0x200  tiles          64 x 8 B    index y*8+x; +0 kind u8 (0 empty 1 crop 2 building), +1 id u8,
 ;;                                     +2 progress u16 (1/100 day), +4 ripeAge u8,
-;;                                     +5 flags u8 (b0 appleMature, b1 upgraded), +6 ghCrop u8 (crop+1)
-;;   0x400  end
+;;                                     +5 flags u8 (b0 appleMature, b1 upgraded), +6 ghCrop u8 (crop+1),
+;;                                     +7 recipe u8 (recipe row + 1, 0 none)
+;;   --- appended in phase 2 (still version 1; nothing was shipped) ---
+;;   0x400  status         u8          0 Playing 1 Results 2 Endless 3 GameOver
+;;   0x401  weatherToday   u8          0 Sunny 1 Rain 2 Drought 3 Storm 4 Frost 5 Heatwave
+;;   0x402  weatherTomorrow u8
+;;   0x403  forecast       u8
+;;   0x404  droughtStreak  u8
+;;   0x405  ringsBought    u8
+;;   0x406  milestones     u8          bit flags
+;;   0x407  hintGood       u8 x 2      Gazette hint goods (0x407, 0x408)
+;;   0x40A  nextEventDay   u16
+;;   0x40C  contractsDone  u16
+;;   0x40E  wineSold       u16
+;;   0x410  procSold       u16
+;;   0x412  driftNext      i16 x 13    pending drift step per good, bp
+;;   0x42C  events         3 x 4 B     {kind u8, market u8, good u8, daysLeft u8}
+;;   0x440  board          3 x 8 B     {good u8, market u8, qty u8, active u8, deadline u16, payout u16}
+;;   0x458  accepted       3 x 8 B     same record
+;;   0x470  cellar         64 x 5 B    aging buckets per tile, bucket 0 is next to finish
+;;   0x5B0  end
 
-(global $STATE_LEN     i32 (i32.const 0x400))
+(global $STATE_LEN     i32 (i32.const 0x5B0))
 (global $SAVE_VERSION  i32 (i32.const 1))
 (global $MAGIC_HC      i32 (i32.const 0x4348)) ;; bytes 'H' 'C' little-endian
 
@@ -37,13 +56,30 @@
 (global $S_GRID        i32 (i32.const 0x100E))
 (global $S_CASH        i32 (i32.const 0x1010))
 (global $S_TRUCK_COUNT i32 (i32.const 0x101E))
+(global $S_INV         i32 (i32.const 0x1020))
 (global $S_DRIFT       i32 (i32.const 0x10F0))
 (global $S_SAT         i32 (i32.const 0x1110))
 (global $S_TRUCKS      i32 (i32.const 0x1160))
 (global $S_TILES       i32 (i32.const 0x1200))
+(global $S_STATUS      i32 (i32.const 0x1400))
+(global $S_WEATHER     i32 (i32.const 0x1401)) ;; today; tomorrow +1, forecast +2
+(global $S_DROUGHT     i32 (i32.const 0x1404))
+(global $S_RINGS       i32 (i32.const 0x1405))
+(global $S_MILESTONES  i32 (i32.const 0x1406))
+(global $S_HINT        i32 (i32.const 0x1407))
+(global $S_NEXT_EVENT  i32 (i32.const 0x140A))
+(global $S_CONTRACTS_DONE i32 (i32.const 0x140C))
+(global $S_WINE_SOLD   i32 (i32.const 0x140E))
+(global $S_PROC_SOLD   i32 (i32.const 0x1410))
+(global $S_DRIFT_NEXT  i32 (i32.const 0x1412))
+(global $S_EVENTS      i32 (i32.const 0x142C))
+(global $S_BOARD       i32 (i32.const 0x1440))
+(global $S_ACCEPTED    i32 (i32.const 0x1458))
+(global $S_CELLAR      i32 (i32.const 0x1470))
 
 (global $TRUCK_STRIDE  i32 (i32.const 48))
 (global $TILE_STRIDE   i32 (i32.const 8))
+(global $RECIPE_OFF    i32 (i32.const 7))
 (global $NO_CONTRACT   i32 (i32.const 0xFF))
 (global $BP_ONE        i32 (i32.const 10000))
 
@@ -67,6 +103,8 @@
   (i32.store8 (global.get $S_GRID) (call $k (global.get $K_START_GRID)))
   (i32.store (global.get $S_CASH) (call $k (global.get $K_START_CASH)))
   (i32.store8 (global.get $S_TRUCK_COUNT) (i32.const 1))
+  ;; status 0 (Playing) and today Sunny (0) come from the fill; the first event is due on day 5.
+  (i32.store16 (global.get $S_NEXT_EVENT) (call $k (global.get $K_FIRST_EVENT_DAY)))
 
   ;; Trucks: none carry a contract; truck 0 is the starting truck.
   (local.set $p (global.get $S_TRUCKS))

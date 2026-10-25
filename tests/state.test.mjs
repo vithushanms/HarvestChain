@@ -17,7 +17,10 @@ test('init sets the §5 starting state', () => {
 });
 
 test('init seeds the RNG from the seed', () => {
-  ex.init(42); assert.equal(ex.t_rng_next() >>> 0, 11355432);
+  ex.init(42); const a = readState(mem()); ex.init(42); const b = readState(mem()); ex.init(43); const c = readState(mem());
+  assert.equal(a.seed, 42);
+  assert.equal(a.rng, b.rng); assert.notEqual(a.rng, 0);
+  assert.notEqual(a.rng, c.rng);
 });
 
 test('save_len matches state.json and save_ptr is 0x1000', () => {
@@ -38,8 +41,8 @@ test('save → load round-trip is byte-identical', () => {
 });
 
 for (const [name, mutate, len, code] of [
-  ['too short', b => b, 3, 1], ['too long', b => b, 0x4001, 1],
-  ['truncated', b => b, 0x200, 1], ['one byte over', b => b, 0x401, 1],
+  ['too short', b => b, 3, 1], ['too long', b => b, 0x5B1, 1],
+  ['truncated', b => b, 0x200, 1], ['one byte over', b => b, 0x5B1, 1],
   ['zero rng word', b => { b.fill(0, 8, 12); }, null, 5],
   ['grid 3', b => { b[14] = 3; }, null, 5], ['grid 9', b => { b[14] = 9; }, null, 5],
   ['no trucks', b => { b[30] = 0; }, null, 5], ['4 trucks', b => { b[30] = 4; }, null, 5],

@@ -15,6 +15,8 @@
     "LAND":   { "id": 5, "rows": 4,  "cols": ["ringCost"] },
     "REP":    { "id": 6, "rows": 5,  "cols": ["pointsForRank"] },
     "MILE":   { "id": 7, "rows": 7,  "cols": ["payout"] },
-    "K":      { "id": 8, "rows": 1,  "cols": ["startCash", "startStorage", "truckCap", "truckPrice", "maxTrucks", "truckCapUpgCost", "truckCapUpgAmt", "truckCapUpgMax", "fridgeCost", "fastCost", "loanMax", "loanRateBp", "graceDays", "daysPerSeason", "runDays", "bldUpgPctBp", "driftStepBp", "driftMinBp", "driftMaxBp", "satFloorBp", "contractMultBp", "latePenaltyBp", "netWorthTarget", "netWorthBldBp", "netWorthLandBp", "cellarHold", "startGrid", "maxGrid"] }
+    "K":      { "id": 8, "rows": 1,  "cols": ["startCash", "startStorage", "truckCap", "truckPrice", "maxTrucks", "truckCapUpgCost", "truckCapUpgAmt", "truckCapUpgMax", "fridgeCost", "fastCost", "loanMax", "loanRateBp", "graceDays", "daysPerSeason", "runDays", "bldUpgPctBp", "driftStepBp", "driftMinBp", "driftMaxBp", "satFloorBp", "contractMultBp", "latePenaltyBp", "netWorthTarget", "netWorthBldBp", "netWorthLandBp", "cellarHold", "startGrid", "maxGrid",
+      "fuelCost", "bumperBp", "surgeBp", "glutBp", "festivalDays", "contractRefreshDays", "coldPerStore", "warehouseStorage", "mileWorth1", "mileContracts", "mileWorthY1", "mileRank", "mileWine", "mileWorthRun", "repScore", "contractScore", "boardVisibleLow", "boardVisibleHigh", "boardHighRank", "repGain", "repLoss", "bldUpgCapMult", "fastDays", "offSeasonPct", "rainBonus", "firstEventDay"] },
+    "WEATHER": { "id": 9, "rows": 4, "rowEnum": "seasons", "cols": ["Sunny", "Rain", "Drought", "Storm", "Frost", "Heatwave"] }
   }
 }

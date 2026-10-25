@@ -42,7 +42,12 @@ const K = { startCash: 500, startStorage: 30, truckCap: 20, truckPrice: 450, max
   loanMax: 1500, loanRateBp: 100, graceDays: 3, daysPerSeason: 20, runDays: 240,
   bldUpgPctBp: 8000, driftStepBp: 500, driftMinBp: 7000, driftMaxBp: 13000, satFloorBp: 5000,
   contractMultBp: 15000, latePenaltyBp: 1000, netWorthTarget: 50000, netWorthBldBp: 5000,
-  netWorthLandBp: 5000, cellarHold: 10, startGrid: 4, maxGrid: 8 };
+  netWorthLandBp: 5000, cellarHold: 10, startGrid: 4, maxGrid: 8,
+  fuelCost: 20, bumperBp: 15000, surgeBp: 15000, glutBp: 6000, festivalDays: 2, contractRefreshDays: 5,
+  coldPerStore: 20, warehouseStorage: 40,
+  mileWorth1: 2000, mileContracts: 3, mileWorthY1: 3000, mileRank: 3, mileWine: 10, mileWorthRun: 50000,
+  repScore: 100, contractScore: 50, boardVisibleLow: 2, boardVisibleHigh: 3, boardHighRank: 3,
+  repGain: 1, repLoss: 1, bldUpgCapMult: 2, fastDays: 1, offSeasonPct: 50, rainBonus: 10, firstEventDay: 5 };
 
 test('crop table', () => assert.deepEqual(table('CROP'), CROP));
 test('goods table', () => assert.deepEqual(table('GOOD'), GOOD));
