@@ -41,3 +41,11 @@
 (export "t_event_active"    (func $event_active))
 (export "t_put_event"       (func $t_put_event))
 (export "t_forecast_roll"   (func $t_forecast_roll))
+
+;; Pricing (13_pricing.wat).
+(export "price"          (func $price))
+(export "t_sell_units"   (func $sell_units))
+(export "t_drift_tick"   (func $drift_tick))
+(export "t_sat_recover"  (func $sat_recover))
+(export "t_set_sat"      (func $t_set_sat))
+(export "t_set_drift"    (func $t_set_drift))
