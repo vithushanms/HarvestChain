@@ -40,3 +40,4 @@
 (export "t_event_mod"       (func $event_mod))
 (export "t_event_active"    (func $event_active))
 (export "t_put_event"       (func $t_put_event))
+(export "t_forecast_roll"   (func $t_forecast_roll))

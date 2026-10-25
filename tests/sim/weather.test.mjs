@@ -135,3 +135,35 @@ test('event_active reports each kind', () => {
   ex.t_put_event(1, KIND.Road, 0, 0, 4);
   assert.equal(ex.t_event_active(KIND.Road), 1); assert.equal(ex.t_event_active(KIND.Bumper), 0);
 });
+
+// RNG draw-order pins. Reference xorshift32 matching 01_rng.wat.
+const xs = (x) => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; return x >>> 0; };
+const draws = (w, n) => { for (let i = 0; i < n; i++) w = xs(w); return w; };
+const findWord = (pred) => { for (let w = 1; ; w++) if (pred(w)) return w; };
+const setRng = (w) => dv().setUint32(0x1008, w, true);
+
+test('forecast roll draws once on a copy (<80) and twice on a re-roll', () => {
+  const hit = findWord((w) => xs(w) % 100 < 80);
+  const miss = findWord((w) => xs(w) % 100 >= 80);
+  ex.init(42); mem()[0x1402] = 1; setRng(hit);
+  ex.t_forecast_roll(0);
+  assert.equal(rngWord(), draws(hit, 1)); assert.equal(mem()[0x1403], 1);
+  setRng(miss); ex.t_forecast_roll(0);
+  assert.equal(rngWord(), draws(miss, 2));
+  // The re-roll uses the second draw: pick it from the Spring row.
+  const r = xs(xs(miss)) % 100, exp = r < 55 ? 0 : r < 85 ? 1 : 3;
+  assert.equal(mem()[0x1403], exp);
+});
+
+test('Festival takes festivalDays with no duration draw; other kinds draw one more', () => {
+  const run = (w) => { ex.init(5); setDay(10); setNextEvent(1); setRng(w); ex.t_events_tick(); return events().find((e) => e.kind); };
+  const fest = findWord((w) => xs(w) % 6 === 3);   // kind 4 = Festival
+  const e = run(fest);
+  assert.equal(e.kind, KIND.Festival); assert.equal(e.daysLeft, 2);
+  assert.equal(rngWord(), draws(fest, 4));          // kind, market, good, gap
+  const other = findWord((w) => xs(w) % 6 === 0);   // kind 1 = Surge
+  const o = run(other);
+  assert.equal(o.kind, KIND.Surge);
+  assert.equal(o.daysLeft, 3 + xs(xs(xs(xs(other)))) % 5);
+  assert.equal(rngWord(), draws(other, 5));         // kind, market, good, duration, gap
+});

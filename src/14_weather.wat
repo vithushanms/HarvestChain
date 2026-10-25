@@ -30,11 +30,9 @@
 
 ;; forecast = tomorrow 80% of the time, else a fresh roll from the same table.
 (func $forecast_roll (param $season i32)
-  (i32.store8 offset=2 (global.get $S_WEATHER)
-    (select
-      (i32.load8_u offset=1 (global.get $S_WEATHER))
-      (call $weather_roll (local.get $season))
-      (i32.lt_u (call $rng_range (i32.const 100)) (global.get $FORECAST_PCT)))))
+  (if (i32.lt_u (call $rng_range (i32.const 100)) (global.get $FORECAST_PCT))
+    (then (i32.store8 offset=2 (global.get $S_WEATHER) (i32.load8_u offset=1 (global.get $S_WEATHER))))
+    (else (i32.store8 offset=2 (global.get $S_WEATHER) (call $weather_roll (local.get $season))))))
 
 ;; Roll weatherTomorrow then forecast for a given day (init order: tomorrow, then forecast).
 (func $weather_prime (param $day i32)
@@ -77,10 +75,9 @@
   (i32.store8 (local.get $p) (local.get $kind))
   (i32.store8 offset=1 (local.get $p) (call $rng_range (i32.const 3)))
   (i32.store8 offset=2 (local.get $p) (call $rng_range (i32.const 13)))
-  (i32.store8 offset=3 (local.get $p)
-    (select (call $k (global.get $K_FESTIVAL_DAYS))
-            (i32.add (i32.const 3) (call $rng_range (i32.const 5)))
-            (i32.eq (local.get $kind) (global.get $EV_FESTIVAL))))
+  (if (i32.eq (local.get $kind) (global.get $EV_FESTIVAL))
+    (then (i32.store8 offset=3 (local.get $p) (call $k (global.get $K_FESTIVAL_DAYS))))
+    (else (i32.store8 offset=3 (local.get $p) (i32.add (i32.const 3) (call $rng_range (i32.const 5))))))
   (i32.store16 (global.get $S_NEXT_EVENT)
     (i32.add (i32.add (local.get $day1) (i32.const 4)) (call $rng_range (i32.const 3)))))
 
@@ -114,6 +111,7 @@
   (i32.const 0))
 
 ;; Test hooks.
+(func $t_forecast_roll (param $season i32) (call $forecast_roll (local.get $season)))
 (func $t_set_weather (param $w i32) (i32.store8 (global.get $S_WEATHER) (local.get $w)))
 (func $t_put_event (param $slot i32) (param $kind i32) (param $market i32) (param $good i32) (param $days i32)
   (local $p i32)
