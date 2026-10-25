@@ -73,3 +73,18 @@ test('acceptedMax fits the 3-slot accepted list; maxAge is the top inventory age
   assert.ok(col('acceptedMax') <= 3);
   assert.equal(col('maxAge'), 7);
 });
+
+test('weather odds per season (rows) sum to 100', () => {
+  const T = BAL.tables.WEATHER;
+  assert.equal(T.rows, 4);
+  assert.deepEqual(T.cols, ['Sunny', 'Rain', 'Drought', 'Storm', 'Frost', 'Heatwave']);
+  const rows = table('WEATHER');
+  assert.deepEqual(Object.values(rows), [[55, 30, 0, 15, 0, 0], [50, 15, 20, 0, 0, 15], [45, 25, 0, 15, 15, 0], [50, 20, 0, 0, 30, 0]]);
+  for (const r of Object.values(rows)) assert.equal(r.reduce((a, b) => a + b), 100);
+});
+
+test('T_K is reserved-aware: warehouseStorage is kept but unused by the sim', () => {
+  assert.deepEqual(BAL.tables.K.reserved, ['warehouseStorage']);
+  assert.ok(BAL.tables.K.cols.includes('warehouseStorage'));
+  assert.equal(table('K')[0][BAL.tables.K.cols.indexOf('warehouseStorage')], 40);
+});

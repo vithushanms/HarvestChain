@@ -84,10 +84,6 @@
                (call $k (global.get $K_DAYS_PER_SEASON)))
     (i32.const 4)))
 
-(func $year (result i32)
-  (i32.div_u (i32.sub (i32.load16_u (global.get $S_DAY)) (i32.const 1))
-             (i32.mul (call $k (global.get $K_DAYS_PER_SEASON)) (i32.const 4))))
-
 ;; Reputation rank 1..5 from rep points (T_REP pointsForRank thresholds).
 (func $rank (result i32)
   (local $r i32) (local $rep i32)

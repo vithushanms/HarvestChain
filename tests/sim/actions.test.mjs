@@ -300,21 +300,34 @@ test('BUY_LAND', () => {
   fails(E.CASH, A.LAND, 0, 0, 0); // 500 < 600
 });
 
-test('SELL_STAND', () => {
-  fresh();
-  ex.t_give(WHEAT, 10, 3);
-  ex.t_give(WHEAT, 5, 0);
-  // expected proceeds from an identical fresh instance
-  const probe = await_probe();
+test('SELL_STAND sells oldest first; proceeds, saturation and counters match $sell_units', () => {
+  const stock = () => { fresh(); ex.t_give(WHEAT, 10, 3); ex.t_give(WHEAT, 5, 0); };
+  // reference: the same stock sold through $sell_units directly on an identical instance
+  stock();
+  const proceeds = ex.t_sell_units(0, WHEAT, 12);
+  const ref = st();
+  stock();
   assert.equal(ex.act(A.SELL, WHEAT, 12, 0), 0);
-  assert.equal(st().cash, 500 + probe);
+  const s = st();
+  assert.equal(s.inv[WHEAT * 8 + 3], 0);              // the 10 aged units go first
+  assert.equal(s.inv[WHEAT * 8 + 0], 3);              // then 2 of the 5 fresh ones
+  assert.equal(s.cash, 500 + proceeds);
+  assert.deepEqual(s.sat, ref.sat);                   // 12 units lowered Stand saturation
+  assert.ok(s.sat[WHEAT] < 10000);
+  assert.equal(s.procSold, ref.procSold); assert.equal(s.wineSold, ref.wineSold);
   assert.equal(ex.t_count(WHEAT), 3);
   fails(E.NO_STOCK, A.SELL, WHEAT, 4, 0);
   fails(E.BAD_ARG, A.SELL, WHEAT, 0, 0);
   fails(E.BAD_ARG, A.SELL, 13, 1, 0);
   fails(E.NO_STOCK, A.SELL, CORN, 1, 0);
 });
-function await_probe() { ex.init(7); const v = ex.t_sell_units(0, 0, 12); ex.init(42); ex.t_give(WHEAT, 10, 3); ex.t_give(WHEAT, 5, 0); return v; }
+
+test('SELL_STAND saturates the processed-goods counter at 65535', () => {
+  fresh(); ex.t_give(5, 4, 0);                        // 4 Flour (tier 1)
+  dv().setUint16(0x1410, 65534, true);
+  assert.equal(ex.act(A.SELL, 5, 4, 0), 0);
+  assert.equal(st().procSold, 65535);
+});
 
 test('storage_fits boundary', () => {
   fresh();

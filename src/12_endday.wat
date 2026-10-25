@@ -18,7 +18,6 @@
 (global $CROP_TOMATO i32 (i32.const 2))
 (global $CROP_GRAPE  i32 (i32.const 4))
 (global $WINTER     i32 (i32.const 3))
-(global $GOOD_GJ    i32 (i32.const 9))
 (global $CELLAR_BUCKETS i32 (i32.const 5))
 
 ;; A crop lost to storm or drought: Apple trees survive with progress reset, others are cleared.
@@ -232,9 +231,8 @@
           (then (local.set $room (i32.sub (call $storage_cap) (call $storage_used)))))
         (local.set $n (local.get $out))
         (if (i32.gt_u (local.get $n) (local.get $room)) (then (local.set $n (local.get $room))))
-        (if (i32.and (i32.ne (local.get $n) (i32.const 0)) (call $storage_fits (local.get $n)))
-          (then (call $inv_add (global.get $GOOD_WINE) (local.get $n)))
-          (else (local.set $n (i32.const 0))))))
+        ;; n <= room, so the units fit
+        (if (local.get $n) (then (call $inv_add (global.get $GOOD_WINE) (local.get $n))))))
     ;; shift 1..4 down, stuck units (out - n) join the new bucket 0
     (i32.store8 (local.get $b)
       (i32.add (i32.load8_u offset=1 (local.get $b)) (i32.sub (local.get $out) (local.get $n))))

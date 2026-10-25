@@ -55,15 +55,6 @@ test('season boundaries', () => {
   }
 });
 
-test('new balance tables match spec decisions', () => {
-  const T = BAL.tables.WEATHER;
-  assert.equal(T.rows, 4);
-  const rows = Array.from({ length: 4 }, (_, r) => T.cols.map((_, c) => ex.t_bal(T.id, r, c)));
-  assert.deepEqual(T.cols, ['Sunny', 'Rain', 'Drought', 'Storm', 'Frost', 'Heatwave']);
-  assert.deepEqual(rows, [[55, 30, 0, 15, 0, 0], [50, 15, 20, 0, 0, 15], [45, 25, 0, 15, 15, 0], [50, 20, 0, 0, 30, 0]]);
-  for (const r of rows) assert.equal(r.reduce((a, b) => a + b), 100);
-});
-
 test('state length grows to 0x5B0', () => {
   assert.equal(stateJson.length, 0x5B0); assert.equal(ex.save_len(), 0x5B0);
 });

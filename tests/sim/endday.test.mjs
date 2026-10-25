@@ -318,6 +318,10 @@ test('spoilage: Cold Store protects 20 units oldest-first across goods; heatwave
   assert.equal(ex.t_count(GJ), 0); assert.equal(ex.t_count(BREAD), 0);
 });
 
+// Step-order pairs pinned elsewhere: trucks (6) before contracts (7) in contracts.test.mjs
+// ("an outbound truck carrying the slot protects it"); upkeep before interest (9) and the
+// day-241 precedence over step 11 in money.test.mjs; step 10's RNG order (events, weather,
+// hint goods) in money.test.mjs ("hint goods") and, end to end, in the determinism goldens.
 test('step order: growth before processing before spoilage', () => {
   // Grape Juice age 3 + Heatwave: step 2 ages it to 5, step 3 moves it into the cellar,
   // and only then would step 5 spoil it (perishDays 4).

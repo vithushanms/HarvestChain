@@ -90,12 +90,17 @@ rejects('building id 10', [[TILE(20), 2], [TILE(20) + 1, 10]]);
 rejects('ghCrop 6', [[TILE(63) + 6, 6]]);
 rejects('recipe 9', [[TILE(63) + 7, 9]]);
 rejects('cellar bucket 11 (cellarHold 10)', [[0x470 + 319, 11]]);
-rejects('grace 4 (graceDays 3 + 1)', [[0x01C, 5]]);
+rejects('grace 5 (above graceDays 3 + 1)', [[0x01C, 5]]);
 rejects('negative principal', [[0x014, -1, 4]]);
 rejects('negative interest', [[0x018, -1, 4]]);
 
 rejects('principal above loanMax', [[0x014, 1501, 4]]);
 rejects('principal + interest above 2^30', [[0x014, 1500, 4], [0x018, 0x40000000 - 1499, 4]]);
+// isolated: interest alone is out of range while principal + interest wraps to a small value
+rejects('interest above 2^30 with a wrapping sum', [[0x014, 300, 4], [0x018, -256, 4]]);
+// isolated: the tag is out of range; accepted[3] would read an unrelated non-zero byte (cellar)
+rejects('an outbound truck tagged 3 (only 0..2 name accepted slots)', [[TRUCK(0) + 2, 1], [TRUCK(0) + 5, 3], [0x45B + 24, 1]]);
+rejects('an outbound truck tagged 200', [[TRUCK(0) + 2, 1], [TRUCK(0) + 5, 200], [0x45B + 24, 1]]);
 rejects('principal = interest = 0x7FFFFFFF (owed wraps)', [[0x014, 0x7FFFFFFF, 4], [0x018, 0x7FFFFFFF, 4]]);
 rejects('a home truck holding a contract tag', [[TRUCK(0) + 5, 0], [0x458 + 3, 1]]);
 rejects('a returning truck holding a contract tag', [[TRUCK(0) + 2, 2], [TRUCK(0) + 5, 0], [0x458 + 3, 1]]);

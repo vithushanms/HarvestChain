@@ -83,7 +83,6 @@
 
 (global $TRUCK_STRIDE  i32 (i32.const 48))
 (global $TILE_STRIDE   i32 (i32.const 8))
-(global $RECIPE_OFF    i32 (i32.const 7))
 (global $NO_CONTRACT   i32 (i32.const 0xFF))
 (global $BP_ONE        i32 (i32.const 10000))
 
@@ -206,6 +205,7 @@
                                           (i32.const 0x40000000))))))
     (then (return (i32.const 1))))
   ;; an active event has at least one day left
+  (local.set $i (i32.const 0))
   (loop $events
     (local.set $p (i32.add (i32.add (local.get $s) (i32.const 0x42C)) (i32.shl (local.get $i) (i32.const 2))))
     (if (i32.and (i32.ne (i32.load8_u (local.get $p)) (i32.const 0)) (i32.eqz (i32.load8_u offset=3 (local.get $p))))
@@ -226,10 +226,12 @@
     ;; a contract tag needs an outbound truck, an active accepted slot, and is carried once
     (if (i32.ne (local.get $v) (global.get $NO_CONTRACT))
       (then
-        (if (i32.or (i32.or (i32.ne (i32.load8_u offset=2 (local.get $p)) (i32.const 1)) (i32.gt_u (local.get $v) (i32.const 2)))
-                    (i32.or (i32.eqz (i32.load8_u (i32.add (i32.add (local.get $s) (i32.const 0x45B)) (i32.shl (local.get $v) (i32.const 3)))))
-                            (i32.and (local.get $seen) (i32.shl (i32.const 1) (local.get $v)))))
+        (if (i32.ne (i32.load8_u offset=2 (local.get $p)) (i32.const 1)) (then (return (i32.const 1))))
+        (if (i32.gt_u (local.get $v) (i32.const 2)) (then (return (i32.const 1))))
+        ;; only now is accepted[tag] a valid index
+        (if (i32.eqz (i32.load8_u (i32.add (i32.add (local.get $s) (i32.const 0x45B)) (i32.shl (local.get $v) (i32.const 3)))))
           (then (return (i32.const 1))))
+        (if (i32.and (local.get $seen) (i32.shl (i32.const 1) (local.get $v))) (then (return (i32.const 1))))
         (local.set $seen (i32.or (local.get $seen) (i32.shl (i32.const 1) (local.get $v))))))
     (br_if $trucks (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
   ;; tiles: kind 0..2, crop id 0..4 or building id 0..9, ghCrop 0..5, recipe 0..8
