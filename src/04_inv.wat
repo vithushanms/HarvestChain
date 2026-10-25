@@ -36,7 +36,7 @@
 (func $inv_take (param $good i32) (param $qty i32) (result i32)
   (local $a i32) (local $p i32) (local $have i32) (local $t i32) (local $left i32)
   (local.set $left (local.get $qty))
-  (local.set $a (i32.const 7))
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
   (loop $l
     (if (local.get $left)
       (then
@@ -83,10 +83,6 @@
     (i32.div_u (i32.sub (i32.load16_u (global.get $S_DAY)) (i32.const 1))
                (call $k (global.get $K_DAYS_PER_SEASON)))
     (i32.const 4)))
-
-(func $year (result i32)
-  (i32.div_u (i32.sub (i32.load16_u (global.get $S_DAY)) (i32.const 1))
-             (i32.mul (call $k (global.get $K_DAYS_PER_SEASON)) (i32.const 4))))
 
 ;; Reputation rank 1..5 from rep points (T_REP pointsForRank thresholds).
 (func $rank (result i32)

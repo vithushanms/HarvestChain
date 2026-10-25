@@ -28,6 +28,10 @@ for (const f of files) {
   const text = readFileSync(join(src, f), 'utf8');
   const code = text.replace(/;;.*$/gm, '');
   if (/\bf(32|64)\b/.test(code)) fail(`integer-only: found f32/f64 in ${f}`);
+  // Presentation layers (numeric prefix >= 20) must never draw from the sim RNG.
+  if (parseInt(f, 10) >= 20 && /call\s+\$rng_/.test(code)) {
+    fail(`presentation code must not use the sim RNG: found "call $rng_" in ${f} (use a render-only hash noise function)`);
+  }
   parts.push(`;; ---- ${f} ----\n${text}`);
 }
 const wat = join(out, 'game.wat');

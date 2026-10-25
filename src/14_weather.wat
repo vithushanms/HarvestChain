@@ -10,7 +10,6 @@
 (global $EV_FESTIVAL i32 (i32.const 4))
 (global $EV_KINDS   i32 (i32.const 6))
 (global $EV_SLOTS   i32 (i32.const 3))
-(global $FORECAST_PCT i32 (i32.const 80))
 
 (func $season_at (param $day i32) (result i32)
   (i32.rem_u
@@ -30,7 +29,7 @@
 
 ;; forecast = tomorrow 80% of the time, else a fresh roll from the same table.
 (func $forecast_roll (param $season i32)
-  (if (i32.lt_u (call $rng_range (i32.const 100)) (global.get $FORECAST_PCT))
+  (if (i32.lt_u (call $rng_range (i32.const 100)) (call $k (global.get $K_FORECAST_PCT)))
     (then (i32.store8 offset=2 (global.get $S_WEATHER) (i32.load8_u offset=1 (global.get $S_WEATHER))))
     (else (i32.store8 offset=2 (global.get $S_WEATHER) (call $weather_roll (local.get $season))))))
 
@@ -77,9 +76,11 @@
   (i32.store8 offset=2 (local.get $p) (call $rng_range (i32.const 13)))
   (if (i32.eq (local.get $kind) (global.get $EV_FESTIVAL))
     (then (i32.store8 offset=3 (local.get $p) (call $k (global.get $K_FESTIVAL_DAYS))))
-    (else (i32.store8 offset=3 (local.get $p) (i32.add (i32.const 3) (call $rng_range (i32.const 5))))))
+    (else (i32.store8 offset=3 (local.get $p)
+      (i32.add (call $k (global.get $K_EVENT_DUR_BASE)) (call $rng_range (call $k (global.get $K_EVENT_DUR_SPREAD)))))))
   (i32.store16 (global.get $S_NEXT_EVENT)
-    (i32.add (i32.add (local.get $day1) (i32.const 4)) (call $rng_range (i32.const 3)))))
+    (i32.add (i32.add (local.get $day1) (call $k (global.get $K_EVENT_GAP_BASE)))
+            (call $rng_range (call $k (global.get $K_EVENT_GAP_SPREAD))))))
 
 ;; Price modifier in bp for (market, good): product of active Surge/Glut matches.
 (func $event_mod (param $market i32) (param $good i32) (result i32)

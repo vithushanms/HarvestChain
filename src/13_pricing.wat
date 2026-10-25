@@ -6,7 +6,6 @@
 (global $GOODS i32 (i32.const 13))
 (global $MKTS  i32 (i32.const 3))
 (global $GOOD_WINE i32 (i32.const 12))
-(global $MKT_STAND i32 (i32.const 0))
 
 (func $bp_mul (param $v i32) (param $bp i32) (result i32)
   (i32.div_u (i32.mul (local.get $v) (local.get $bp)) (global.get $BP_ONE)))

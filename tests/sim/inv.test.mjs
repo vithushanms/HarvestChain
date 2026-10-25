@@ -55,15 +55,6 @@ test('season boundaries', () => {
   }
 });
 
-test('new balance tables match spec decisions', () => {
-  const T = BAL.tables.WEATHER;
-  assert.equal(T.rows, 4);
-  const rows = Array.from({ length: 4 }, (_, r) => T.cols.map((_, c) => ex.t_bal(T.id, r, c)));
-  assert.deepEqual(T.cols, ['Sunny', 'Rain', 'Drought', 'Storm', 'Frost', 'Heatwave']);
-  assert.deepEqual(rows, [[55, 30, 0, 15, 0, 0], [50, 15, 20, 0, 0, 15], [45, 25, 0, 15, 15, 0], [50, 20, 0, 0, 30, 0]]);
-  for (const r of rows) assert.equal(r.reduce((a, b) => a + b), 100);
-});
-
 test('state length grows to 0x5B0', () => {
   assert.equal(stateJson.length, 0x5B0); assert.equal(ex.save_len(), 0x5B0);
 });
@@ -73,6 +64,6 @@ test('init sets status Playing, today Sunny, nextEventDay 5', () => {
   assert.deepEqual([s.status, s.weatherToday, s.nextEventDay, s.droughtStreak, s.ringsBought, s.milestones],
                    [0, 0, 5, 0, 0, 0]);
   assert.ok(s.driftNext.every(v => v === 0) && s.events.every(e => e.kind === 0));
-  assert.ok(s.board.every(b => b.qty === 0));
+  assert.ok(s.board[0].qty > 0 && s.board[1].qty > 0 && s.board[2].qty === 0); // Task 7: init rolls the visible board
   assert.ok(s.tiles.every(t => t.recipe === 0));
 });

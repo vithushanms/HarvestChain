@@ -47,7 +47,12 @@ const K = { startCash: 500, startStorage: 30, truckCap: 20, truckPrice: 450, max
   coldPerStore: 20, warehouseStorage: 40,
   mileWorth1: 2000, mileContracts: 3, mileWorthY1: 3000, mileRank: 3, mileWine: 10, mileWorthRun: 50000,
   repScore: 100, contractScore: 50, boardVisibleLow: 2, boardVisibleHigh: 3, boardHighRank: 3,
-  repGain: 1, repLoss: 1, bldUpgCapMult: 2, fastDays: 1, offSeasonPct: 50, rainBonus: 10, firstEventDay: 5 };
+  repGain: 1, repLoss: 1, bldUpgCapMult: 2, fastDays: 1, offSeasonPct: 50, rainBonus: 10, firstEventDay: 5,
+  contractQtyBase: 6, contractQtyRankMult: 3, contractQtySpread: 5, contractDeadlineBase: 6,
+  contractDeadlineSpread: 9, acceptedMax: 3, contractTierLow: 1, contractTierHigh: 2,
+  stormOdds: 5, droughtOdds: 4, droughtKillStreak: 3, maxAge: 7,
+  forecastPct: 80, eventDurBase: 3, eventDurSpread: 5, eventGapBase: 4, eventGapSpread: 3,
+  startWheat: 4, startWheatProgress: 200, roadClosureDays: 1, heatAgeExtra: 1 };
 
 test('crop table', () => assert.deepEqual(table('CROP'), CROP));
 test('goods table', () => assert.deepEqual(table('GOOD'), GOOD));
@@ -60,4 +65,26 @@ test('milestone payouts', () => assert.deepEqual(column('MILE'), MILE));
 test('scalar constants (u16 values above 32767 read unsigned)', () => {
   const [row] = table('K');
   assert.deepEqual(Object.fromEntries(BAL.tables.K.cols.map((c, i) => [c, row[i]])), K);
+});
+
+test('acceptedMax fits the 3-slot accepted list; maxAge is the top inventory age bucket', () => {
+  const [row] = table('K');
+  const col = (n) => row[BAL.tables.K.cols.indexOf(n)];
+  assert.ok(col('acceptedMax') <= 3);
+  assert.equal(col('maxAge'), 7);
+});
+
+test('weather odds per season (rows) sum to 100', () => {
+  const T = BAL.tables.WEATHER;
+  assert.equal(T.rows, 4);
+  assert.deepEqual(T.cols, ['Sunny', 'Rain', 'Drought', 'Storm', 'Frost', 'Heatwave']);
+  const rows = table('WEATHER');
+  assert.deepEqual(Object.values(rows), [[55, 30, 0, 15, 0, 0], [50, 15, 20, 0, 0, 15], [45, 25, 0, 15, 15, 0], [50, 20, 0, 0, 30, 0]]);
+  for (const r of Object.values(rows)) assert.equal(r.reduce((a, b) => a + b), 100);
+});
+
+test('T_K is reserved-aware: warehouseStorage is kept but unused by the sim', () => {
+  assert.deepEqual(BAL.tables.K.reserved, ['warehouseStorage']);
+  assert.ok(BAL.tables.K.cols.includes('warehouseStorage'));
+  assert.equal(table('K')[0][BAL.tables.K.cols.indexOf('warehouseStorage')], 40);
 });

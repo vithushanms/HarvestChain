@@ -11,6 +11,9 @@
 (export "rank"         (func $rank))
 (export "act"          (func $act))
 (export "end_day"      (func $end_day))
+(export "net_worth"    (func $net_worth))
+(export "score"        (func $score))
+(export "truck_cap"     (func $truck_cap))
 
 ;; Test hooks.
 (export "t_rng_seed"  (func $rng_seed))
@@ -53,3 +56,9 @@
 (export "t_set_sat"      (func $t_set_sat))
 (export "t_set_drift"    (func $t_set_drift))
 (export "t_storage_fits" (func $storage_fits))
+
+;; Contracts (15_contracts.wat) and trucks.
+(func $t_cargo_take (param $t i32) (param $g i32) (param $q i32) (result i32)
+  (call $cargo_take (call $truck_ptr (local.get $t)) (local.get $g) (local.get $q)))
+(export "t_contract_roll" (func $contract_roll))
+(export "t_cargo_take"    (func $t_cargo_take))

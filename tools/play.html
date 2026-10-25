@@ -7,7 +7,8 @@
 <!--
   Throwaway developer harness: plays the real game.wasm sim through its exports with
   plain HTML controls. Not part of the shipped game, not counted in any budget.
-  Run from the repo root:  npm run build && npx serve .   then open /tools/play.html
+  Run from the repo root:  npm run build && python3 -m http.server 8000
+  then open http://localhost:8000/tools/play.html
 -->
 <style>
   :root { --bg:#f6f1e7; --fg:#2b2118; --mut:#7a6a58; --card:#fffaf0; --line:#d8ccb8;
@@ -64,7 +65,7 @@
       <div class="row"><select id="actid"></select>
         <input id="aa" type="number" value="0" title="a"><input id="ab" type="number" value="0" title="b"><input id="ac" type="number" value="0" title="c">
         <button id="doact">Do</button></div>
-      <div class="mut">Trucks, contracts and loans arrive as phase 2 tasks land; until then they return E_BAD_ARG.</div>
+      <div class="mut">Trucks, contracts and loans are all live.</div>
     </div>
   </div>
   <div>
@@ -129,7 +130,6 @@ function act(name, a = 0, b = 0, c = 0) {
 let sel = -1;
 
 $('endday').onclick = () => {
-  if (!ex.end_day) { log('end_day not built yet (phase 2 Task 5 in progress)', true); return; }
   const before = state().cash;
   const rc = ex.end_day();
   const s = state();
@@ -161,7 +161,7 @@ opt($('recipe'), [[255, 'none'], ...Array.from({ length: T.RECIPE.rows }, (_, r)
 opt($('actid'), E.actions.map((a, i) => [i, `${i} ${a}`]).slice(1));
 
 // --- render ---
-function tileText(t) {
+function tileText(t, cellar) {
   if (t.kind === 1) {
     const mature = t.id === 3 && (t.flags & 1);
     const target = (mature ? bal('CROP', t.id, 'regrowDays') : bal('CROP', t.id, 'growDays')) * 100;
@@ -170,7 +170,12 @@ function tileText(t) {
   if (t.kind === 2) {
     let txt = E.buildings[t.id] + (t.flags & 2 ? ' II' : '');
     if (t.recipe) txt += `<br>→${E.goods[bal('RECIPE', t.recipe - 1, 'outGood')]}`;
-    if (t.ghCrop) txt += `<br>${E.goods[t.ghCrop - 1]} ${(t.progress / 100).toFixed(1)}`;
+    if (t.ghCrop) {
+      const c = t.ghCrop - 1, mature = c === 3 && (t.flags & 1);
+      const target = bal('CROP', c, mature ? 'regrowDays' : 'growDays') * 100;
+      txt += `<br>${E.goods[c]} ${(t.progress / 100).toFixed(1)}/${target / 100}${t.progress >= target ? '<br>RIPE' : ''}`;
+    }
+    if (t.id === E.buildings.indexOf('Cellar') && cellar) txt += `<br>aging ${cellar.b.join('/')}`;
     return { cls: 'bld', txt };
   }
   return { cls: '', txt: '·' };
@@ -180,8 +185,9 @@ function render() {
   const season = E.seasons[ex.season()];
   $('status').innerHTML = [
     `<b>Day ${s.day}</b> ${season}, Y${Math.floor((s.day - 1) / 80) + 1}`,
-    `<b>$${s.cash}</b>`, `★${ex.rank ? ex.rank() : '?'} (${s.rep} pts)`,
-    `today ${WEATHER[s.weatherToday]} · forecast ${WEATHER[s.forecast]}`,
+    `<b>$${s.cash}</b>`, `★${ex.rank()} (${s.rep} pts)`,
+    `today ${WEATHER[s.weatherToday]} · tomorrow ${WEATHER[s.weatherTomorrow]} · forecast ${WEATHER[s.forecast]}`,
+    `hints ${s.hintGood.map(g => E.goods[g]).join(', ')}`,
     `storage ${ex.storage_used()}/${ex.storage_cap()}`,
     s.loanPrincipal || s.loanInterest ? `loan $${s.loanPrincipal}+${s.loanInterest}` : '',
     `<span class="${s.status ? 'bad' : ''}">${STATUS[s.status]}</span>`,
@@ -191,7 +197,7 @@ function render() {
   s.tiles.forEach((t, i) => {
     const x = i % 8, y = (i / 8) | 0, inGrid = x < s.grid && y < s.grid;
     const b = document.createElement('button');
-    const { cls, txt } = tileText(t);
+    const { cls, txt } = tileText(t, s.cellar[i]);
     b.className = `tile ${cls} ${inGrid ? '' : 'off'} ${i === sel ? 'sel' : ''}`;
     b.innerHTML = inGrid ? txt : '';
     b.disabled = !inGrid;
@@ -217,11 +223,18 @@ function render() {
     E.goods.map((name, gd) => `<tr><td>${name}</td>${E.markets.map((_, m) => `<td>${ex.price(m, gd)}</td>`).join('')}
       <td class="mut">${(s.drift[gd] / 100).toFixed(0)}% ${s.driftNext[gd] > 0 ? '▲' : s.driftNext[gd] < 0 ? '▼' : '·'}</td></tr>`).join('');
 
-  const ev = (s.events || []).filter(e => e.kind).map(e => `${EVENTS[e.kind]} ${E.markets[e.market] ?? ''} ${E.goods[e.good] ?? ''} (${e.daysLeft}d)`);
-  const tr = (s.trucks || []).filter(t => t.present).map((t, i) => `truck ${i}: ${['home', 'outbound', 'returning'][t.phase]}${t.phase ? ` to ${E.markets[t.dest]}, ${t.daysLeft}d` : ''}`);
-  const ct = (s.board || []).filter(c => c.qty).map((c, i) => `board ${i}: ${c.qty} ${E.goods[c.good]} → ${E.markets[c.market]} by day ${c.deadline} for $${c.payout}`);
-  const ac = (s.accepted || []).filter(c => c.qty).map((c, i) => `accepted ${i}: ${c.qty} ${E.goods[c.good]} → ${E.markets[c.market]} by day ${c.deadline} for $${c.payout}`);
-  $('extra').innerHTML = [...tr, ...ev, ...ct, ...ac].map(l => `<div>${l}</div>`).join('') || '<span class="mut">nothing yet</span>';
+  const ev = s.events.filter(e => e.kind).map(e => `${EVENTS[e.kind]} ${E.markets[e.market] ?? ''} ${E.goods[e.good] ?? ''} (${e.daysLeft}d)`);
+  const tr = s.trucks.flatMap((t, i) => {
+    if (!t.present) return [];
+    const cargo = t.cargo.filter(c => c.qty).map(c => `${c.qty} ${E.goods[c.good]}@${c.age}`).join(', ') || 'empty';
+    const tag = t.contract === 255 ? '' : ` [contract ${t.contract}]`;
+    return [`truck ${i}: ${['home', 'outbound', 'returning'][t.phase]}${t.phase ? ` to ${E.markets[t.dest]}, ${t.daysLeft}d` : ''}${tag} · cargo ${cargo} · cashBack $${t.cashBack}`];
+  });
+  // keep the slot index before filtering so the printed number is the real slot (0-2)
+  const slots = (list, label) => list.flatMap((c, i) => c.qty
+    ? [`${label} ${i}: ${c.qty} ${E.goods[c.good]} → ${E.markets[c.market]} by day ${c.deadline} for $${c.payout}`] : []);
+  $('extra').innerHTML = [...tr, ...ev, ...slots(s.board, 'board'), ...slots(s.accepted, 'accepted')]
+    .map(l => `<div>${l}</div>`).join('') || '<span class="mut">nothing yet</span>';
 }
 
 if (restore()) log('restored dev save'); else { ex.init(42); log('new game seed 42'); }

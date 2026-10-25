@@ -6,13 +6,13 @@ The full design is in [`requirement-spec.md`](requirement-spec.md).
 
 ## Status
 
-Phase 1 of 6 is done: build pipeline, seeded RNG, balance tables, game-state layout and save/load. There is **nothing to play in a browser yet** — the game is currently exercised only through its test suite. Plans for each phase live in [`docs/superpowers/plans/`](docs/superpowers/plans/).
+Phases 1 and 2 of 6 are done: the whole simulation (every player action and the full End Day pipeline, a complete 240-day run plus Endless mode) lives in `game.wasm` and is exercised by the test suite and by a scripted bot. There are no graphics yet; `tools/play.html` is a dev harness that drives the sim in a browser and now shows contracts, trucks, events and loans. Plans for each phase live in [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Memory map, RNG, balance data, state init, save/load | done |
-| 2 | Player actions + End Day pipeline (pricing, weather, contracts, trucks) | next |
-| 3 | Draw primitives, fonts, sprites | — |
+| 2 | Player actions + End Day pipeline (pricing, weather, contracts, trucks, loans, run end) | done |
+| 3 | Draw primitives, fonts, sprites | next |
 | 4 | Layout, UI, input, loader (`index.html`), browser smoke tests | — |
 | 5 | Save wiring, replays/share codes, stats overlay, QR | — |
 | 6 | Onboarding, polish, balance passes | — |
@@ -39,10 +39,13 @@ node --test tests/state.test.mjs
 node --test --test-name-pattern="round-trip" tests/state.test.mjs
 ```
 
-A healthy build prints something like:
+A healthy build prints one size line (`game.wasm  <raw> B raw  <gz> B gz`), well inside the budgets below.
 
-```
-game.wasm  1180 B raw  777 B gz
+To play the sim in a browser (no graphics yet), serve the repo root and open the dev harness:
+
+```sh
+npm run build && python3 -m http.server 8000
+# then open http://localhost:8000/tools/play.html
 ```
 
 ## How it fits together
@@ -71,10 +74,11 @@ The build **fails** if any of these break:
 | Only Wasm MVP + `bulk-memory`, `sign-ext`, `mutable-globals` | One binary that runs on every target browser, including iOS Safari 16.4. |
 | `game.wasm` ≤ 20 KB gzipped and ≤ 48 KB raw | The size budget is a product goal, not a guideline. |
 | `index.html` ≤ 3 KB gz, `sw.js` ≤ 1 KB gz | Checked once those files exist. |
+| No sim-RNG call (`call $rng_...`) in presentation files (numeric prefix ≥ 20) | Drawing code must never consume the sim RNG, or visuals would change replays. Use a render-only hash noise function. |
 
 ## Looking after it
 
-**Changing game numbers (prices, costs, grow times…).** Every tunable number lives in `src/03_balance.wat` as u16 data, one commented row per entry. Edit the hex *and* the matching expected value in `tests/balance.test.mjs`; the test checks every value against the spec, so a typo shows up immediately. Values must fit in 0–65535.
+**Changing game numbers (prices, costs, grow times…).** Every tunable number lives in `src/03_balance.wat` as u16 data, one commented row per entry. Edit the hex *and* the matching expected value in `tests/balance.test.mjs`; the test checks every value against the spec, so a typo shows up immediately. Values must fit in 0–65535. New scalars are appended as `T_K` columns at the end (and named in `tools/balance.json`); `warehouseStorage` is reserved and unused.
 
 **Changing the game state.** The state layout is **append-only**: add new fields after the last one, never move or resize existing ones. Old saves load by migration, and moving a field silently corrupts them. For each change:
 1. Add the field to the comment table at the top of `src/10_state.wat`, plus an `$S_*` offset global if code needs it.
@@ -82,11 +86,13 @@ The build **fails** if any of these break:
 3. Grow `$STATE_LEN` (and `"length"` in `state.json`).
 4. Once the game has public players, bump `$SAVE_VERSION` and add a migration in `$load`.
 
-`load` accepts only a save of exactly `$STATE_LEN` bytes with sane fields (non-zero RNG word, grid 4–8, 1–3 trucks), so growing the layout makes older saves fall back to New Game until a migration is written. Error codes: 1 length, 2 magic, 3 version, 4 out of bounds, 5 corrupt.
+`load` accepts only a save of exactly `$STATE_LEN` bytes whose every field is in range (non-zero RNG word, grid 4–8, 1–3 trucks, status, weather, day, drift/saturation windows, event/board/truck/tile enums, cellar buckets, grace, loan amounts) and rejects the rest before touching state, so growing the layout makes older saves fall back to New Game until a migration is written. Error codes: 1 length, 2 magic, 3 version, 4 out of bounds, 5 corrupt.
 
 **Adding a source file.** Name it with the right numeric prefix so it concatenates in the right place. Remember that WAT has no includes — everything is one module, so names (`$foo`) must be unique across all files.
 
-**Randomness.** Every random number must come from `$rng_next` / `$rng_range` in `src/01_rng.wat`. Never seed or roll anywhere else, or replays will diverge.
+**Golden hashes.** `tests/golden.json` pins the state after 80 bot days (seeds 1-3) and after 240 bot days (seed 1); the bot plays loans, every building, two trucks, contracts and Wine, and a test asserts which actions it covers. A missing file fails the test; after a deliberate rule change run `UPDATE_GOLDEN=1 npm test`, review why the hashes moved, and commit the file.
+
+**Randomness.** Every random number must come from `$rng_next` / `$rng_range` in `src/01_rng.wat`, and only simulation code (prefix < 20) may draw. Never seed or roll anywhere else, or replays will diverge. The draw sites and their order are listed in `CLAUDE.md`.
 
 **Exports.** The public surface is in `src/30_exports.wat`. Exports prefixed `t_` are test hooks; they stay in the shipping binary because they cost only a few bytes.
 
@@ -102,4 +108,4 @@ These are recorded in the phase 1 plan and get decided in later phases:
 
 - Spec §14.3 gives the framebuffer as "≤ 2.6 MB", but 1280 × 720 × 4 is 3.69 MB (phase 3).
 - The starting Wheat ripens after the first End Day, but onboarding expects a harvest on day 1 (phase 6).
-- The spec gives no numbers for weather odds or event frequency (phase 2).
+- Weather odds, event frequency and the other numbers the spec left open are fixed in the phase 2 plan's Decisions (`docs/superpowers/plans/`).

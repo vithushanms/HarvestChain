@@ -105,7 +105,7 @@ test('drought streak of 3 kills ~25% of crops; Well prevents it', () => {
   assert.equal(st().droughtStreak, 0);
   const left = alive();
   assert.ok(left >= 36 && left <= 60, `survivors ${left}`);
-  assert.equal(left, 46, 'seed 42 pinned survivor count'); // 18 killed
+  assert.equal(left, 48, 'seed 42 pinned survivor count'); // 16 killed (step 10 now draws 2 hint goods per day)
   // a non-drought day in between resets the streak
   fresh(); wheatField();
   day(W.DROUGHT); day(W.DROUGHT); day(W.SUNNY); day(W.DROUGHT);
@@ -318,6 +318,10 @@ test('spoilage: Cold Store protects 20 units oldest-first across goods; heatwave
   assert.equal(ex.t_count(GJ), 0); assert.equal(ex.t_count(BREAD), 0);
 });
 
+// Step-order pairs pinned elsewhere: trucks (6) before contracts (7) in contracts.test.mjs
+// ("an outbound truck carrying the slot protects it"); upkeep before interest (9) and the
+// day-241 precedence over step 11 in money.test.mjs; step 10's RNG order (events, weather,
+// hint goods) in money.test.mjs ("hint goods") and, end to end, in the determinism goldens.
 test('step order: growth before processing before spoilage', () => {
   // Grape Juice age 3 + Heatwave: step 2 ages it to 5, step 3 moves it into the cellar,
   // and only then would step 5 spoil it (perishDays 4).

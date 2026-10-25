@@ -57,6 +57,9 @@
 (global $S_REP         i32 (i32.const 0x100F))
 (global $S_CASH        i32 (i32.const 0x1010))
 (global $S_TRUCK_COUNT i32 (i32.const 0x101E))
+(global $S_LOAN_P      i32 (i32.const 0x1014))
+(global $S_LOAN_I      i32 (i32.const 0x1018))
+(global $S_GRACE       i32 (i32.const 0x101C))
 (global $S_INV         i32 (i32.const 0x1020))
 (global $S_DRIFT       i32 (i32.const 0x10F0))
 (global $S_SAT         i32 (i32.const 0x1110))
@@ -80,7 +83,6 @@
 
 (global $TRUCK_STRIDE  i32 (i32.const 48))
 (global $TILE_STRIDE   i32 (i32.const 8))
-(global $RECIPE_OFF    i32 (i32.const 7))
 (global $NO_CONTRACT   i32 (i32.const 0xFF))
 (global $BP_ONE        i32 (i32.const 10000))
 
@@ -126,17 +128,127 @@
     (i32.store16 (i32.add (global.get $S_SAT) (i32.shl (local.get $i) (i32.const 1))) (global.get $BP_ONE))
     (br_if $sat (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 39))))
 
-  ;; Four Wheat on row 0, two days grown (kind 1 = crop, id 0 = Wheat).
+  ;; startWheat Wheat on row 0, pre-grown startWheatProgress (two days) (kind 1 = crop, id 0 = Wheat).
   (local.set $p (global.get $S_TILES))
-  (local.set $i (i32.const 4))
+  (local.set $i (call $k (global.get $K_START_WHEAT)))
   (loop $wheat
     (i32.store8 (local.get $p) (i32.const 1))
-    (i32.store16 offset=2 (local.get $p) (i32.const 200))
+    (i32.store16 offset=2 (local.get $p) (call $k (global.get $K_START_WHEAT_PROGRESS)))
     (local.set $p (i32.add (local.get $p) (global.get $TILE_STRIDE)))
     (br_if $wheat (local.tee $i (i32.sub (local.get $i) (i32.const 1)))))
 
   ;; Day 1 weather: roll tomorrow, then the forecast, from the Spring table (Decision 2).
-  (call $weather_prime (i32.const 1)))
+  (call $weather_prime (i32.const 1))
+
+  ;; Contract board: roll every visible slot after the weather prime (Decision 17).
+  (call $board_refresh))
+
+;; True when any of $n bytes at $p, $p+$stride, ... exceeds $max.
+(func $bad8 (param $p i32) (param $n i32) (param $stride i32) (param $max i32) (result i32)
+  (loop $l
+    (if (i32.gt_u (i32.load8_u (local.get $p)) (local.get $max)) (then (return (i32.const 1))))
+    (local.set $p (i32.add (local.get $p) (local.get $stride)))
+    (br_if $l (local.tee $n (i32.sub (local.get $n) (i32.const 1)))))
+  (i32.const 0))
+
+;; True when any of $n consecutive u16 at $p has ((v + $bias) & 0xFFFF) > $range.
+;; The bias turns a lo..hi window, or a signed i16 window, into one unsigned compare.
+(func $bad16 (param $p i32) (param $n i32) (param $bias i32) (param $range i32) (result i32)
+  (loop $l
+    (if (i32.gt_u (i32.and (i32.add (i32.load16_u (local.get $p)) (local.get $bias)) (i32.const 0xFFFF))
+                  (local.get $range))
+      (then (return (i32.const 1))))
+    (local.set $p (i32.add (local.get $p) (i32.const 2)))
+    (br_if $l (local.tee $n (i32.sub (local.get $n) (i32.const 1)))))
+  (i32.const 0))
+
+;; True when the phase 2 fields of the save image at $s hold an impossible value.
+(func $state_bad (param $s i32) (result i32)
+  (local $i i32) (local $p i32) (local $v i32) (local $step i32) (local $seen i32)
+  (local.set $step (call $k (global.get $K_DRIFT_STEP)))
+  (if (i32.or
+        (i32.or
+          (i32.or (call $bad8 (i32.add (local.get $s) (i32.const 0x400)) (i32.const 1) (i32.const 1) (i32.const 3))
+                  (call $bad8 (i32.add (local.get $s) (i32.const 0x401)) (i32.const 3) (i32.const 1) (i32.const 5)))
+          (i32.or (call $bad16 (i32.add (local.get $s) (i32.const 0x00C)) (i32.const 1) (i32.const 0xFFFF) (i32.const 0xFFFE))
+                  (call $bad8 (i32.add (local.get $s) (i32.const 0x405)) (i32.const 1) (i32.const 1)
+                    (i32.sub (call $k (global.get $K_MAX_GRID)) (call $k (global.get $K_START_GRID))))))
+        (i32.or
+          (i32.or (call $bad8 (i32.add (local.get $s) (i32.const 0x406)) (i32.const 1) (i32.const 1) (i32.const 0x7F))
+                  (call $bad8 (i32.add (local.get $s) (i32.const 0x407)) (i32.const 2) (i32.const 1) (i32.const 12)))
+          (i32.or (call $bad16 (i32.add (local.get $s) (i32.const 0x0F0)) (i32.const 13)
+                    (i32.sub (i32.const 0) (call $k (global.get $K_DRIFT_MIN)))
+                    (i32.sub (call $k (global.get $K_DRIFT_MAX)) (call $k (global.get $K_DRIFT_MIN))))
+                  (call $bad16 (i32.add (local.get $s) (i32.const 0x110)) (i32.const 39) (i32.const 0) (global.get $BP_ONE)))))
+    (then (return (i32.const 1))))
+  (if (i32.or
+        (i32.or
+          (call $bad16 (i32.add (local.get $s) (i32.const 0x412)) (i32.const 13) (local.get $step) (i32.shl (local.get $step) (i32.const 1)))
+          (i32.or (call $bad8 (i32.add (local.get $s) (i32.const 0x42C)) (i32.const 3) (i32.const 4) (i32.const 6))
+                  (call $bad8 (i32.add (local.get $s) (i32.const 0x42D)) (i32.const 3) (i32.const 4) (i32.const 2))))
+        (i32.or
+          (i32.or (call $bad8 (i32.add (local.get $s) (i32.const 0x42E)) (i32.const 3) (i32.const 4) (i32.const 12))
+                  ;; board and accepted: six contiguous 8 B records
+                  (call $bad8 (i32.add (local.get $s) (i32.const 0x440)) (i32.const 6) (i32.const 8) (i32.const 12)))
+          (i32.or (call $bad8 (i32.add (local.get $s) (i32.const 0x441)) (i32.const 6) (i32.const 8) (i32.const 2))
+                  (call $bad8 (i32.add (local.get $s) (i32.const 0x443)) (i32.const 6) (i32.const 8) (i32.const 1)))))
+    (then (return (i32.const 1))))
+  (if (i32.or
+        (call $bad8 (i32.add (local.get $s) (i32.const 0x470)) (i32.const 320) (i32.const 1) (call $k (global.get $K_CELLAR_HOLD)))
+        (i32.or (call $bad8 (i32.add (local.get $s) (i32.const 0x01C)) (i32.const 1) (i32.const 1)
+                  (i32.add (call $k (global.get $K_GRACE_DAYS)) (i32.const 1)))
+                ;; loan: principal <= loanMax, interest and the owed total <= 2^30 (the saturation cap)
+                (i32.or (i32.gt_u (i32.load offset=0x014 (local.get $s)) (call $k (global.get $K_LOAN_MAX)))
+                        (i32.or (i32.gt_u (i32.load offset=0x018 (local.get $s)) (i32.const 0x40000000))
+                                (i32.gt_u (i32.add (i32.load offset=0x014 (local.get $s))
+                                                   (i32.load offset=0x018 (local.get $s)))
+                                          (i32.const 0x40000000))))))
+    (then (return (i32.const 1))))
+  ;; an active event has at least one day left
+  (local.set $i (i32.const 0))
+  (loop $events
+    (local.set $p (i32.add (i32.add (local.get $s) (i32.const 0x42C)) (i32.shl (local.get $i) (i32.const 2))))
+    (if (i32.and (i32.ne (i32.load8_u (local.get $p)) (i32.const 0)) (i32.eqz (i32.load8_u offset=3 (local.get $p))))
+      (then (return (i32.const 1))))
+    (br_if $events (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
+  (local.set $i (i32.const 0))
+  ;; trucks: slots below truckCount are present, the rest are not
+  (loop $trucks
+    (local.set $p (i32.add (i32.add (local.get $s) (i32.const 0x160)) (i32.mul (local.get $i) (global.get $TRUCK_STRIDE))))
+    (local.set $v (i32.load8_u offset=5 (local.get $p)))
+    (if (i32.or
+          (i32.or (i32.ne (i32.load8_u (local.get $p))
+                          (i32.lt_u (local.get $i) (i32.load8_u offset=0x01E (local.get $s))))
+                  (call $bad8 (i32.add (local.get $p) (i32.const 1)) (i32.const 2) (i32.const 1) (i32.const 2)))
+          (i32.or (call $bad8 (i32.add (local.get $p) (i32.const 16)) (i32.const 8) (i32.const 4) (i32.const 12))
+                  (call $bad8 (i32.add (local.get $p) (i32.const 17)) (i32.const 8) (i32.const 4) (i32.const 7))))
+      (then (return (i32.const 1))))
+    ;; a contract tag needs an outbound truck, an active accepted slot, and is carried once
+    (if (i32.ne (local.get $v) (global.get $NO_CONTRACT))
+      (then
+        (if (i32.ne (i32.load8_u offset=2 (local.get $p)) (i32.const 1)) (then (return (i32.const 1))))
+        (if (i32.gt_u (local.get $v) (i32.const 2)) (then (return (i32.const 1))))
+        ;; only now is accepted[tag] a valid index
+        (if (i32.eqz (i32.load8_u (i32.add (i32.add (local.get $s) (i32.const 0x45B)) (i32.shl (local.get $v) (i32.const 3)))))
+          (then (return (i32.const 1))))
+        (if (i32.and (local.get $seen) (i32.shl (i32.const 1) (local.get $v))) (then (return (i32.const 1))))
+        (local.set $seen (i32.or (local.get $seen) (i32.shl (i32.const 1) (local.get $v))))))
+    (br_if $trucks (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
+  ;; tiles: kind 0..2, crop id 0..4 or building id 0..9, ghCrop 0..5, recipe 0..8
+  (local.set $i (i32.const 0))
+  (loop $tiles
+    (local.set $p (i32.add (i32.add (local.get $s) (i32.const 0x200)) (i32.shl (local.get $i) (i32.const 3))))
+    (local.set $v (i32.load8_u (local.get $p)))
+    (if (i32.or
+          (i32.or (i32.gt_u (local.get $v) (i32.const 2))
+                  (i32.and (i32.ne (local.get $v) (i32.const 0))
+                           (i32.gt_u (i32.load8_u offset=1 (local.get $p))
+                                     (select (i32.const 4) (i32.const 9) (i32.eq (local.get $v) (i32.const 1))))))
+          (i32.or (i32.gt_u (i32.load8_u offset=6 (local.get $p)) (i32.const 5))
+                  (i32.gt_u (i32.load8_u offset=7 (local.get $p)) (i32.const 8))))
+      (then (return (i32.const 1))))
+    (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
+  (i32.const 0))
 
 ;; Restore a save image of $len bytes at $ptr. Returns 0 or an E_LOAD_* code.
 ;; Everything is validated from the source bytes before the state is touched, so on
@@ -166,6 +278,7 @@
   (if (i32.or (i32.eqz (local.get $v))
               (i32.gt_u (local.get $v) (call $k (global.get $K_MAX_TRUCKS))))
     (then (return (global.get $E_LOAD_CORRUPT))))
+  (if (call $state_bad (local.get $ptr)) (then (return (global.get $E_LOAD_CORRUPT))))
   ;; Copy first (memory.copy is overlap-safe), then clear the tail of the region.
   (memory.copy (global.get $R_STATE) (local.get $ptr) (local.get $len))
   (memory.fill (i32.add (global.get $R_STATE) (local.get $len)) (i32.const 0)
