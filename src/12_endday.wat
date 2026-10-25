@@ -283,7 +283,6 @@
     (br_if $tiles (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64)))))
 
 ;; Steps filled by later tasks.
-(func $step_trucks)
 (func $step_contracts)
 (func $step_money)
 (func $step_bankrupt)
@@ -304,6 +303,7 @@
   (call $step_process)
   (call $step_age_cellar)
   (call $step_spoil)
+  (call $step_truck_spoil)
   (call $step_trucks)
   (call $step_contracts)
   (call $drift_tick)

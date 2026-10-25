@@ -1,6 +1,6 @@
 ;; Player actions (spec §5-§9) and the act dispatcher. Every action validates first and
 ;; mutates only on success; a non-zero return leaves state bytes unchanged.
-;; act(id, a, b, c): ids per shared-context Actions table. Ids 10-18 are wired by later tasks.
+;; act(id, a, b, c): ids per shared-context Actions table. Ids 15-18 are wired by later tasks.
 ;; act never consumes RNG here.
 
 (global $E_BAD_ARG       i32 (i32.const 1))
@@ -236,4 +236,9 @@
   (if (i32.eq (local.get $id) (i32.const 7)) (then (return (call $a_set_recipe (local.get $a) (local.get $b)))))
   (if (i32.eq (local.get $id) (i32.const 8)) (then (return (call $a_buy_land))))
   (if (i32.eq (local.get $id) (i32.const 9)) (then (return (call $a_sell_stand (local.get $a) (local.get $b)))))
+  (if (i32.eq (local.get $id) (i32.const 10)) (then (return (call $a_truck_load (local.get $a) (local.get $b) (local.get $c)))))
+  (if (i32.eq (local.get $id) (i32.const 11)) (then (return (call $a_truck_unload (local.get $a) (local.get $b) (local.get $c)))))
+  (if (i32.eq (local.get $id) (i32.const 12)) (then (return (call $a_truck_send (local.get $a) (local.get $b) (local.get $c)))))
+  (if (i32.eq (local.get $id) (i32.const 13)) (then (return (call $a_buy_truck))))
+  (if (i32.eq (local.get $id) (i32.const 14)) (then (return (call $a_upgrade_truck (local.get $a) (local.get $b)))))
   (global.get $E_BAD_ARG))

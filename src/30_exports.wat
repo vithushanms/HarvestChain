@@ -11,6 +11,7 @@
 (export "rank"         (func $rank))
 (export "act"          (func $act))
 (export "end_day"      (func $end_day))
+(export "truck_cap"     (func $truck_cap))
 
 ;; Test hooks.
 (export "t_rng_seed"  (func $rng_seed))
