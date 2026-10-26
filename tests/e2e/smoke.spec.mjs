@@ -261,7 +261,7 @@ test('ambient motion is throttled (not a 60 fps loop)', async ({ game }) => {
   expect(n).toBeLessThanOrEqual(20);
 });
 
-test('hash without replay support is ignored; wrong wasm MIME falls back', async ({ game, errors, page }) => {
+test('an invalid replay hash is ignored; wrong wasm MIME falls back', async ({ game, errors, page }) => {
   await game.open('#not-a-valid-replay!!');
   expect((await game.pixels()).variance).toBeGreaterThan(200);
   const s = await startServer({ wasmMime: 'text/plain' });

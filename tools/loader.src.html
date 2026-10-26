@@ -36,14 +36,17 @@ const ls = (k, v) => {
 // Failure message: replaces the canvas with an announced role=alert line; the aria-live region stays.
 const fail = (m) => { cv.remove(); document.body.insertAdjacentHTML('afterbegin', '<p role=alert>' + (m || 'COULD NOT LOAD GAME') + ' - RELOAD</p>'); };
 // A wasm trap (or any exception from a module call) ends the session: show a message, stop scheduling and input.
-// The stored save is left as it is. If this boot restored that save, it may be what traps: it is marked
-// (hc.bad) and copied to hc.save.bad, and the next boot starts without it (plain Title, no CONTINUE);
-// the first successful save after that (a New Game) clears the mark. The copy is kept.
-let dead = 0, restored = 0;
+// The stored save is left as it is. Poisoned-save recovery: a boot that restores the save marks it (hc.bad)
+// BEFORE any module call that could trap on it (restore, set_env, set_flags, set_pref, ui_boot, the first
+// frame) and clears the mark after the first good frame. A trap in between leaves the mark (and copies the
+// save to hc.save.bad), so the next boot starts without it (plain Title, no CONTINUE); the first successful
+// save after that (a New Game) clears it. A trap after the first good frame does not mark a healthy save.
+let dead = 0, mark = 0;
+const keep = () => mark && ls('hc.save.bad', ls('hc.save'));
 function die() {
   dead = 1;
   cancelAnimationFrame(raf); clearTimeout(tm);
-  if (restored) { ls('hc.bad', '1'); ls('hc.save.bad', ls('hc.save')); }
+  keep();
   fail('SOMETHING WENT WRONG');
 }
 const guard = (f) => (e) => { if (!dead) try { f(e); } catch { die(); } };
@@ -71,7 +74,7 @@ function run() {
   } catch { return die(); }
   if (r === 1) raf = requestAnimationFrame(run);
   else if (r === 2) tm = setTimeout(() => { tm = 0; schedule(); }, 83);
-  if (!H.t1) { H.t1 = performance.now(); register(); }   // once: first frame
+  if (!H.t1) { H.t1 = performance.now(); register(); if (mark) { mark = 0; ls('hc.bad', ''); } }   // once: first frame
 }
 
 // ---- canvas (3, 6)
@@ -91,7 +94,10 @@ const dirty = () => { rz = 1; schedule(); };
 // ---- persistence (6), prefs (7), aria-live (9): all after every frame
 function save(force) {
   if (!ex.need_save() || (!force && performance.now() < retry)) return;
-  if (ls('hc.save', btoa(String.fromCharCode(...new Uint8Array(ex.memory.buffer, ex.save_ptr(), ex.save_len()))))) { ex.ack_save(); ls('hc.bad', ''); }
+  if (ls('hc.save', btoa(String.fromCharCode(...new Uint8Array(ex.memory.buffer, ex.save_ptr(), ex.save_len()))))) {
+    ex.ack_save(); ls('hc.bad', '');
+    ls('hc.log', ex.share_build() ? str(ex.share_ptr(), ex.share_len()) : '');   // the input log (share code) beside it
+  }
   else {                                     // storage full / blocked: keep need_save set and try again in 2 s
     retry = performance.now() + 2000;
     setTimeout(schedule, 2100);                // the next frame saves again
@@ -107,7 +113,7 @@ function post() {
   const s = ex.announce_seq();
   if (s !== seq) {
     seq = s;
-    live.textContent = new TextDecoder().decode(new Uint8Array(ex.memory.buffer, ex.announce_ptr(), ex.announce_len()));
+    live.textContent = str(ex.announce_ptr(), ex.announce_len());
   }
 }
 // bytes -> module io buffer (32 KB region). Returns length or 0 when it does not fit.
@@ -118,11 +124,23 @@ function toIo(bin) {
   u.set(Uint8Array.from(bin, (c) => c.charCodeAt()));
   return n;
 }
+const str = (p, n) => new TextDecoder().decode(new Uint8Array(ex.memory.buffer, p, n));
+// A replay code or link (text) -> replay_load; 1 when the module took it (Title: WATCH SHARED RUN)
+const code = (t) => { const n = toIo(t); return n && !ex.replay_load(ex.io_buf(), n); };
 function restore() {
   try {
     const n = toIo(atob(ls('hc.save') || ''));
-    return n && ex.load(ex.io_buf(), n) === 0 ? 1 : 0;   // a bad save is left in place until a new save overwrites it
+    if (!n || ex.load(ex.io_buf(), n)) return 0;   // a bad save is left in place until a new save overwrites it
+    const m = toIo(ls('hc.log') || '');           // its input log: kept only if it replays to this exact state
+    if (m) ex.replay_restore(ex.io_buf(), m);
+    return 1;
   } catch { return 0; }
+}
+// COPY CODE: the module asks during a pointer / key handler (a user gesture); copy the share link
+function copy() {
+  if (!ex.want_copy()) return;
+  try { navigator.clipboard.writeText(str(ex.share_url_ptr(), ex.share_url_len())).catch(() => {}); } catch {}
+  ex.ack_copy();
 }
 function prefs() {
   try { return Object(JSON.parse(ls('hc.prefs'))); } catch { return {}; }   // null / a number -> no prefs
@@ -133,6 +151,7 @@ function pt(e, type) {
   const r = cv.getBoundingClientRect();
   lastT = performance.now();
   ex.pointer(Math.round(e.clientX - r.left), Math.round(e.clientY - r.top), type);
+  copy();
   schedule();
 }
 // cancel the active pointer: type 3 ends the press with no tap, scroll or dismiss (src/22_ui.wat)
@@ -176,6 +195,7 @@ function bind() {
     if (e.repeat) return;                       // module acts once per press; drop auto-repeat
     held.add(c);
     ex.key(c, 1);
+    copy();
     schedule();
   });
   onkeydown = key(1);
@@ -188,6 +208,7 @@ function bind() {
   document.onvisibilitychange = guard(() => {
     if (document.hidden) { release(); save(1); } else dirty();
   });
+  document.onpaste = guard((e) => { const t = e.clipboardData && e.clipboardData.getData('text'); if (t && code(t)) schedule(); });
   const flags = guard(() => { ex.set_flags(mq.matches, ex.get_flags() & 1); schedule(); });
   mq.onchange = flags;
 }
@@ -204,26 +225,23 @@ async function main() {
   catch { r = await WebAssembly.instantiate(await (await fetch('game.wasm')).arrayBuffer(), {}); }
   H.ex = ex = r.instance.exports;
   const p = prefs();
-  const has = restored = ls('hc.bad') ? 0 : restore();   // a save marked bad by a trap is skipped
+  if (!ls('hc.bad') && ls('hc.save')) { mark = 1; ls('hc.bad', '1'); }   // see die(): cleared after the first good frame
+  const has = mark ? restore() : 0;                // a save marked bad by a trap is skipped
   const seed = crypto.getRandomValues(new Uint32Array(1))[0];
   ex.set_env(seed | 0, Math.floor(Date.now() / 86400000));
   ex.set_flags(mq.matches, p.large ? 1 : 0);
   ex.set_pref(2, p.noGazette ? 1 : 0);
   ex.ui_boot(has);
-  // 8. #hash replay (Task 7): decode base64url into the io buffer and hand it to replay_load. Ignored when
-  //    the export is absent or the hash is not valid base64url; never throws.
-  if (location.hash.length > 1 && ex.replay_load) {
-    try {
-      const b = atob(location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/'));
-      const n = toIo(b);
-      if (n) ex.replay_load(ex.io_buf(), n);
-    } catch {}
-  }
+  // 8. share link: the page URL without the hash; a #code becomes the pending replay (the module decodes and
+  //    validates it; garbage is ignored) and the hash is dropped from the address bar
+  const here = location.href.split('#')[0];
+  ex.set_origin(toIo(here));
+  if (location.hash.length > 1 && code(location.hash)) history.replaceState(null, '', here);
   bind();
   rz = 1;
   schedule();
 }
-if (!window.WebAssembly) fail(); else main().catch(() => fail());
+if (!window.WebAssembly) fail(); else main().catch(() => { keep(); fail(); });
 </script>
 </body>
 </html>

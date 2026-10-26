@@ -30,10 +30,11 @@ test('a script string containing </script is escaped or rejected, never emitted 
   assert.ok(!/<\/script/i.test(body));
 });
 
-test('shipped index.html text reads correctly and keeps >= 200 B gz headroom for Task 7', () => {
+// (budget raised to 4 KB gz for the Task 7 loader glue; 7a uses ~200 B of it, the rest stays for 7c metrics)
+test('shipped index.html text reads correctly and keeps >= 500 B gz headroom under the 4 KB budget', () => {
   assert.match(html, /aria-label="HarvestChain farm game\. Keys: E end day, H harvest, 1-5 tabs"/);
   assert.ok(!html.includes('\u0000'));
-  assert.ok(3 * 1024 - gz(html) >= 200, `index.html headroom is ${3 * 1024 - gz(html)} B gz`);
+  assert.ok(4 * 1024 - gz(html) >= 500, `index.html headroom is ${4 * 1024 - gz(html)} B gz`);
 });
 
 test('sw.js only deletes hc- caches', () => {
