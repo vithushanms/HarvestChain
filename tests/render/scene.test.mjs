@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadGame } from '../helpers.mjs';
+import { loadGame, readState } from '../helpers.mjs';
 import { SCENES, sceneGame, drawScene, farm, CROP, BLD, W, GROW } from './scenes.mjs';
 import { generate as genModels, extract as extractModels } from '../../tools/gen-models.mjs';
 
@@ -13,6 +13,9 @@ const GOLDEN_SCENES = ['farm-day1', 'farm-mid', 'farm-winter', 'farm-storm', 'fa
   'farm-truck', 'farm-frost', 'farm-ripe', 'farm-rain', 'farm-drought', 'farm-heat', 'farm-autumn', 'farm-spring'];
 const fbHash = (g) => createHash('sha256').update(g.mem().subarray(R_FB, R_FB + g.ex.fb_w() * g.ex.fb_h() * 4)).digest('hex');
 const rect = (g, i) => [0, 1, 2, 3].map((k) => g.ex.t_tile_rect(i, k));
+// Number of differing pixels between two framebuffer snapshots.
+const diffPx = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++; return n; };
+const snap = (g) => g.mem().slice(R_FB, R_FB + g.ex.fb_w() * g.ex.fb_h() * 4);
 
 async function emptyFarm(w, h, grid = 4) {
   const g = await loadGame();
@@ -66,19 +69,6 @@ test('same state + time + size -> identical framebuffer', async () => {
     const g = await sceneGame(name, 360, 640, 2500);
     drawScene(g, 2500);
     assert.equal(fbHash(g), a, 'redraw over an old frame is identical');
-  }
-});
-
-test('each crop: three growth stages draw three distinct frames; ripe differs from grown', async () => {
-  for (const c of Object.values(CROP)) {
-    const hs = [];
-    for (const p of [0, Math.floor(GROW[c] * 0.45), Math.floor(GROW[c] * 0.8), GROW[c]]) {
-      const g = await emptyFarm(360, 640);
-      farm(g.ex).crop(9, c, p);
-      drawScene(g, 0, { reduced: true });
-      hs.push(fbHash(g));
-    }
-    assert.equal(new Set(hs).size, 4, `crop ${c}: stages 0/1/2 and ripe all distinct`);
   }
 });
 
@@ -197,20 +187,6 @@ test('8x8 grid on a 360px-wide phone: tiles at least 38px wide', async () => {
   assert.ok(rect(g, 0)[2] >= 38, `tile width ${rect(g, 0)[2]}`);
 });
 
-test('tile_at: tapping a tree crown or a building roof selects that tile', async () => {
-  for (const [w, h] of SIZES) {
-    const g = await emptyFarm(w, h, 6);
-    farm(g.ex).crop(idxOf(2, 2), CROP.APPLE, 'ripe', { mature: true }).bld(idxOf(4, 1), BLD.MILL).bld(idxOf(3, 4), BLD.WAREHOUSE);
-    drawScene(g, 0);
-    for (const [i, z] of [[idxOf(2, 2), 20], [idxOf(4, 1), 26], [idxOf(3, 4), 14]]) {
-      const [rx, ry, rw, rh] = rect(g, i);
-      const hw = rw >> 1;
-      const cx = rx + hw, cy = ry + (rh >> 1) - Math.round(z * hw / 16);   // a point high on the model
-      assert.ok(cy < ry, 'probe is above the ground diamond');
-      assert.equal(g.ex.t_tile_at(cx, cy), i, `${w}x${h}: crown/roof of ${i}`);
-    }
-  }
-});
 function idxOf(x, y) { return y * 8 + x; }
 
 test('viewport: an explicit rect places the farm inside it', async () => {
@@ -221,5 +197,163 @@ test('viewport: an explicit rect places the farm inside it', async () => {
     if ((i & 7) >= 6 || (i >> 3) >= 6) continue;
     const [rx, ry, rw, rh] = rect(g, i);
     assert.ok(rx >= 700 && rx + rw <= 1260 && ry >= 100 && ry + rh <= 700, `tile ${i} in viewport`);
+  }
+});
+
+// ---------------------------------------------------------------- fix round 1 (Task 3 review)
+
+// Ground tile of a pixel (pixel-centre inverse projection, same maths as $tile_at's ground
+// step). Projection origin from tile 0's rect: top vertex = (ox, oy), width = 2 hw.
+function groundMap(g) {
+  const [rx, ry, rw] = rect(g, 0);
+  const hw = rw >> 1, ox = rx + hw, oy = ry, D = 64 * hw;
+  return (px, py) => {
+    const cx = 2 * (px - ox) + 1, cy = 2 * (py - oy) + 1;
+    const u = 16 * cx + 32 * cy, v = 32 * cy - 16 * cx;
+    if (u < 0 || v < 0) return -1;
+    const tx = Math.floor(u / D), ty = Math.floor(v / D);
+    return tx < 8 && ty < 8 ? ty * 8 + tx : -1;
+  };
+}
+
+test('tile_at: every owned tile keeps >= 30% of its ground diamond and its centre (tall models in front)', async () => {
+  for (const name of ['farm-full', 'farm-mid', 'farm-allbld']) for (const [w, h] of [[360, 640], [1280, 800]]) {
+    const g = await sceneGame(name, w, h, 0, { reduced: true });
+    const W = g.ex.fb_w(), Hh = g.ex.fb_h(), gm = groundMap(g);
+    const grid = readState(g.mem()).grid;
+    const tot = new Array(64).fill(0), hit = new Array(64).fill(0);
+    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+      const t = gm(x, y);
+      if (t < 0 || (t & 7) >= grid || (t >> 3) >= grid) continue;
+      tot[t]++;
+      if (g.ex.t_tile_at(x, y) === t) hit[t]++;
+    }
+    for (let ty = 0; ty < grid; ty++) for (let tx = 0; tx < grid; tx++) {
+      const i = ty * 8 + tx;
+      assert.ok(tot[i] > 0);
+      assert.ok(hit[i] >= 0.3 * tot[i], `${name} ${W}x${Hh} tile ${i}: ${hit[i]}/${tot[i]} ground px map to it`);
+      const [rx, ry, rw, rh] = rect(g, i);
+      assert.equal(g.ex.t_tile_at(rx + (rw >> 1), ry + (rh >> 1)), i, `${name} ${W}x${Hh} centre of ${i}`);
+    }
+  }
+});
+
+// Crowns / roofs: the part of a tall model drawn above its own ground diamond overhangs the
+// tiles behind. $tile_at gives the core (inner 5/8) of every diamond to its own tile (so plots
+// behind tall models stay tappable, test above); everywhere else on the overhang inside the
+// body box the model's tile wins. Asserted: every overhang pixel outside all cores and inside
+// the body box selects the model, >= 35% of all overhang pixels do, and fixed crown probes.
+test('tile_at: crowns / roofs of tall models select their own tile', async () => {
+  const tall = [['apple', (f, i) => f.crop(i, CROP.APPLE, 100, { mature: true }), 27 - 3],
+    ['apple sapling', (f, i) => f.crop(i, CROP.APPLE, 400), 0]];
+  for (let b = 0; b < 10; b++) tall.push([`building ${b}`, (f, i) => f.bld(i, b), b === BLD.MILL ? 26 : 0]);
+  for (let b = 0; b < 10; b++) tall.push([`building ${b} upgraded`, (f, i) => f.bld(i, b, { upgraded: true }), 0]);
+  const T = idxOf(2, 3);
+  for (const [w, h] of [[360, 640], [1280, 800]]) {
+    const e = await emptyFarm(w, h, 6);
+    drawScene(e, 0, { reduced: true });
+    const empty = snap(e);
+    for (const [name, put, probeZ] of tall) {
+      const g = await emptyFarm(w, h, 6);
+      put(farm(g.ex), T);
+      drawScene(g, 0, { reduced: true });
+      const W = g.ex.fb_w(), m = snap(g), [rx, ry, rw] = rect(g, T), hw = rw >> 1, cx = rx + hw;
+      const [r0x, r0y] = rect(g, 0), ox = r0x + hw, oy = r0y, D = 64 * hw;
+      const inCore = (px, py) => {
+        const u = 16 * (2 * (px - ox) + 1) + 32 * (2 * (py - oy) + 1), v = 32 * (2 * (py - oy) + 1) - 16 * (2 * (px - ox) + 1);
+        if (u < 0 || v < 0) return false;
+        const c = (f) => 8 * Math.abs(2 * (f % D) - D) <= 5 * D;
+        return c(u) && c(v);
+      };
+      let n = 0, ok = 0, ring = 0, ringOk = 0;
+      for (let y = 0; y < ry; y++) for (let x = 0; x < W; x++) {
+        const o = (y * W + x) * 4;
+        if (m[o] === empty[o] && m[o + 1] === empty[o + 1] && m[o + 2] === empty[o + 2]) continue;
+        const hit = g.ex.t_tile_at(x, y) === T;
+        n++; ok += hit;
+        if (!inCore(x, y) && Math.abs(x - cx) * 8 <= 5 * hw) { ring++; ringOk += hit; }
+      }
+      if (n < 20) continue;   // does not overhang (e.g. the low cellar mound)
+      assert.equal(ringOk, ring, `${w}x${h} ${name}: overhang outside the cores selects tile ${T}`);
+      assert.ok(ok >= 0.35 * n, `${w}x${h} ${name}: ${ok}/${n} overhang px select tile ${T}`);
+      if (probeZ) {
+        const py = ry + (rw >> 2) - Math.round(probeZ * hw / 16);
+        assert.equal(g.ex.t_tile_at(cx, py), T, `${w}x${h} ${name}: crown probe z=${probeZ}`);
+      }
+    }
+  }
+});
+
+test('tile_at: unowned slab tiles return their own index (stable), off-slab -1', async () => {
+  for (const [w, h] of SIZES) {
+    const g = await emptyFarm(w, h, 4);
+    drawScene(g, 0, { reduced: true });
+    for (let i = 0; i < 64; i++) {
+      if ((i & 7) < 4 && (i >> 3) < 4) continue;
+      const [rx, ry, rw, rh] = rect(g, i);
+      const cx = rx + (rw >> 1), cy = ry + (rh >> 1);
+      if (cx < 0 || cy < 0 || cx >= g.ex.fb_w() || cy >= g.ex.fb_h()) continue;
+      assert.equal(g.ex.t_tile_at(cx, cy), i, `${w}x${h} unowned tile ${i}`);
+      assert.equal(g.ex.t_tile_at(cx, cy), i, 'stable');
+    }
+    const gm = groundMap(g);
+    let off = 0;
+    for (let y = 0; y < g.ex.fb_h(); y += 3) for (const x of [0, g.ex.fb_w() - 1]) {
+      if (gm(x, y) >= 0) continue;
+      off++;
+      assert.equal(g.ex.t_tile_at(x, y), -1, `off-slab (${x},${y})`);
+    }
+    assert.ok(off > 0);
+  }
+});
+
+test('tiny framebuffers: scene_draw is fast (horizon never below the framebuffer) and in bounds', async () => {
+  for (const [w, h] of [[1, 1], [2, 3], [360, 5], [5, 360]]) for (const name of ['farm-mid', 'farm-storm', 'farm-frost', 'farm-heat']) {
+    const g = await loadGame();
+    g.ex.resize(w, h, 100);
+    SCENES[name](g.ex);
+    drawScene(g, 1000);   // warm-up
+    const t0 = process.hrtime.bigint();
+    drawScene(g, 1000);
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    assert.ok(ms < 5, `${name} ${g.ex.fb_w()}x${g.ex.fb_h()}: ${ms.toFixed(2)} ms`);
+    assert.equal(g.ex.t_canary_ok(), 1);
+  }
+});
+
+test('0x0 framebuffer (no resize / failed grow): scene_draw and tile_at do not trap', async () => {
+  for (const name of ['farm-storm', 'farm-mid', 'farm-frost', 'farm-drought', 'farm-winter']) {
+    const g = await loadGame();
+    SCENES[name](g.ex);
+    assert.equal(g.ex.fb_w() * g.ex.fb_h(), 0);
+    for (const t of [0, 90, 1000]) drawScene(g, t);
+    assert.equal(g.ex.t_tile_at(0, 0), -1);
+  }
+});
+
+test('trucks: a returning truck with daysLeft 0 is drawn like daysLeft 1 (no wrap-around)', async () => {
+  const draw = async (o) => { const g = await emptyFarm(360, 640); if (o) farm(g.ex).truck(0, o); drawScene(g, 0, { reduced: true }); assert.equal(g.ex.t_canary_ok(), 1); return fbHash(g); };
+  const none = await draw(null);
+  const d1 = await draw({ phase: 2, dest: 1, daysLeft: 1 });
+  const d0 = await draw({ phase: 2, dest: 1, daysLeft: 0 });
+  assert.notEqual(d1, none);
+  assert.equal(d0, d1);
+  assert.notEqual(await draw({ phase: 1, dest: 1, daysLeft: 0 }), none, 'outbound daysLeft 0 still on screen');
+});
+
+
+test('each crop: stages and ripe differ pairwise by >= 20 pixels', async () => {
+  for (const c of Object.values(CROP)) {
+    const fr = [];
+    for (const p of [0, Math.floor(GROW[c] * 0.45), Math.floor(GROW[c] * 0.8), GROW[c]]) {
+      const g = await emptyFarm(360, 640);
+      farm(g.ex).crop(9, c, p);
+      drawScene(g, 0, { reduced: true });
+      fr.push(snap(g));
+    }
+    for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
+      const n = diffPx(fr[a], fr[b]);
+      assert.ok(n >= 20, `crop ${c}: frames ${a}/${b} differ by ${n} px`);
+    }
   }
 });

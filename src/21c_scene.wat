@@ -184,15 +184,17 @@
   (local.set $y (i32.sub (local.get $oy) (local.get $hw)))
   (local.set $h (i32.sub (local.get $oy) (i32.shr_s (local.get $hw) (i32.const 2))))
   (local.set $w (i32.div_s (global.get $fb_h) (i32.const 5)))
-  (global.set $sc_hz (call $clamp (select (local.get $y) (select (local.get $w) (local.get $h) (i32.lt_s (local.get $w) (local.get $h)))
-    (i32.ge_s (local.get $y) (local.get $w))) (i32.const 8) (global.get $fb_h))))
+  ;; (clamped twice: on a framebuffer shorter than 8 rows the floor of 8 must not win)
+  (global.set $sc_hz (call $clamp (call $clamp (select (local.get $y) (select (local.get $w) (local.get $h) (i32.lt_s (local.get $w) (local.get $h)))
+    (i32.ge_s (local.get $y) (local.get $w))) (i32.const 8) (global.get $fb_h)) (i32.const 0) (global.get $fb_h))))
 
 ;; ---------------------------------------------------------------- small helpers
 
 (func $pi (param $i i32) (result i32) (call $pal (i32.load8_u (local.get $i))))   ;; palette idx at address
 (func $tb (param $o i32) (result i32) (i32.load8_u (i32.add (global.get $SCD) (local.get $o))))
 (func $sin (param $a i32) (result i32) (i32.load8_s (i32.add (global.get $SCD) (i32.and (local.get $a) (i32.const 15)))))
-(func $mod (param $v i32) (param $m i32) (result i32) (i32.rem_u (local.get $v) (local.get $m)))
+(func $mod (param $v i32) (param $m i32) (result i32)   ;; v mod m, m = 0 treated as 1 (tiny framebuffers)
+  (i32.rem_u (local.get $v) (i32.or (local.get $m) (i32.eqz (local.get $m)))))
 
 ;; Condition mask: always | A or !A | B or !B | C or !C | D.
 (func $mc (param $a i32) (param $b i32) (param $c i32) (param $d i32)
@@ -650,7 +652,9 @@
   (local.set $x0 (i32.sub (i32.shl (global.get $sc_g) (i32.const 4)) (i32.const 10)))
   (local.set $ph (i32.load8_u offset=2 (local.get $p)))
   (if (i32.eqz (local.get $ph)) (then (return (i32.add (i32.sub (local.get $x0) (i32.shl (local.get $i) (i32.const 4))) (i32.const 55)))))
+  ;; daysLeft >= 1 (0 never occurs in play; crafted / corrupt states must not wrap)
   (local.set $dl (i32.load8_u offset=3 (local.get $p)))
+  (if (i32.eqz (local.get $dl)) (then (local.set $dl (i32.const 1))))
   (local.set $tot (call $bal (global.get $T_MKT) (call $clamp (i32.load8_u offset=1 (local.get $p)) (i32.const 0) (i32.const 2)) (i32.const 2)))
   (if (i32.lt_u (local.get $tot) (local.get $dl)) (then (local.set $tot (local.get $dl))))
   ;; out: (tot - dl + 1) / (tot + 1) of the way; back: (dl - 1/2) / (tot + 1), so trucks meeting on
@@ -1068,6 +1072,8 @@
 
 (func $scene_draw
   (local $L i32) (local $i i32)
+  ;; no framebuffer (before the first resize, or a failed memory.grow): nothing to draw
+  (if (i32.eqz (i32.mul (global.get $fb_w) (global.get $fb_h))) (then (return)))
   (call $scene_fit)
   (global.set $sc_seed (i32.load (global.get $S_SEED)))
   (global.set $sc_sea (call $season))
@@ -1116,13 +1122,36 @@
   (call $iso_proj (i32.add (local.get $wx) (i32.const 16)) (local.get $wy) (i32.const 0))
   (global.set $tr_w (i32.sub (global.get $sx) (global.get $tr_x))))
 
-;; Screen point -> tile index or -1. Object bodies first (front to back, so a tree crown or a
-;; roof that overlaps the ground behind it selects its own tile), then the ground diamond.
+;; Screen point -> slab tile index 0..63 (owned or not; the UI offers unowned land) or -1
+;; (sky, meadow, off the framebuffer). Three steps:
+;;  1. ground tile g under the pixel centre (inverse projection). If the point lies in the
+;;     core of g's diamond (the inner 5/8 of each diagonal = 39% of its area, incl. the
+;;     centre) the answer is g: every plot stays tappable even behind tall models.
+;;  2. otherwise tall model bodies (>= 6 units), front to back: a box of +-5/8 hw around the
+;;     tile centre from the model top down to the model's own diamond top vertex, so a tree
+;;     crown or a roof that overhangs the ring of the tiles behind selects its own tile;
+;;  3. else g (or -1 off the slab).
 (func $tile_at (param $px i32) (param $py i32) (result i32)
   (local $s i32) (local $tx i32) (local $ty i32) (local $i i32) (local $m i32) (local $h i32) (local $cx i32) (local $cy i32)
-  (local $u i32) (local $v i32) (local $d i32)
+  (local $u i32) (local $v i32) (local $d i32) (local $g i32)
   (call $scene_fit)
   (if (i32.or (i32.ge_u (local.get $px) (global.get $fb_w)) (i32.ge_u (local.get $py) (global.get $fb_h))) (then (return (i32.const -1))))
+  ;; ground: invert the projection at the pixel centre; wx = (16 dx + 32 dy) / (4 hw)
+  (local.set $cx (i32.add (i32.shl (i32.sub (local.get $px) (global.get $iso_ox)) (i32.const 1)) (i32.const 1)))
+  (local.set $cy (i32.add (i32.shl (i32.sub (local.get $py) (global.get $iso_oy)) (i32.const 1)) (i32.const 1)))
+  (local.set $u (i32.add (i32.shl (local.get $cx) (i32.const 4)) (i32.shl (local.get $cy) (i32.const 5))))
+  (local.set $v (i32.sub (i32.shl (local.get $cy) (i32.const 5)) (i32.shl (local.get $cx) (i32.const 4))))
+  (local.set $d (i32.shl (global.get $iso_hw) (i32.const 6)))   ;; 4 hw * 16 units per tile
+  (local.set $g (i32.const -1))
+  (if (i32.and (i32.ge_s (local.get $u) (i32.const 0)) (i32.ge_s (local.get $v) (i32.const 0))) (then
+    (local.set $tx (i32.div_s (local.get $u) (local.get $d)))
+    (local.set $ty (i32.div_s (local.get $v) (local.get $d)))
+    (if (i32.and (i32.lt_u (local.get $tx) (i32.const 8)) (i32.lt_u (local.get $ty) (i32.const 8))) (then
+      (local.set $g (i32.add (i32.shl (local.get $ty) (i32.const 3)) (local.get $tx)))
+      ;; core: |2 (u mod d) - d| <= 5/8 d on both diagonals
+      (if (i32.and (call $core (i32.sub (local.get $u) (i32.mul (local.get $tx) (local.get $d))) (local.get $d))
+                   (call $core (i32.sub (local.get $v) (i32.mul (local.get $ty) (local.get $d))) (local.get $d)))
+        (then (return (local.get $g))))))))
   (local.set $s (i32.const 14))
   (loop $ls
     (local.set $tx (i32.const 7))
@@ -1134,26 +1163,23 @@
         (if (i32.ge_s (local.get $m) (i32.const 0)) (then
           (local.set $h (call $mheight (local.get $m)))
           (if (i32.ge_u (local.get $h) (i32.const 6)) (then
-            (call $iso_proj (i32.add (i32.shl (local.get $tx) (i32.const 4)) (i32.const 8)) (i32.add (i32.shl (local.get $ty) (i32.const 4)) (i32.const 8)) (i32.const 0))
-            (local.set $cx (global.get $sx)) (local.set $cy (global.get $sy))
-            (call $iso_proj (i32.add (i32.shl (local.get $tx) (i32.const 4)) (i32.const 8)) (i32.add (i32.shl (local.get $ty) (i32.const 4)) (i32.const 8)) (local.get $h))
+            ;; body box: rows from the back corner at the model's top height (less 1 px of
+            ;; outline) down to the tile's own top vertex; columns cx +- 5/8 hw
+            (call $iso_proj (i32.shl (local.get $tx) (i32.const 4)) (i32.shl (local.get $ty) (i32.const 4)) (local.get $h))
+            (local.set $cx (global.get $sx)) (local.set $cy (i32.sub (global.get $sy) (i32.const 1)))
+            (call $iso_proj (i32.shl (local.get $tx) (i32.const 4)) (i32.shl (local.get $ty) (i32.const 4)) (i32.const 0))
             (if (i32.and (i32.le_u (i32.add (i32.sub (local.get $px) (local.get $cx)) (i32.shr_u (i32.mul (global.get $iso_hw) (i32.const 5)) (i32.const 3)))
                                    (i32.shr_u (i32.mul (global.get $iso_hw) (i32.const 5)) (i32.const 2)))
-                         (i32.and (i32.ge_s (local.get $py) (global.get $sy)) (i32.le_s (local.get $py) (local.get $cy))))
+                         (i32.and (i32.ge_s (local.get $py) (local.get $cy)) (i32.lt_s (local.get $py) (global.get $sy))))
               (then (return (local.get $i))))))))))
       (br_if $lt (i32.ge_s (local.tee $tx (i32.sub (local.get $tx) (i32.const 1))) (i32.const 0))))
     (br_if $ls (i32.ge_s (local.tee $s (i32.sub (local.get $s) (i32.const 1))) (i32.const 0))))
-  ;; ground: invert the projection at the pixel centre; wx = (16 dx + 32 dy) / (4 hw)
-  (local.set $cx (i32.add (i32.shl (i32.sub (local.get $px) (global.get $iso_ox)) (i32.const 1)) (i32.const 1)))
-  (local.set $cy (i32.add (i32.shl (i32.sub (local.get $py) (global.get $iso_oy)) (i32.const 1)) (i32.const 1)))
-  (local.set $u (i32.add (i32.shl (local.get $cx) (i32.const 4)) (i32.shl (local.get $cy) (i32.const 5))))
-  (local.set $v (i32.sub (i32.shl (local.get $cy) (i32.const 5)) (i32.shl (local.get $cx) (i32.const 4))))
-  (local.set $d (i32.shl (global.get $iso_hw) (i32.const 6)))   ;; 4 hw * 16 units per tile
-  (if (i32.or (i32.lt_s (local.get $u) (i32.const 0)) (i32.lt_s (local.get $v) (i32.const 0))) (then (return (i32.const -1))))
-  (local.set $tx (i32.div_s (local.get $u) (local.get $d)))
-  (local.set $ty (i32.div_s (local.get $v) (local.get $d)))
-  (if (i32.or (i32.ge_u (local.get $tx) (i32.const 8)) (i32.ge_u (local.get $ty) (i32.const 8))) (then (return (i32.const -1))))
-  (i32.add (i32.shl (local.get $ty) (i32.const 3)) (local.get $tx)))
+  (local.get $g))
+
+(func $core (param $f i32) (param $d i32) (result i32)
+  (local.set $f (i32.sub (i32.shl (local.get $f) (i32.const 1)) (local.get $d)))
+  (i32.le_u (i32.shl (select (local.get $f) (i32.sub (i32.const 0) (local.get $f)) (i32.ge_s (local.get $f) (i32.const 0))) (i32.const 3))
+            (i32.mul (local.get $d) (i32.const 5))))
 
 ;; Test hooks.
 (func $t_scene_flags (param $reduced i32) (param $sel i32) (param $hover i32)
