@@ -5,69 +5,78 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>HarvestChain</title>
 <meta name="theme-color" content="%BG%">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href='%MANIFEST%'>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:%BG%;color:#f4ecd8;font:16px monospace}
-canvas{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block;image-rendering:pixelated;touch-action:none;outline:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:%BG%;color:#fff}
+canvas{position:fixed;left:0;top:0;width:100%;height:100%;display:block;image-rendering:pixelated;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 #a{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 </style>
 </head>
 <body>
-<canvas id="c" role="img" aria-label="HarvestChain farm game; keyboard: E end day, H harvest all, 1 to 5 tabs"></canvas>
+<canvas id="c" role="img" aria-label="HarvestChain farm game. Keys: E end day, H harvest, 1-5 tabs"></canvas>
 <div id="a" role="status" aria-live="polite"></div>
-<noscript>HarvestChain needs JavaScript. COULD NOT LOAD GAME.</noscript>
 <script>
-'use strict';
 // 1. load timer origin (also exposed for tests / the Task 7 load timer via window.__hc)
 const t0 = performance.now();
-const KEYS = /*KEYS*/{};
+const KEYS = '/*KEYS*/'.split(' ');   // KeyboardEvent.code list; key code = index + 1 (tools/keycodes.json)
 const H = window.__hc = { t0, t1: 0, n: 0 };   // t1 = first blit; n = frame() calls
 const cv = document.getElementById('c');
 const live = document.getElementById('a');
 const ctx = cv.getContext('2d');
-const store = {
-  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+// localStorage that never throws: ls(k) -> string|null, ls(k, v) -> 1 on success / 0 on failure
+const ls = (k, v) => {
+  try { return v === undefined ? localStorage.getItem(k) : (localStorage.setItem(k, v), 1); }
+  catch { return v === undefined ? null : 0; }
 };
-const fail = () => { document.body.textContent = 'COULD NOT LOAD GAME - RELOAD'; };
+const fail = (m) => { document.body.textContent = (m || 'COULD NOT LOAD GAME') + ' - RELOAD'; };
+// A wasm trap (or any exception from a module call) ends the session: show a message, stop scheduling and input.
+// The stored save is left as it is.
+let dead = 0;
+function die() {
+  dead = 1;
+  cancelAnimationFrame(raf); clearTimeout(tm);
+  fail('SOMETHING WENT WRONG');
+}
+const guard = (f) => (e) => { if (!dead) try { f(e); } catch { die(); } };
 
 let ex;
-let raf = 0, tm = 0, rz = 1, seq = 0, lastPrefs = -1, active = null, swDone = 0;
+let raf = 0, tm = 0, rz = 1, seq = 0, lastPrefs = -1, active = null, last = [0, 0], lastT = 0, retry = 0;
 const held = new Set();
 
 // ---- scheduling (5): frame() only while the module wants it; idle = zero CPU
 function schedule() {
-  if (!ex || document.hidden || raf) return;
+  if (dead || !ex || document.hidden || raf) return;
   clearTimeout(tm); tm = 0;
   raf = requestAnimationFrame(run);
 }
 function run() {
   raf = 0;
-  if (rz) resize();
-  H.n++;
-  const r = ex.frame(Math.floor(performance.now()));   // 0 idle | 1 animating | 2 ambient only
-  blit();
-  post();
+  if (dead) return;
+  let r;
+  try {
+    if (rz) resize();
+    H.n++;
+    r = ex.frame(Math.floor(performance.now()));   // 0 idle | 1 animating | 2 ambient only
+    blit();
+    post();
+  } catch { return die(); }
   if (r === 1) raf = requestAnimationFrame(run);
   else if (r === 2) tm = setTimeout(() => { tm = 0; schedule(); }, 83);
-  if (!H.t1) { H.t1 = performance.now(); register(); }
+  if (!H.t1) { H.t1 = performance.now(); register(); }   // once: first frame
 }
 
 // ---- canvas (3, 6)
 function resize() {
   rz = 0;
-  const w = innerWidth, h = innerHeight;
-  ex.resize(w, h, Math.round(devicePixelRatio * 100));
+  ex.resize(innerWidth, innerHeight, Math.round(devicePixelRatio * 100));
   const fw = ex.fb_w(), fh = ex.fb_h();   // backing store = module's logical size; CSS scales it nearest-neighbour
   if (cv.width !== fw) cv.width = fw;    // assigning clears the bitmap, so only on a real change
   if (cv.height !== fh) cv.height = fh;
-  cv.style.width = w + 'px';
-  cv.style.height = h + 'px';
 }
 function blit() {
   const w = ex.fb_w(), h = ex.fb_h();
@@ -76,23 +85,20 @@ function blit() {
 const dirty = () => { rz = 1; schedule(); };
 
 // ---- persistence (6), prefs (7), aria-live (9): all after every frame
-function bytesOut(p, n) {
-  const b = new Uint8Array(ex.memory.buffer, p, n);
-  let s = '';
-  for (let i = 0; i < n; i++) s += String.fromCharCode(b[i]);
-  return s;
-}
-function save() {
-  if (!ex.need_save()) return;
-  try { store.set('hc.save', btoa(bytesOut(ex.save_ptr(), ex.save_len()))); } catch (e) {}
-  ex.ack_save();
+function save(force) {
+  if (!ex.need_save() || (!force && performance.now() < retry)) return;
+  if (ls('hc.save', btoa(String.fromCharCode(...new Uint8Array(ex.memory.buffer, ex.save_ptr(), ex.save_len()))))) ex.ack_save();
+  else {                                     // storage full / blocked: keep need_save set and try again in 2 s
+    retry = performance.now() + 2000;
+    setTimeout(schedule, 2100);                // the next frame saves again
+  }
 }
 function post() {
   save();
   const f = ex.get_flags() & 5;               // bit0 large text, bit2 gazette off (bit1 = OS reduced motion, not stored)
   if (f !== lastPrefs) {
     lastPrefs = f;
-    store.set('hc.prefs', JSON.stringify({ large: f & 1, noGazette: f >> 2 }));
+    ls('hc.prefs', JSON.stringify({ large: f & 1, noGazette: f >> 2 }));
   }
   const s = ex.announce_seq();
   if (s !== seq) {
@@ -105,72 +111,90 @@ function toIo(bin) {
   const n = bin.length;
   if (!n || n > 32768) return 0;
   const u = new Uint8Array(ex.memory.buffer, ex.io_buf(), n);
-  for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
+  u.set(Uint8Array.from(bin, (c) => c.charCodeAt()));
   return n;
 }
 function restore() {
   try {
-    const n = toIo(atob(store.get('hc.save') || ''));
+    const n = toIo(atob(ls('hc.save') || ''));
     return n && ex.load(ex.io_buf(), n) === 0 ? 1 : 0;   // a bad save is left in place until a new save overwrites it
-  } catch (e) { return 0; }
+  } catch { return 0; }
 }
 function prefs() {
-  try { const p = JSON.parse(store.get('hc.prefs')); return p && typeof p === 'object' ? p : {}; } catch (e) { return {}; }
+  try { const p = JSON.parse(ls('hc.prefs')); return p && typeof p === 'object' ? p : {}; } catch { return {}; }
 }
 
 // ---- input (4)
 function pt(e, type) {
   const r = cv.getBoundingClientRect();
-  ex.pointer(Math.round(e.clientX - r.left), Math.round(e.clientY - r.top), type);
+  last = [Math.round(e.clientX - r.left), Math.round(e.clientY - r.top)];
+  lastT = performance.now();
+  ex.pointer(last[0], last[1], type);
+  schedule();
+}
+// release the active pointer. cancel = true: send an off-canvas move then up, so nothing fires.
+function drop(cancel) {
+  if (active === null) return;
+  active = null;
+  if (cancel) ex.pointer(-1, -1, 1);
+  ex.pointer(cancel ? -1 : last[0], cancel ? -1 : last[1], 2);
   schedule();
 }
 function bind() {
   cv.oncontextmenu = (e) => e.preventDefault();
-  cv.onpointerdown = (e) => {
-    if (!e.isPrimary || e.button > 0 || active !== null) return;   // primary pointer, left button / touch only
+  cv.onpointerdown = guard((e) => {
+    if (!e.isPrimary || e.button > 0) return;                  // primary pointer, left button / touch only
+    if (active !== null) {
+      if (performance.now() - lastT < 1000) return;
+      drop(1);                                                 // stale: its up never arrived
+    }
     active = e.pointerId;
-    try { cv.setPointerCapture(e.pointerId); } catch (x) {}
-    e.preventDefault();
+    try { cv.setPointerCapture(e.pointerId); } catch {}
     pt(e, 0);
-  };
-  cv.onpointermove = (e) => { if (e.isPrimary) pt(e, 1); };
-  const up = (e) => {
+  });
+  cv.onpointermove = guard((e) => { e.isPrimary && pt(e, 1); });
+  const up = guard((e) => {
     if (e.pointerId !== active) return;
     active = null;
     pt(e, 2);
-  };
+  });
   cv.onpointerup = up;
-  cv.onpointercancel = up;
+  cv.onlostpointercapture = up;
+  cv.onpointercancel = guard((e) => { if (e.pointerId === active) drop(1); });
   // Task 7: cv.onwheel -> ex.wheel(...) once the export exists (feature-detect it).
-  const key = (e, d) => {
-    const c = KEYS[e.code];
-    if (!c || e.ctrlKey || e.metaKey || e.altKey) return;
+  const key = (d) => guard((e) => {
+    const c = KEYS.indexOf(e.code) + 1;
+    if (!c || e.isComposing) return;
+    if (!d) {                                  // always release a held key, whatever modifiers are down now
+      if (held.delete(c)) { ex.key(c, 0); schedule(); }
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();
     if (e.repeat) return;                       // module acts once per press; drop auto-repeat
-    if (d) held.add(c); else held.delete(c);
-    ex.key(c, d);
+    held.add(c);
+    ex.key(c, 1);
     schedule();
-  };
-  onkeydown = (e) => key(e, 1);
-  onkeyup = (e) => key(e, 0);
-  const release = () => { for (const c of held) ex.key(c, 0); held.clear(); schedule(); };
+  });
+  onkeydown = key(1);
+  onkeyup = key(0);
+  const release = guard(() => { for (const c of held) ex.key(c, 0); held.clear(); drop(1); schedule(); });
   onblur = release;
   addEventListener('resize', dirty);
   addEventListener('orientationchange', dirty);
-  if (visualViewport) visualViewport.addEventListener('resize', dirty);
-  addEventListener('pagehide', () => { release(); save(); });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { release(); save(); } else dirty();
-  });
-  const mq = matchMedia('(prefers-reduced-motion: reduce)');
-  const flags = () => { ex.set_flags(mq.matches, ex.get_flags() & 1); schedule(); };
-  if (mq.addEventListener) mq.addEventListener('change', flags);
+  if (window.visualViewport) visualViewport.addEventListener('resize', dirty);
+  addEventListener('pagehide', guard(() => { release(); save(1); }));
+  document.addEventListener('visibilitychange', guard(() => {
+    if (document.hidden) { release(); save(1); } else dirty();
+  }));
+  const flags = guard(() => { ex.set_flags(mq.matches, ex.get_flags() & 1); schedule(); });
+  mq.onchange = flags;
 }
 
 // ---- service worker (10): after the first frame, never on file://
 function register() {
-  if (swDone++ || !navigator.serviceWorker || location.protocol === 'file:') return;
-  try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {}
+  if (!navigator.serviceWorker || location.protocol === 'file:') return;
+  try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch {}
 }
 
 async function main() {
@@ -182,7 +206,7 @@ async function main() {
   const has = restore();
   const seed = crypto.getRandomValues(new Uint32Array(1))[0];
   ex.set_env(seed | 0, Math.floor(Date.now() / 86400000));
-  ex.set_flags(matchMedia('(prefers-reduced-motion: reduce)').matches, p.large ? 1 : 0);
+  ex.set_flags(mq.matches, p.large ? 1 : 0);
   ex.set_pref(2, p.noGazette ? 1 : 0);
   ex.ui_boot(has);
   // 8. #hash replay (Task 7): decode base64url into the io buffer and hand it to replay_load. Ignored when
@@ -192,13 +216,13 @@ async function main() {
       const b = atob(location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/'));
       const n = toIo(b);
       if (n) ex.replay_load(ex.io_buf(), n);
-    } catch (e) {}
+    } catch {}
   }
   bind();
   rz = 1;
   schedule();
 }
-if (!window.WebAssembly) fail(); else main().catch(fail);
+if (!window.WebAssembly) fail(); else main().catch(() => fail());
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // Shared e2e fixtures: static server, console-error collector, tap/key helpers, save-state reader.
 import { test as base, expect, chromium } from '@playwright/test';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { startServer } from './server.mjs';
 import { readState } from '../helpers.mjs';
 import { STATE } from '../helpers.mjs';
@@ -27,6 +27,56 @@ export const test = base.extend({
     const mobile = info.project.use.isMobile;
     const g = {
       page, url: server.url, pos, mobile,
+      // Serve build/game.test.wasm (t_* hooks) instead of the shipping module; taps are then derived from the module.
+      hooks: async () => {
+        // no service worker in hook mode: it would cache the shipping wasm and serve it after a reload
+        await page.addInitScript(() => Object.defineProperty(navigator, 'serviceWorker', { value: undefined }));
+        await page.route('**/game.wasm', (r) => r.fulfill({ body: readFileSync('build/game.test.wasm'), contentType: 'application/wasm' }));
+      },
+      // Wrap the instance's exports: call counts in __calls, pointer/key args in __log, throw from export named by __trap.
+      instrument: () => page.addInitScript(() => {
+        const calls = (window.__calls = {}); window.__log = []; window.__trap = null;
+        const wrap = (r) => {
+          const ex = {};
+          for (const [k, v] of Object.entries(r.instance.exports)) {
+            ex[k] = typeof v !== 'function' ? v : (...a) => {
+              calls[k] = (calls[k] || 0) + 1;
+              if (k === 'pointer' || k === 'key') window.__log.push([k, ...a]);
+              if (window.__trap === k) throw new WebAssembly.RuntimeError('boom');
+              return v(...a);
+            };
+          }
+          return { module: r.module, instance: { exports: ex } };
+        };
+        const is = WebAssembly.instantiateStreaming, ia = WebAssembly.instantiate;
+        WebAssembly.instantiateStreaming = (...a) => is.apply(WebAssembly, a).then(wrap);
+        WebAssembly.instantiate = (...a) => ia.apply(WebAssembly, a).then((r) => (r.instance ? wrap(r) : r));
+      }),
+      // CSS-px centre of a hit region (needs hooks()); code is a HIT_* code
+      hit: async (code) => page.evaluate((c) => {
+        const ex = window.__hc.ex, k = innerWidth / ex.fb_w(), v = (i) => ex.t_hit(c, i);
+        if (v(0) < 0) return null;
+        return [(v(0) + v(2) / 2) * k, (v(1) + v(3) / 2) * k];
+      }, code),
+      tileAt: (i) => page.evaluate((i) => {
+        const ex = window.__hc.ex, k = innerWidth / ex.fb_w();
+        return [(ex.t_tile_rect(i, 0) + ex.t_tile_rect(i, 2) / 2) * k, (ex.t_tile_rect(i, 1) + ex.t_tile_rect(i, 3) / 2) * k];
+      }, i),
+      // CSS-px centre of the first drawn button whose label matches (needs hooks()); draw list = 64 x 64 B {code, enabled, label}
+      button: (label) => page.evaluate((re) => {
+        const ex = window.__hc.ex, m = new Uint8Array(ex.memory.buffer), k = innerWidth / ex.fb_w();
+        for (let i = 0; i < 64; i++) {
+          const p = ex.t_ui_btn(i);
+          const code = new DataView(m.buffer).getInt32(p, true);
+          let s = '';
+          for (let j = 8; j < 36 && m[p + j]; j++) s += String.fromCharCode(m[p + j]);
+          if (code && new RegExp(re).test(s)) {
+            const v = (n) => ex.t_hit(code, n);
+            if (v(0) >= 0) return [(v(0) + v(2) / 2) * k, (v(1) + v(3) / 2) * k];
+          }
+        }
+        return null;
+      }, label.source),
       open: async (path = '') => { await page.goto(server.url + path); await g.ready(); },
       ready: () => page.waitForFunction(() => window.__hc && window.__hc.t1 > 0),
       reload: async () => { await page.reload(); await g.ready(); },
@@ -52,15 +102,15 @@ export const test = base.extend({
         const c = document.getElementById('c');
         const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
         const seen = new Set();
-        let sum = 0, sum2 = 0;
+        let sum = 0, sum2 = 0, opaque = 0;
         const n = c.width * c.height;
         for (let i = 0; i < n; i++) {
           const o = i * 4;
           const l = d[o] * 0.3 + d[o + 1] * 0.59 + d[o + 2] * 0.11;
-          sum += l; sum2 += l * l;
+          sum += l; sum2 += l * l; if (d[o + 3] === 255) opaque++;
           if (seen.size < 64) seen.add((d[o] << 16) | (d[o + 1] << 8) | d[o + 2]);
         }
-        return { w: c.width, h: c.height, variance: sum2 / n - (sum / n) ** 2, colors: seen.size };
+        return { w: c.width, h: c.height, opaque: opaque === n, variance: sum2 / n - (sum / n) ** 2, colors: seen.size };
       }),
     };
     await use(g);
