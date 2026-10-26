@@ -41,6 +41,8 @@ node --test --test-name-pattern="round-trip" tests/state.test.mjs
 
 A healthy build prints two size lines: `game.wasm  <raw> B raw  <gz> B gz` (the shipping binary, with every `t_*` test-hook export stripped; the budgets below apply to it) and `game.test.wasm  <raw> B raw  <gz> B gz` (all exports; used by tests and dev tools; no budget).
 
+Browser smoke tests (Playwright, chromium; dev-only): `npx playwright install chromium` once, then `npm run test:e2e` (builds, serves the repo root on a random port, runs phone 360x640@2 and desktop 1280x800; screenshots go to `build/shots/`). `npm test` does not need a browser. `npm run build` also writes the shipped `index.html` (minified from `tools/loader.src.html`, the readable source of truth, with an inline data-URI manifest and a build-generated pixel-art icon) and `sw.js` (from `tools/sw.src.js`, cache name stamped with a hash of `game.wasm` + `index.html`) at the repo root and enforces `index.html` <= 3 KB gz, `sw.js` <= 1 KB gz; it prints the total transfer and warns above the spec's 24 KB.
+
 To play the sim in a browser (no graphics yet), serve the repo root and open the dev harness:
 
 ```sh

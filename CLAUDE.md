@@ -23,6 +23,10 @@ Deliverable is exactly three files: `index.html` (inlines the loader JS), `game.
 - **Showcase numbers must be measured live** (load ms, KB, frame times) — never hard-coded (§15).
 - Min touch target 44×44 CSS px, enforced in Wasm layout code. No horizontal scroll. Not colour-only state (glyph + text).
 
+## Loader / PWA notes
+
+`tools/loader.src.html` (readable) and `tools/sw.src.js` are the sources; `npm run build` minifies them (terser, devDependency) into the committed root `index.html` / `sw.js`. Never edit those two by hand. `npm run test:e2e` runs the Playwright smoke suite (needs `npx playwright install chromium`). Loader-only exports added in `src/22z_boot.wat`: `ui_boot(has_save)`, `get_flags()`, `set_pref(bit, v)`. `window.__hc` ({t0, t1, n, ex}) is a test handle.
+
 ## Architecture
 
 ```
