@@ -183,6 +183,7 @@
   (local.set $cw (call $lget (global.get $L_CSSW))) (local.set $ch (call $lget (global.get $L_CSSH)))
   (memory.fill (global.get $R_LAYOUT) (i32.const 0) (i32.const 0x100))
   (call $hit_clear)
+  (global.set $dirty (i32.const 1))
   (if (i32.or (i32.or (i32.eqz (local.get $W)) (i32.eqz (local.get $H))) (i32.or (i32.eqz (local.get $cw)) (i32.eqz (local.get $ch))))
     (then (return)))
   (local.set $ts (call $ui_ts))

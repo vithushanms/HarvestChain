@@ -8,6 +8,11 @@
 (global $fb_w (mut i32) (i32.const 0))
 (global $fb_h (mut i32) (i32.const 0))
 (global $CANARY i32 (i32.const 0xCAFEF00D))
+;; UI helpers (Task 5): $tscale = integer text scale for $text/$text_w (glyph pixels become
+;; s x s blocks); $clip_t/$clip_b = rows [clip_t, clip_b) that $px/$rect may write (scrolled panels).
+(global $tscale (mut i32) (i32.const 1))
+(global $clip_t (mut i32) (i32.const 0))
+(global $clip_b (mut i32) (i32.const 0x7FFFFFFF))
 
 (func $resize (param $w i32) (param $h i32) (param $dpr i32)
   (local $pw i32) (local $ph i32) (local $s i32) (local $lw i32) (local $lh i32)
@@ -89,7 +94,8 @@
   (call $pal (i32.add (i32.shl (local.get $hue) (i32.const 2)) (local.get $step))))
 
 (func $px (param $x i32) (param $y i32) (param $c i32)
-  (if (i32.and (i32.lt_u (local.get $x) (global.get $fb_w)) (i32.lt_u (local.get $y) (global.get $fb_h)))
+  (if (i32.and (i32.and (i32.lt_u (local.get $x) (global.get $fb_w)) (i32.lt_u (local.get $y) (global.get $fb_h)))
+               (i32.and (i32.ge_s (local.get $y) (global.get $clip_t)) (i32.lt_s (local.get $y) (global.get $clip_b))))
     (then (i32.store
       (i32.add (global.get $R_FB) (i32.shl (i32.add (i32.mul (local.get $y) (global.get $fb_w)) (local.get $x)) (i32.const 2)))
       (local.get $c)))))
@@ -118,6 +124,8 @@
   (if (i32.lt_s (local.get $y) (i32.const 0)) (then (local.set $y (i32.const 0))))
   (if (i32.gt_s (local.get $x1) (global.get $fb_w)) (then (local.set $x1 (global.get $fb_w))))
   (if (i32.gt_s (local.get $y1) (global.get $fb_h)) (then (local.set $y1 (global.get $fb_h))))
+  (if (i32.lt_s (local.get $y) (global.get $clip_t)) (then (local.set $y (global.get $clip_t))))
+  (if (i32.gt_s (local.get $y1) (global.get $clip_b)) (then (local.set $y1 (global.get $clip_b))))
   (block $out (loop $ly
     (br_if $out (i32.ge_s (local.get $y) (local.get $y1)))
     (local.set $xx (local.get $x))
@@ -219,8 +227,9 @@
     (br_if $done (i32.ge_u (local.get $n) (local.get $tot)))
     (if (i32.and (i32.shr_u (i32.load8_u (i32.add (local.get $base) (i32.shr_u (local.get $n) (i32.const 3))))
                             (i32.and (local.get $n) (i32.const 7))) (i32.const 1))
-      (then (call $px (i32.add (local.get $x) (i32.rem_u (local.get $n) (local.get $w)))
-                      (i32.add (local.get $y) (i32.div_u (local.get $n) (local.get $w))) (local.get $c))))
+      (then (call $rect (i32.add (local.get $x) (i32.mul (i32.rem_u (local.get $n) (local.get $w)) (global.get $tscale)))
+                        (i32.add (local.get $y) (i32.mul (i32.div_u (local.get $n) (local.get $w)) (global.get $tscale)))
+                        (global.get $tscale) (global.get $tscale) (local.get $c))))
     (local.set $n (i32.add (local.get $n) (i32.const 1)))
     (br $l))))
 
@@ -232,14 +241,15 @@
     (local.set $n (i32.add (local.get $n) (i32.const 1)))
     (br $l)))
   (if (result i32) (local.get $n)
-    (then (i32.sub (i32.mul (local.get $n) (i32.sub (i32.const 6) (i32.shl (local.get $font) (i32.const 1)))) (i32.const 1)))
+    (then (i32.mul (i32.sub (i32.mul (local.get $n) (i32.sub (i32.const 6) (i32.shl (local.get $font) (i32.const 1)))) (i32.const 1))
+                   (global.get $tscale)))
     (else (i32.const 0))))
 
 ;; Draws a zero-terminated string; returns its width in pixels.
 (func $text (param $x i32) (param $y i32) (param $s i32) (param $c i32) (param $font i32) (result i32)
   (local $ch i32) (local $g i32) (local $adv i32) (local $x0 i32)
   (local.set $font (i32.and (local.get $font) (i32.const 1)))
-  (local.set $adv (i32.sub (i32.const 6) (i32.shl (local.get $font) (i32.const 1))))
+  (local.set $adv (i32.mul (i32.sub (i32.const 6) (i32.shl (local.get $font) (i32.const 1))) (global.get $tscale)))
   (local.set $x0 (local.get $x))
   (block $done (loop $l
     (local.set $ch (i32.load8_u (local.get $s)))
@@ -252,7 +262,7 @@
     (br $l)))
   (if (result i32) (i32.eq (local.get $x) (local.get $x0))
     (then (i32.const 0))
-    (else (i32.sub (i32.sub (local.get $x) (local.get $x0)) (i32.const 1)))))
+    (else (i32.sub (i32.sub (local.get $x) (local.get $x0)) (global.get $tscale)))))
 
 ;; Render-only integer hash (never the sim RNG).
 (func $noise (param $a i32) (param $b i32) (result i32)

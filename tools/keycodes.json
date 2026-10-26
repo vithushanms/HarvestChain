@@ -1,0 +1,19 @@
+{
+  "_comment": "KeyboardEvent.code -> key(code, down) argument (src/22_ui.wat header). The loader forwards only these; other keys are not sent.",
+  "KeyE": 1,
+  "KeyH": 2,
+  "Digit1": 3,
+  "Digit2": 4,
+  "Digit3": 5,
+  "Digit4": 6,
+  "Digit5": 7,
+  "Escape": 8,
+  "ArrowUp": 9,
+  "ArrowDown": 10,
+  "ArrowLeft": 11,
+  "ArrowRight": 12,
+  "Enter": 13,
+  "Backquote": 14,
+  "KeyR": 15,
+  "Space": 16
+}
