@@ -146,6 +146,8 @@
   (global.set $dirty (i32.const 1)))
 
 (func $close
+  ;; (an open screen goes back instead: the close button, a sheet drag-dismiss)
+  (if (global.get $scr) (then (call $back) (return)))
   (global.set $sel_tile (i32.const -1)) (global.set $sheet (i32.const 0)) (global.set $scroll (i32.const 0))
   (global.set $arm (i32.const 0)) (global.set $pick (i32.const 0))
   (global.set $tab (i32.const 0)) (global.set $place (i32.const 0)) (global.set $dsp (i32.const -1))
@@ -154,16 +156,11 @@
 
 (func $tap (param $c i32)
   (local $t i32)
+  (if (i32.or (global.get $scr) (i32.ge_u (local.get $c) (i32.const 0x3C0))) (then (call $ovl_tap (local.get $c)) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_ENDDAY)) (then (call $do_endday) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_HARVALL)) (then (call $do_harvest_all) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_CLOSE)) (then (call $close) (return)))
-  (if (i32.eq (local.get $c) (global.get $HIT_DAY)) (then
-    ;; today's weather and the forecast (the Gazette arrives in Task 5c)
-    (call $sb (global.get $SB3))
-    (call $si (global.get $STR_TODAY)) (call $si (i32.add (global.get $STR_WX) (call $wx (i32.const 0))))
-    (call $sep) (call $si (global.get $STR_FORECAST)) (call $si (i32.add (global.get $STR_WX) (call $wx (i32.const 2))))
-    (call $toast (i32.const 1) (global.get $SB3))
-    (return)))
+  (if (i32.eq (local.get $c) (global.get $HIT_DAY)) (then (call $open (i32.const 2)) (return)))   ;; the Gazette
   (if (i32.lt_u (i32.sub (local.get $c) (global.get $HIT_TAB0)) (i32.const 5)) (then (call $set_tab (i32.sub (local.get $c) (global.get $HIT_TAB0))) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_GRID)) (then
     (local.set $t (call $tile_at (global.get $in_lx) (global.get $in_ly)))
@@ -197,7 +194,9 @@
   (local.set $v (i32.sub (local.get $n0) (call $crop_count)))
   (if (i32.gt_s (local.get $v) (i32.const 0)) (then (call $sep) (call $sn0 (local.get $v)) (call $si (global.get $STR_LOST))))
   (if (local.get $sp) (then (call $sep) (call $sn0 (local.get $sp)) (call $si (global.get $STR_SPOILED))))
-  (call $toast (i32.const 1) (global.get $SB3)))
+  (call $toast (i32.const 1) (global.get $SB3))
+  (memory.copy (global.get $SUMMARY) (global.get $SB3) (i32.const 56))   ;; the Gazette's first line
+  (call $after_end))
 
 (func $do_harvest_all
   (local $n0 i32) (local $h i32) (local $e i32)
@@ -231,15 +230,7 @@
     (global.set $pick (i32.sub (local.get $c) (i32.const 0x200)))
     (global.set $scroll (i32.const 0)) (global.set $dirty (i32.const 1))
     (return)))
-  (if (i32.eq (local.get $c) (i32.const 0x203)) (then
-    ;; armed: the confirming tap counts only 400 ms after arming (no accidental double tap)
-    (if (i32.and (i32.eq (global.get $arm) (local.get $c)) (i32.eqz (call $arm_live))) (then (return)))
-    ;; first tap, or the 3 s window has passed (frames may not have run): arm
-    (if (i32.or (i32.ne (global.get $arm) (local.get $c)) (i32.ge_s (call $since (global.get $arm_t)) (i32.const 3000))) (then
-      (global.set $arm (local.get $c)) (global.set $arm_t (i32.const -1)) (global.set $arm_lv (i32.const 0))
-      (call $announce (call $str (global.get $STR_TAP_AGAIN)))
-      (global.set $dirty (i32.const 1))
-      (return)))))
+  (if (i32.eq (local.get $c) (i32.const 0x203)) (then (if (i32.eqz (call $armed (local.get $c))) (then (return)))))
   (global.set $arm (i32.const 0))
   (if (i32.and (i32.lt_s (local.get $i) (i32.const 0)) (i32.ne (local.get $c) (i32.const 0x207))) (then (return)))
   (local.set $p (call $tile_ptr (local.get $i)))
@@ -278,6 +269,19 @@
   (global.set $dirty (i32.const 1))
   (if (local.get $verb) (then (call $si (local.get $verb)) (call $si (local.get $name))))
   (call $announce (global.get $SB3)))
+
+;; Two-step button c: 1 when this tap confirms it. The confirming tap counts only 400 ms after
+;; arming (no accidental double tap); the first tap, or one after the 3 s window (frames may not
+;; have run), arms it.
+(func $armed (param $c i32) (result i32)
+  (if (i32.and (i32.eq (global.get $arm) (local.get $c)) (i32.eqz (call $arm_live))) (then (return (i32.const 0))))
+  (if (i32.or (i32.ne (global.get $arm) (local.get $c)) (i32.ge_s (call $since (global.get $arm_t)) (i32.const 3000))) (then
+    (global.set $arm (local.get $c)) (global.set $arm_t (i32.const -1)) (global.set $arm_lv (i32.const 0))
+    (call $announce (call $str (global.get $STR_TAP_AGAIN)))
+    (global.set $dirty (i32.const 1))
+    (return (i32.const 0))))
+  (global.set $arm (i32.const 0))
+  (i32.const 1))
 
 ;; "FARM 5X5" into the current builder.
 (func $s_farm_size (param $g i32)
@@ -460,27 +464,33 @@
 ;; the new end (content shrank, e.g. after a resize), the sheet is drawn again at the clamped
 ;; position with its hit regions and draw-list entries rolled back, so taps never see stale rows.
 (func $draw_sheet
-  (local $x i32) (local $y i32) (local $w i32) (local $h i32) (local $g i32) (local $hh i32) (local $oy i32) (local $ox i32)
+  (global.set $scroll_max (i32.const 0))
+  (if (call $lay_w (global.get $LR_PANEL)) (then
+    (call $draw_box (call $lay_x (global.get $LR_PANEL)) (call $lay_y (global.get $LR_PANEL))
+      (call $lay_w (global.get $LR_PANEL)) (call $lay_h (global.get $LR_PANEL))))))
+;; A paper card at (x0, y0, w, h): header (icon, title, subtitle), close button (the PANEL_CLOSE
+;; geometry), clipped scrolling body. Shared by the sheet / side panel and the screens
+;; (22c_screens.wat); $box_need = the height the content wants.
+(func $draw_box (param $x0 i32) (param $y0 i32) (param $w i32) (param $h i32)
+  (local $x i32) (local $y i32) (local $g i32) (local $hh i32) (local $oy i32) (local $ox i32)
   (local $c i32) (local $t i32) (local $hn i32) (local $bn i32)
   (local.set $hn (call $hit_n)) (local.set $bn (global.get $btn_n))
-  (local.set $w (call $lay_w (global.get $LR_PANEL)))
   (global.set $scroll_max (i32.const 0))
-  (if (i32.eqz (local.get $w)) (then (return)))
-  (local.set $x (call $lay_x (global.get $LR_PANEL))) (local.set $y (call $lay_y (global.get $LR_PANEL)))
-  (local.set $h (call $lay_h (global.get $LR_PANEL)))
   (local.set $g (global.get $lgap))
   (local.set $oy (i32.shr_s (i32.mul (i32.sub (i32.const 256) (global.get $slide_p)) (local.get $h)) (i32.const 8)))
   (if (i32.ge_s (global.get $shake_t) (i32.const 0)) (then
     (local.set $ox (i32.sub (i32.shl (i32.and (i32.shr_u (call $since (global.get $shake_t)) (i32.const 5)) (i32.const 1)) (i32.const 2)) (i32.const 2)))))
-  (local.set $x (i32.add (local.get $x) (local.get $ox)))
-  (local.set $y (i32.add (local.get $y) (local.get $oy)))
+  (local.set $x (i32.add (local.get $x0) (local.get $ox)))
+  (local.set $y (i32.add (local.get $y0) (local.get $oy)))
   (call $ui_panel (local.get $x) (local.get $y) (local.get $w) (i32.add (local.get $h) (i32.const 3)))
-  (local.set $hh (call $lay_h (global.get $LR_CLOSE)))
+  (local.set $hh (call $imax (call $min_touch) (call $S (i32.const 36))))
   (call $sheet_head (i32.add (local.get $x) (i32.shl (local.get $g) (i32.const 1))) (i32.add (local.get $y) (local.get $g))
-    (i32.sub (i32.sub (call $lay_x (global.get $LR_CLOSE)) (call $lay_x (global.get $LR_PANEL))) (i32.mul (local.get $g) (i32.const 3))) (local.get $hh))
-  (if (i32.or (i32.ge_s (global.get $sel_tile) (i32.const 0)) (global.get $tab)) (then
-    (call $btn (global.get $HIT_CLOSE) (i32.add (call $lay_x (global.get $LR_CLOSE)) (local.get $ox)) (i32.add (call $lay_y (global.get $LR_CLOSE)) (local.get $oy))
-      (call $lay_w (global.get $LR_CLOSE)) (local.get $hh) (i32.const 0) (global.get $I_CLOSE) (i32.const 0) (i32.const 1))))
+    (i32.sub (local.get $w) (i32.add (local.get $hh) (i32.shl (local.get $g) (i32.const 2)))) (local.get $hh))
+  ;; close: a selected plot or a tab; screens: Gazette, Journal, How to play
+  (if (select (i32.and (i32.const 0x4C) (i32.shl (i32.const 1) (global.get $scr)))
+              (i32.or (i32.ge_s (global.get $sel_tile) (i32.const 0)) (global.get $tab)) (global.get $scr)) (then
+    (call $btn (global.get $HIT_CLOSE) (i32.sub (i32.add (local.get $x) (local.get $w)) (i32.add (local.get $hh) (local.get $g))) (i32.add (local.get $y) (local.get $g))
+      (local.get $hh) (local.get $hh) (i32.const 0) (global.get $I_CLOSE) (i32.const 0) (i32.const 1))))
   (local.set $t (i32.add (i32.add (local.get $y) (local.get $hh)) (i32.shl (local.get $g) (i32.const 1))))
   (call $hline (i32.add (local.get $x) (local.get $g)) (i32.sub (local.get $t) (i32.const 1)) (i32.sub (local.get $w) (i32.shl (local.get $g) (i32.const 1))) (call $pal (i32.const 57)))
   (global.set $clip_t (local.get $t))
@@ -492,12 +502,13 @@
   (call $sheet_body)
   (call $flush (call $rowh))
   (local.set $c (i32.sub (i32.add (global.get $uy) (global.get $scroll)) (local.get $t)))
+  (global.set $box_need (i32.add (i32.sub (local.get $t) (local.get $y)) (i32.add (local.get $c) (local.get $g))))
   (global.set $scroll_max (call $imax (i32.const 0) (i32.sub (local.get $c) (i32.sub (global.get $clip_b) (local.get $t)))))
   (if (i32.gt_s (global.get $scroll) (global.get $scroll_max)) (then
     (global.set $scroll (global.get $scroll_max))
     (call $lput (global.get $L_HITN) (local.get $hn)) (global.set $btn_n (local.get $bn))
     (global.set $clip_t (i32.const 0)) (global.set $clip_b (i32.const 0x7FFFFFFF))
-    (call $draw_sheet)
+    (call $draw_box (local.get $x0) (local.get $y0) (local.get $w) (local.get $h))
     (return)))
   ;; scroll bar
   (if (global.get $scroll_max) (then
@@ -516,7 +527,8 @@
   (local.set $icon (i32.load8_u (i32.add (i32.const 0x930) (global.get $tab))))
   (local.set $title (call $str (i32.add (global.get $STR_TAB) (global.get $tab))))
   (call $sb (global.get $SB1))
-  (if (i32.lt_s (local.get $i) (i32.const 0))
+  (if (global.get $scr) (then (call $ovl_head) (local.set $icon (global.get $oh_icon)) (local.set $title (global.get $oh_title)))
+  (else (if (i32.lt_s (local.get $i) (i32.const 0))
     (then (if (i32.ge_s (global.get $dsp) (i32.const 0)) (then (call $s_step)) (else
           (call $si (global.get $STR_DAY)) (call $sn0 (i32.load16_u (global.get $S_DAY))) (call $sep)
           (call $si (i32.add (global.get $STR_SEA) (call $season))))))
@@ -530,7 +542,7 @@
       (if (i32.eq (i32.load8_u (local.get $p)) (i32.const 2))
         (then (local.set $icon (i32.add (i32.const 80) (call $clamp (i32.load8_u offset=1 (local.get $p)) (i32.const 0) (i32.const 9))))))
       (if (i32.eqz (call $in_grid (local.get $i))) (then
-        (local.set $icon (i32.const 78)) (local.set $title (call $str (global.get $STR_WILD)))))))
+        (local.set $icon (i32.const 78)) (local.set $title (call $str (global.get $STR_WILD)))))))))
   (if (i32.and (i32.eq (call $lget (global.get $L_MODE)) (i32.const 2))
                (i32.and (i32.ge_s (global.get $hover_tile) (i32.const 0)) (i32.ne (global.get $hover_tile) (local.get $i)))) (then
     (call $tile_info (global.get $hover_tile))
@@ -578,13 +590,15 @@
       (i32.add (i32.const 64) (local.get $cost)) (i32.const 0) (i32.eqz (local.get $why)) (call $lget (global.get $L_COLS)) (call $rowh))
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (select (i32.const 10) (i32.const 5) (local.get $b))))))
 
-;; Two-step demolish / clear button: TAP AGAIN while armed, drawn dimmed (style 5) for the first
-;; 400 ms while the confirming tap is not live yet, then danger red.
-(func $put_demolish (param $label i32) (param $cols i32) (param $h i32)
+;; Two-step button (label / alt label text): the alt label while armed, drawn dimmed (style 5) for
+;; the first 400 ms while the confirming tap is not live yet, then danger red.
+(func $put_two (param $code i32) (param $label i32) (param $alt i32) (param $icon i32) (param $cols i32) (param $h i32)
   (local $a i32)
-  (local.set $a (i32.eq (global.get $arm) (i32.const 0x203)))
-  (call $put (i32.const 0x203) (call $str (select (global.get $STR_TAP_AGAIN) (local.get $label) (local.get $a)))
-    (global.get $I_TRASH) (select (select (i32.const 4) (i32.const 5) (call $arm_live)) (i32.const 0) (local.get $a)) (i32.const 1) (local.get $cols) (local.get $h)))
+  (local.set $a (i32.eq (global.get $arm) (local.get $code)))
+  (call $put (local.get $code) (select (local.get $alt) (local.get $label) (local.get $a))
+    (local.get $icon) (select (select (i32.const 4) (i32.const 5) (call $arm_live)) (i32.const 0) (local.get $a)) (i32.const 1) (local.get $cols) (local.get $h)))
+(func $put_demolish (param $label i32) (param $cols i32) (param $h i32)
+  (call $put_two (i32.const 0x203) (call $str (local.get $label)) (call $str (global.get $STR_TAP_AGAIN)) (global.get $I_TRASH) (local.get $cols) (local.get $h)))
 
 ;; "FARM 4X4 > 5X5" and BUY LAND $x for the next ring of a farm of side n (< maxGrid).
 (func $land_ui (param $n i32)
@@ -622,6 +636,7 @@
 
 (func $sheet_body
   (local $i i32) (local $p i32) (local $c i32) (local $b i32) (local $n i32) (local $v i32) (local $t i32) (local $why i32) (local $bh i32) (local $j i32)
+  (if (global.get $scr) (then (call $ovl_body) (return)))
   (if (global.get $tab) (then (call $tab_body) (return)))
   (local.set $bh (call $btnh))
   (local.set $i (global.get $sel_tile))

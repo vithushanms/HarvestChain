@@ -15,5 +15,6 @@
   "Enter": 13,
   "Backquote": 14,
   "KeyR": 15,
-  "Space": 16
+  "Space": 16,
+  "KeyJ": 17
 }

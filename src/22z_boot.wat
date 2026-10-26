@@ -1,17 +1,21 @@
 ;; Boot entry points for the loader (plan Task 6). Presentation only.
 ;;
 ;; ui_boot(has_save): the loader calls this once after set_env/set_flags/set_pref. has_save = 1 when
-;; load() accepted the stored save (then the UI only resets), else a new game starts from the env
-;; seed (set_env). Task 5c replaces the body with the Title screen; the name and signature stay.
+;; load() accepted the stored save (then the UI only resets). Every boot shows the Title screen
+;; (Task 5c, 22c_screens.wat): CONTINUE / NEW GAME / DAILY SEED / HOW TO PLAY / JOURNAL.
 ;;
 ;; get_flags(): bit0 large_text, bit1 reduced_motion (OS preference), bit2 gazette_auto_off. The
 ;; loader persists changes to hc.prefs (UI toggles in later tasks flip the bits via $set_pref).
 ;; set_pref(bit, value): sets one bit of the flags; 0 = large, 1 = reduced, 2 = gazette auto-open off.
 (global $flag_gazoff (mut i32) (i32.const 0))
 (func $ui_boot (param $has_save i32)
+  ;; the Title screen over the saved farm, or over a fresh farm from the env seed that is not saved
+  ;; until NEW GAME (which starts that same seed: 22c_screens.wat)
   (if (local.get $has_save)
     (then (call $ui_loaded))
-    (else (call $ui_new_game (call $lget (global.get $L_SEED))))))
+    (else (call $ui_new_game (call $lget (global.get $L_SEED))) (global.set $want_save (i32.const 0))))
+  (global.set $has_save (local.get $has_save))
+  (call $go (i32.const 1)))
 (func $get_flags (result i32)
   (i32.or (i32.or (global.get $flag_large) (i32.shl (global.get $flag_reduced) (i32.const 1)))
           (i32.shl (global.get $flag_gazoff) (i32.const 2))))

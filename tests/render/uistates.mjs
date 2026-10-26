@@ -13,10 +13,14 @@ export const BTN = { PICK_PLANT: 0x200, PICK_BUILD: 0x201, HARVEST: 0x202, DEMOL
   SUB: 0x230, CANCEL: 0x233, DEST: 0x238, MINUS: 0x240, PLUS: 0x250, MAX: 0x260, ACCEPT: 0x270, DECLINE: 0x274,
   DISPATCH: 0x280, UPG: 0x290, TAG: 0x2A0, NO_TAG: 0x2A3, LOCATE: 0x300, RPREV: 0x340, RNEXT: 0x380 };
 // Key codes (tools/keycodes.json).
-export const KEY = { E: 1, H: 2, D1: 3, D2: 4, D3: 5, D4: 6, D5: 7, ESC: 8, UP: 9, DOWN: 10, LEFT: 11, RIGHT: 12, ENTER: 13, BACKQUOTE: 14, R: 15, SPACE: 16 };
+export const KEY = { E: 1, H: 2, D1: 3, D2: 4, D3: 5, D4: 6, D5: 7, ESC: 8, UP: 9, DOWN: 10, LEFT: 11, RIGHT: 12, ENTER: 13, BACKQUOTE: 14, R: 15, SPACE: 16, J: 17 };
+// Task 5c screens (src/22c_screens.wat header): t_ui(UI.SCR) values and overlay button codes.
+export const SCR = { FARM: 0, TITLE: 1, GAZETTE: 2, JOURNAL: 3, RESULTS: 4, GAMEOVER: 5, HOWTO: 6 };
+export const OVL = { CONTINUE: 0x3C0, NEW: 0x3C1, DAILY: 0x3C2, HOWTO: 0x3C3, LARGE: 0x3C4, GAZOFF: 0x3C5, JOURNAL: 0x3C6,
+  START: 0x3C7, SHARE: 0x3C8, ENDLESS: 0x3C9, TRY: 0x3CA, PREV: 0x3CB, NEXT: 0x3CC, RESULTS: 0x3CD, MILE: 0x2FF };
 // t_ui(k) fields.
 export const UI = { SEL: 0, SHEET: 1, PICK: 2, SCROLL: 3, SCROLL_MAX: 4, HOVER: 5, BTN_N: 6, TOASTS: 7, ARM: 8, DIRTY: 9, SLIDE: 10, IN_ST: 11,
-  TAB: 12, MSUB: 13, PLACE: 14, DSP: 15, DSTEP: 16, DM: 17, DC: 18, LABELS: 19 };
+  TAB: 12, MSUB: 13, PLACE: 14, DSP: 15, DSTEP: 16, DM: 17, DC: 18, LABELS: 19, SCR: 20, PAGE: 21, RET: 22 };
 const LABELS = 0xA100;   // text of every $ui_label drawn last frame, NUL-separated (22_ui.wat)
 const R_HIT = 0x8200;
 
@@ -26,8 +30,13 @@ export async function uiGame(w = 360, h = 640, dpr = 200, o = {}) {
   ex.t_lab_on(1);
   ex.resize(w, h, dpr);
   ex.set_flags(o.reduced ? 1 : 0, o.large ? 1 : 0);
+  // the Gazette auto-opens after End Day unless the pref is off: older tests expect the farm
+  ex.set_pref(2, o.gazette ? 0 : 1);
+  ex.set_env(o.env ?? 4242, o.daily ?? 20387);
   ex.ui_new_game(o.seed ?? 5);
   if (o.setup) { o.setup(ex); ex.ui_loaded(); }
+  // boot through the Title screen (has_save = o.boot), the way the loader starts
+  if (o.boot !== undefined) ex.ui_boot(o.boot);
   ex.ack_save();
   g.css = [w, h];
   g.t = 1000;
@@ -110,6 +119,40 @@ const dispatch = (g, m) => {
   g.tapR(BTN.NEXT);
 };
 
+// Write one scalar state field by name (tools/state.json); i = element index for arrays.
+const SET = { u8: 'setUint8', u16: 'setUint16', i16: 'setInt16', u32: 'setUint32', i32: 'setInt32' };
+const SZ = { u8: 1, u16: 2, i16: 2, u32: 4, i32: 4 };
+export const poke = (ex, name, v, i = 0) => {
+  const f = STATE.fields[name];
+  new DataView(ex.memory.buffer)[SET[f.type]](STATE.base + f.off + i * SZ[f.type], v, true);
+};
+// Task 5c farms: a mid-run farm (Journal), a rotting / due / indebted one (Gazette alerts), the
+// last day of the run (Results) and a bankrupt one (Game Over).
+const midRun = (ex) => {
+  farm(ex).grid(5).day(57).bld(10, BLD.MILL, { recipe: 1 }).bld(12, BLD.CELLAR).crop(9, CROP.CORN, 200).crop(17, CROP.GRAPE, 'ripe');
+  poke(ex, 'cash', 1180); poke(ex, 'rep', 9); poke(ex, 'contractsDone', 2); poke(ex, 'wineSold', 4); poke(ex, 'procSold', 12);
+  poke(ex, 'milestones', 0b1);
+};
+const alertFarm = (ex) => {
+  farm(ex).day(12).crop(9, CROP.TOMATO, 'ripe', { ripeAge: 1 }).crop(10, CROP.TOMATO, 'ripe', { ripeAge: 1 }).bld(11, BLD.MILL).bld(2, BLD.CANNERY);
+  putContract(ex, 'accepted', 0, { good: 5, market: 1, qty: 6, deadline: 13, payout: 198 });
+  poke(ex, 'loanPrincipal', 600); poke(ex, 'loanInterest', 12);
+  ex.t_give(2, 3, 1); farm(ex).fillStorage();
+};
+const stormFarm = (ex) => {
+  farm(ex).day(25).weather(3); poke(ex, 'forecast', 3);
+  ex.t_put_event(0, 1, 2, 10, 4); ex.t_put_event(1, 3, 0, 0, 2); ex.t_put_event(2, 4, 0, 0, 1);
+  poke(ex, 'hintGood', 2, 0); poke(ex, 'hintGood', 7, 1); poke(ex, 'driftNext', 300, 2); poke(ex, 'driftNext', -300, 7);
+};
+const lastDay = (ex) => {
+  farm(ex).grid(7).day(240).bld(10, BLD.MILL).bld(11, BLD.CELLAR).bld(12, BLD.GARAGE).bld(3, BLD.WAREHOUSE);
+  poke(ex, 'cash', 16840); poke(ex, 'rep', 21); poke(ex, 'contractsDone', 22); poke(ex, 'wineSold', 14); poke(ex, 'procSold', 300);
+  poke(ex, 'milestones', 0b111111);
+};
+const broke = (ex) => {
+  farm(ex).day(57); poke(ex, 'cash', -420); poke(ex, 'loanPrincipal', 1500); poke(ex, 'grace', 3); poke(ex, 'rep', 4); poke(ex, 'contractsDone', 1);
+};
+
 // Canned UI states: [w, h, dpr, options, script]. Rendered at a fixed time so hashes are stable.
 const poor = (ex) => farm(ex).day(3);
 // [name, state] in order; names must be unique (asserted in tests/render/ui.test.mjs).
@@ -140,6 +183,18 @@ export const UI_STATE_LIST = [
   ['ui-build-placement', { o: {}, run: (g) => { g.tabTo(4); g.tapR(BTN.BUILD + BLD.WELL); } }],
   ['ui-loans', { o: { setup: (ex) => { const dv = new DataView(ex.memory.buffer); dv.setInt32(STATE.base + STATE.fields.loanPrincipal.off, 600, true); dv.setInt32(STATE.base + STATE.fields.loanInterest.off, 12, true); } },
     run: (g) => { g.tabTo(4); g.reach(BTN.REPAY); } }],
+  // Task 5c screens
+  ['ui-title', { o: { boot: 0 }, run: () => {} }],
+  ['ui-title-save', { o: { boot: 1, setup: midRun }, run: () => {} }],
+  ['ui-title-large', { o: { boot: 0, large: true }, run: () => {} }],
+  ['ui-howto', { o: { boot: 0 }, run: (g) => { g.tap(OVL.HOWTO); g.tap(OVL.NEXT); } }],
+  ['ui-gazette-calm', { o: { gazette: true, setup: (ex) => farm(ex).crop(9, CROP.CORN, 100) }, run: (g) => g.tap(HIT.ENDDAY) }],
+  ['ui-gazette-storm', { o: { setup: stormFarm }, run: (g) => g.tap(HIT.DAY) }],
+  ['ui-gazette-alerts', { o: { setup: alertFarm }, run: (g) => g.tap(HIT.DAY) }],
+  ['ui-journal', { o: { setup: midRun }, run: (g) => g.key(KEY.J) }],
+  ['ui-journal-large', { o: { setup: midRun, large: true }, run: (g) => g.key(KEY.J) }],
+  ['ui-results', { o: { gazette: true, setup: lastDay }, run: (g) => g.tap(HIT.ENDDAY) }],
+  ['ui-gameover', { o: { gazette: true, setup: broke }, run: (g) => g.tap(HIT.ENDDAY) }],
 ];
 export const UI_STATES = {};
 for (const [name, s] of UI_STATE_LIST) {

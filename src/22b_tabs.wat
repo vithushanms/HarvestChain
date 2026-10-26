@@ -349,9 +349,9 @@
 ;; Town / City. Hint goods get tomorrow's drift arrow by the name; a Surge / Glut cell its arrow
 ;; before the "$" (numbers stay right-aligned); a small red "-24%" tag left of a price while that
 ;; market is saturated below 90%. Two-line rows when the columns do not fit.
-(func $prices
-  (local $g i32) (local $m i32) (local $p i32) (local $k i32) (local $nw i32) (local $cw i32) (local $two i32)
-  (local $y i32) (local $s i32) (local $d i32) (local $ts i32) (local $rh i32) (local $lh i32)
+;; Market news: every active event with its days left ("SURGE ^ BREAD CITY, 4 DAYS"); also the Gazette.
+(func $news
+  (local $k i32) (local $p i32) (local $s i32)
   (loop $e
     (local.set $p (call $event_ptr (local.get $k)))
     (local.set $s (i32.load8_u (local.get $p)))
@@ -362,7 +362,11 @@
         (call $sp) (call $si (i32.add (global.get $STR_MKT) (i32.load8_u offset=1 (local.get $p))))))
       (call $sep) (call $s_days (i32.load8_u offset=3 (local.get $p)))
       (call $lab (global.get $I_WARN) (i32.const 61))))
-    (br_if $e (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 3))))
+    (br_if $e (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 3)))))
+(func $prices
+  (local $g i32) (local $m i32) (local $k i32) (local $nw i32) (local $cw i32) (local $two i32)
+  (local $y i32) (local $s i32) (local $d i32) (local $ts i32) (local $rh i32) (local $lh i32)
+  (call $news)
   (call $ui_label (i32.const -1) (call $str (global.get $STR_LEGEND)) (i32.const 37))
   (local.set $ts (call $ui_ts))
   (global.set $tscale (local.get $ts))
@@ -699,8 +703,7 @@
   (local.set $o (call $loan_owed))
   (call $sb (global.get $SB1))
   (if (local.get $o)
-    (then (call $si (global.get $STR_OWED)) (call $sn (local.get $o) (i32.const 1)) (call $sep)
-      (call $sn (i32.div_u (i32.mul (local.get $o) (call $k (global.get $K_LOAN_RATE))) (i32.const 10000)) (i32.const 1)))
+    (then (call $s_owed (local.get $o)))
     (else (call $si (global.get $STR_NOTHING_OWED)) (call $sep)
       (call $sn0 (i32.div_u (call $k (global.get $K_LOAN_RATE)) (i32.const 100))) (call $sc (i32.const 37))))
   (call $si (global.get $STR_PER_DAY))
@@ -718,7 +721,14 @@
     (call $sb (global.get $SB2))))
   (call $si (global.get $STR_TAKE)) (if (i32.eqz (local.get $o)) (then (call $sn (call $q (i32.const 13)) (i32.const 1))))
   (global.set $b_why (call $str (global.get $STR_ONE_LOAN)))
-  (call $put (i32.const 0x20E) (global.get $SB2) (global.get $I_PLUS) (i32.const 2) (i32.eqz (local.get $o)) (i32.const 1) (select (call $btnh) (call $rowh) (i32.eqz (local.get $o)))))
+  (call $put (i32.const 0x20E) (global.get $SB2) (global.get $I_PLUS) (i32.const 2) (i32.eqz (local.get $o)) (i32.const 1) (select (call $btnh) (call $rowh) (i32.eqz (local.get $o))))
+  ;; the Journal (milestones, score preview)
+  (call $put (i32.const 0x3C6) (call $str (i32.add (global.get $STR_SCR) (i32.const 2))) (global.get $I_BOOK) (i32.const 0) (i32.const 1) (i32.const 1) (call $btnh)))
+
+;; "OWED $303, $3" (the day's interest; callers add "/DAY").
+(func $s_owed (param $o i32)
+  (call $si (global.get $STR_OWED)) (call $sn (local.get $o) (i32.const 1)) (call $sep)
+  (call $sn (i32.div_u (i32.mul (local.get $o) (call $k (global.get $K_LOAN_RATE))) (i32.const 10000)) (i32.const 1)))
 
 ;; ---------------------------------------------------------------- navigation and actions
 
@@ -748,9 +758,13 @@
   (if (local.get $t) (then (global.set $tab (local.get $t)) (call $open_sheet)) (else (call $close)))
   (call $announce (call $str (i32.add (global.get $STR_TAB) (local.get $t)))))
 
-;; Esc / back: leave placement, then step the dispatch flow back (leaving it at step 1), then close.
+;; Esc / back: an open screen returns where it came from (Gazette, Journal, How to play; the others
+;; stay); else leave placement, then step the dispatch flow back (leaving it at step 1), then close.
 (func $back
   (global.set $dirty (i32.const 1))
+  (if (global.get $scr) (then
+    (if (i32.and (i32.const 0x4C) (i32.shl (i32.const 1) (global.get $scr))) (then (call $go (global.get $scr_ret))))
+    (return)))
   (if (global.get $place) (then (global.set $place (i32.const 0)) (call $open_sheet) (return)))
   (if (i32.ge_s (global.get $dsp) (i32.const 0)) (then
     (if (global.get $dstep) (then (call $step_to (i32.sub (global.get $dstep) (i32.const 1))))

@@ -14,7 +14,9 @@
 ;;   0x9000..0x9FFF  draw list of the buttons drawn this frame: 64 x 64 B {code i32, enabled i32,
 ;;                   label 28 B, reason 28 B} (tests read it; taps on disabled buttons toast the reason)
 ;;   0xA000..0xA03F  $ui_wrap line buffer   0xA040..0xA0BF tab amounts / plan (22b_tabs.wat)
-;;   0xA100..0xA8FF  label log: every $ui_label text drawn this frame, NUL-separated (tests)
+;;   0xA100..0xA8FF  label log: every $ui_label text drawn this frame, NUL-separated (tests; also on
+;;                   for the frame that announces a newly opened screen)
+;;   0xA900..0xAA3F  screen announce / summary builder, last End Day summary (22c_screens.wat)
 ;; Static data at 0x0900 (00_memory.wat): button styles (6 x 5 palette indices: border, face,
 ;; pressed face, text, second line) and the season -> icon map at 0x0920.
 ;;
@@ -40,6 +42,8 @@
 ;;   8 Escape back (leave placement / a dispatch step / the tab, then close the sheet)    9 ArrowUp 10 ArrowDown 11 ArrowLeft 12 ArrowRight: move the tile cursor
 ;;   (Right/Left = +-x, Down/Up = +-y on the board, clamped to the owned grid + the next ring)
 ;;   13 Enter / 16 Space open the selected plot    14 Backquote (stats, Task 7)    15 KeyR (replay, Task 7)
+;;   17 KeyJ Journal (open / close). While a screen is open (Title, Gazette, Journal, Results, Game
+;;   Over, How to play: 22c_screens.wat) only Esc (back), Enter / Space (its primary button) and J act.
 ;;   Auto-repeat: a key acts once per press. A down (any non-zero value) for a code already held
 ;;   is ignored until its up (down = 0); codes >= 32 are ignored. The loader should also drop
 ;;   events with event.repeat and send an up for held keys on window blur.
@@ -100,12 +104,12 @@
 
 ;; ---------------------------------------------------------------- strings and text building
 
-;; Pointer to string id (the table at 0x7700 is walked; ids are small). Ids outside
+;; Pointer to string id (the table at $STR_BASE is walked; ids are small). Ids outside
 ;; [0, STR_COUNT) give the empty string at 0x8D00 (never written).
 (func $str (param $id i32) (result i32)
   (local $p i32)
   (if (i32.ge_u (local.get $id) (global.get $STR_COUNT)) (then (return (i32.const 0x8D00))))
-  (local.set $p (i32.const 0x7700))
+  (local.set $p (global.get $STR_BASE))
   (block $d (loop $l
     (br_if $d (i32.eqz (local.get $id)))
     (loop $s
@@ -139,20 +143,20 @@
     (local.set $p (i32.add (local.get $p) (i32.const 1)))
     (br $l))))
 (func $si (param $id i32) (call $ss (call $str (local.get $id))))
-;; Decimal n; money = 1 adds "$" and thousands commas ("-$1,234"). Unsigned digit loop, so
-;; INT_MIN prints too.
+;; Decimal n; money = 1 adds "$" and thousands commas ("-$1,234"), 2 only the commas. Unsigned
+;; digit loop, so INT_MIN prints too.
 (func $sn (param $n i32) (param $money i32)
   (local $p i32)
   (if (i32.lt_s (local.get $n) (i32.const 0))
     (then (call $sc (i32.const 45)) (local.set $n (i32.sub (i32.const 0) (local.get $n)))))
-  (if (local.get $money) (then (call $sc (i32.const 36))))
+  (if (i32.eq (local.get $money) (i32.const 1)) (then (call $sc (i32.const 36))))
   (local.set $p (i32.const 1))
   (loop $f
     (if (i32.ge_u (i32.div_u (local.get $n) (local.get $p)) (i32.const 10))
       (then (local.set $p (i32.mul (local.get $p) (i32.const 10))) (br $f))))
   (loop $d
     (call $sc (i32.add (i32.const 48) (i32.rem_u (i32.div_u (local.get $n) (local.get $p)) (i32.const 10))))
-    (if (i32.and (local.get $money)
+    (if (i32.and (i32.ne (local.get $money) (i32.const 0))
           (i32.or (i32.eq (local.get $p) (i32.const 1000))
                   (i32.or (i32.eq (local.get $p) (i32.const 1000000)) (i32.eq (local.get $p) (i32.const 1000000000)))))
       (then (call $sc (i32.const 44))))
@@ -223,10 +227,14 @@
 
 ;; Paper panel: ink border, 2 px rounded corners, a light top edge.
 (func $ui_panel (param $x i32) (param $y i32) (param $w i32) (param $h i32)
-  (call $rrect (local.get $x) (local.get $y) (local.get $w) (local.get $h) (i32.const 3) (call $pal (i32.const 61)))
+  (call $panel_c (local.get $x) (local.get $y) (local.get $w) (local.get $h) (i32.const 0x3B3A3D)))
+;; Panel in colours cols = border | face << 8 | top edge << 16 (palette indices); the face is 2 px
+;; shorter than the border box.
+(func $panel_c (param $x i32) (param $y i32) (param $w i32) (param $h i32) (param $cols i32)
+  (call $rrect (local.get $x) (local.get $y) (local.get $w) (local.get $h) (i32.const 3) (call $pal (local.get $cols)))
   (call $rrect (i32.add (local.get $x) (i32.const 1)) (i32.add (local.get $y) (i32.const 1))
-    (i32.sub (local.get $w) (i32.const 2)) (i32.sub (local.get $h) (i32.const 2)) (i32.const 2) (call $pal (i32.const 58)))
-  (call $hline (i32.add (local.get $x) (i32.const 3)) (i32.add (local.get $y) (i32.const 1)) (i32.sub (local.get $w) (i32.const 6)) (call $pal (i32.const 59))))
+    (i32.sub (local.get $w) (i32.const 2)) (i32.sub (local.get $h) (i32.const 2)) (i32.const 2) (call $pal (i32.shr_u (local.get $cols) (i32.const 8))))
+  (call $hline (i32.add (local.get $x) (i32.const 3)) (i32.add (local.get $y) (i32.const 1)) (i32.sub (local.get $w) (i32.const 6)) (call $pal (i32.shr_u (local.get $cols) (i32.const 16)))))
 
 ;; Progress bar: v of max filled with palette colour idx col.
 (func $ui_bar (param $x i32) (param $y i32) (param $w i32) (param $h i32) (param $v i32) (param $max i32) (param $col i32)
@@ -530,6 +538,14 @@
     (return)))
   (if (i32.and (global.get $keys) (local.get $m)) (then (return)))
   (global.set $keys (i32.or (global.get $keys) (local.get $m)))
+  ;; J toggles the Journal anywhere; an open screen (22c_screens.wat) takes only Esc and Enter / Space
+  (if (i32.eq (local.get $code) (i32.const 17)) (then
+    (if (i32.eq (global.get $scr) (i32.const 3)) (then (call $back)) (else (call $open (i32.const 3))))
+    (return)))
+  (if (global.get $scr) (then
+    (if (i32.eq (local.get $code) (i32.const 8)) (then (call $back)))
+    (if (i32.or (i32.eq (local.get $code) (i32.const 13)) (i32.eq (local.get $code) (i32.const 16))) (then (call $ovl_tap (call $primary))))
+    (return)))
   (if (i32.eq (local.get $code) (i32.const 1)) (then (call $do_endday)))
   (if (i32.eq (local.get $code) (i32.const 2)) (then (call $do_harvest_all)))
   (if (i32.eq (local.get $code) (i32.const 8)) (then (call $back)))
@@ -566,6 +582,7 @@
   (global.set $shake_t (call $stamp (global.get $shake_t)))
   (global.set $arm_t (call $stamp (global.get $arm_t)))
   (global.set $in_t (call $stamp (global.get $in_t)))
+  (global.set $scr_t (call $stamp (global.get $scr_t)))
   ;; long press: 300 ms on a plot without moving (buttons ignore the hold time)
   (if (i32.and (i32.and (i32.eq (global.get $in_st) (i32.const 1)) (i32.eqz (global.get $in_lp)))
                (i32.and (i32.eq (global.get $in_code) (global.get $HIT_GRID))
@@ -610,9 +627,11 @@
       (local.set $low (i32.const 1))))
     (br_if $tl (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
   (if (global.get $in_st) (then (local.set $anim (i32.const 1))))
-  ;; rain and storm particles move every frame
+  ;; rain and storm particles move every frame (none behind Game Over); Results confetti for 6 s
   (local.set $w (i32.load8_u (global.get $S_WEATHER)))
-  (if (i32.and (i32.eqz (global.get $flag_reduced)) (i32.or (i32.eq (local.get $w) (i32.const 1)) (i32.eq (local.get $w) (i32.const 3))))
+  (if (i32.and (i32.and (i32.eqz (global.get $flag_reduced)) (i32.ne (global.get $scr) (i32.const 5)))
+               (i32.or (i32.or (i32.eq (local.get $w) (i32.const 1)) (i32.eq (local.get $w) (i32.const 3)))
+                       (i32.and (i32.eq (global.get $scr) (i32.const 4)) (i32.lt_u (call $since (global.get $scr_t)) (i32.const 6000)))))
     (then (local.set $anim (i32.const 1))))
   (if (i32.or (i32.or (global.get $dirty) (local.get $anim)) (i32.eqz (global.get $flag_reduced))) (then (call $render)))
   (global.set $dirty (i32.const 0))
@@ -625,6 +644,10 @@
 
 ;; One full redraw: scene, then chrome; rebuilds the dynamic hit regions and the draw list.
 (func $render
+  (local $lo i32)
+  ;; a screen that has just opened is announced from the labels and buttons it draws
+  (local.set $lo (global.get $lab_on))
+  (global.set $lab_on (i32.or (local.get $lo) (global.get $ann_pend)))
   (call $hit_reset_dyn)
   (if (i32.ne (call $lget (global.get $L_MODE)) (i32.const 2)) (then (global.set $hover_tile (i32.const -1))))
   (global.set $btn_n (i32.const 0))
@@ -633,13 +656,26 @@
   (global.set $place_hi (select (i32.or (i32.const 1) (i32.shl (i32.or (global.get $flag_reduced) (i32.and (i32.shr_u (global.get $now) (i32.const 9)) (i32.const 1))) (i32.const 1)))
     (i32.const 0) (global.get $place)))
   (call $scene_time (global.get $now))
-  (call $scene_draw)
-  (global.set $tscale (call $ui_ts))
-  (call $draw_top)
-  (call $draw_tabs)
-  (call $draw_sheet)
-  (call $draw_place)
+  (if (global.get $scr)
+    (then
+      ;; screens: the farm fills the framebuffer under them (the Title: above its buttons), then the
+      ;; viewport is put back
+      (call $scene_viewport (i32.const 0) (i32.const 0) (global.get $fb_w)
+        (select (call $title_top) (global.get $fb_h) (i32.eq (global.get $scr) (i32.const 1))))
+      (call $scene_draw)
+      (call $scene_viewport (call $lay_x (global.get $LR_GRID)) (call $lay_y (global.get $LR_GRID)) (call $lay_w (global.get $LR_GRID)) (call $lay_h (global.get $LR_GRID)))
+      (global.set $tscale (call $ui_ts))
+      (call $draw_ovl))
+    (else
+      (call $scene_draw)
+      (global.set $tscale (call $ui_ts))
+      (call $draw_top)
+      (call $draw_tabs)
+      (call $draw_sheet)
+      (call $draw_place)))
   (call $draw_toasts)
+  (if (global.get $ann_pend) (then (global.set $ann_pend (i32.const 0)) (call $ovl_say)))
+  (global.set $lab_on (local.get $lo))
   (global.set $tscale (i32.const 1)))
 
 ;; ---------------------------------------------------------------- lifecycle
@@ -655,6 +691,7 @@
   (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
   (global.set $tab (i32.const 0)) (global.set $msub (i32.const 0)) (global.set $place (i32.const 0)) (global.set $dsp (i32.const -1))
   (call $qreset)
+  (global.set $scr (i32.const 0)) (i32.store8 (global.get $SUMMARY) (i32.const 0))
   (call $layout_panel (i32.const 0))
   (global.set $dirty (i32.const 1)))
 (func $ui_new_game (param $seed i32)
@@ -689,6 +726,9 @@
   (if (i32.eq (local.get $k) (i32.const 17)) (then (return (global.get $dm))))
   (if (i32.eq (local.get $k) (i32.const 18)) (then (return (global.get $dc))))
   (if (i32.eq (local.get $k) (i32.const 19)) (then (return (global.get $lab_p))))
+  (if (i32.eq (local.get $k) (i32.const 20)) (then (return (global.get $scr))))
+  (if (i32.eq (local.get $k) (i32.const 21)) (then (return (global.get $page))))
+  (if (i32.eq (local.get $k) (i32.const 22)) (then (return (global.get $scr_ret))))
   (global.get $in_st))
 (func $t_ui_btn (param $i i32) (result i32) (i32.add (global.get $BTNS) (i32.shl (local.get $i) (i32.const 6))))
 (func $t_ui_toast (param $i i32) (result i32)

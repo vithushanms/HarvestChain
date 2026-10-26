@@ -51,8 +51,11 @@ test('boot exports: ui_boot, get_flags, set_pref', async () => {
   ex.set_flags(1, 0); assert.equal(ex.get_flags(), 6, 'set_flags(reduced, large) keeps the gazette bit');
   ex.set_pref(0, 0); ex.set_pref(1, 0); ex.set_pref(2, 0);
   assert.equal(ex.get_flags(), 0);
-  // no save: new game from the env seed
+  // no save: the Title over a fresh farm from the env seed, not saved until NEW GAME (Task 5c)
   ex.ui_boot(0);
+  assert.equal(ex.need_save(), 0);
+  assert.equal(readState(mem()).seed, 1234);
+  ex.key(13, 1); ex.key(13, 0);        // Enter = NEW GAME on a Title without a save
   assert.equal(ex.need_save(), 1);
   assert.equal(readState(mem()).seed, 1234);
   // a save loads and boots without starting a new game

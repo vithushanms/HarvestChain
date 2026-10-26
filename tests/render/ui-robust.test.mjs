@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readState } from '../helpers.mjs';
 import { farm, CROP, BLD } from './scenes.mjs';
-import { uiGame, HIT, BTN, UI } from './uistates.mjs';
+import { uiGame, HIT, BTN, UI, KEY } from './uistates.mjs';
 
 const TOASTS = 0x8D10;
 const day = (g) => readState(g.mem()).day;
@@ -34,7 +34,7 @@ test('harvesting a ripe Greenhouse crop of every kind through the sheet: no trap
 
 test('$str: ids outside the table give an empty string', async () => {
   const g = await uiGame();
-  for (const id of [-1, -5, 128, 9999, 0x7FFFFFFF]) assert.equal(g.str(g.ex.t_str(id)), '', `id ${id}`);
+  for (const id of [-1, -5, 1000, 9999, 0x7FFFFFFF]) assert.equal(g.str(g.ex.t_str(id)), '', `id ${id}`);
   assert.equal(g.str(g.ex.t_str(0)), 'WHEAT');
 });
 
@@ -141,7 +141,7 @@ test('demolish arm under reduced motion: frame keeps returning non-zero while ar
 test('reduced motion: a visible toast asks for low-rate frames (2), not full rate', async () => {
   const g = await uiGame(360, 640, 200, { reduced: true });
   g.frame();
-  g.tap(HIT.DAY);
+  g.key(KEY.H);                        // toasts NOTHING RIPE (the DAY box opens the Gazette now)
   assert.equal(g.ui(UI.TOASTS), 1);
   assert.equal(g.frame(), 2);
   for (let i = 0; i < 40; i++) g.frame(100);

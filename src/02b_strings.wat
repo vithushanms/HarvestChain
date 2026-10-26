@@ -10,8 +10,8 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 221 strings, 2054 B at 0x7700 (budget 2560 B)
-(data (i32.const 0x7700)
+;; string table: 273 strings, 2777 B at 0x7200 (spec budget 2560 B)
+(data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
   "TOMATO\00" ;; 2
@@ -93,148 +93,201 @@
   " DAYS\00" ;; 78
   " DAY\00" ;; 79
   "RIPE\00" ;; 80
-  "GROWING\00" ;; 81
-  "UPKEEP \00" ;; 82
-  "/DAY\00" ;; 83
-  "STORAGE \00" ;; 84
-  "EMPTY PLOT\00" ;; 85
-  "OFF\00" ;; 86
-  "MAX LEVEL\00" ;; 87
-  "AGING \00" ;; 88
-  "READY IN \00" ;; 89
-  "ROTS IN \00" ;; 90
-  "ROTTING\00" ;; 91
-  "TODAY \00" ;; 92
-  "FORECAST \00" ;; 93
-  "PLANTED \00" ;; 94
-  "HARVESTED \00" ;; 95
-  "BUILT \00" ;; 96
-  "CLEARED \00" ;; 97
-  "UPGRADED \00" ;; 98
-  "LAND BOUGHT: \00" ;; 99
-  "TAP A PLOT TO PLANT OR BUILD\00" ;; 100
-  "E END DAY  H HARVEST  ESC CLOSE\00" ;; 101
-  "NEEDS \00" ;; 102
-  "NEEDS \01\00" ;; 103
-  "FROM DAY \00" ;; 104
-  "BUY THE NEARER RING FIRST\00" ;; 105
-  "FARM IS FULL SIZE\00" ;; 106
-  "WILD LAND\00" ;; 107
-  "CASH\00" ;; 108
-  " PTS\00" ;; 109
-  " LOST\00" ;; 110
-  " SPOILED\00" ;; 111
-  " RIPE\00" ;; 112
-  "NOTHING RIPE\00" ;; 113
-  "PLOT \00" ;; 114
-  "YIELD \00" ;; 115
-  " CAP \00" ;; 116
-  "RECIPE\00" ;; 117
-  "FARM \00" ;; 118
-  "IN STORAGE\00" ;; 119
-  "PICK A CROP\00" ;; 120
-  " UNITS\00" ;; 121
-  "SELECTED \00" ;; 122
-  "RUN IS OVER\00" ;; 123
-  "ALL YEAR\00" ;; 124
-  ", \00" ;; 125
-  "X\00" ;; 126
-  " PLOTS\00" ;; 127
-  "\00" ;; 128
-  "SURGE \02\00" ;; 129
-  "GLUT \03\00" ;; 130
-  "ROAD CLOSED\00" ;; 131
-  "FESTIVAL\00" ;; 132
-  "FUEL SPIKE\00" ;; 133
-  "BUMPER CROP\00" ;; 134
-  "STAND\00" ;; 135
-  "TOWN\00" ;; 136
-  "CITY\00" ;; 137
-  "PRICES\00" ;; 138
-  "SELL\00" ;; 139
-  "CONTRACTS\00" ;; 140
-  "WHERE TO?\00" ;; 141
-  "CARGO\00" ;; 142
-  "CONTRACT\00" ;; 143
-  "CONFIRM\00" ;; 144
-  "+20 CAP \00" ;; 145
-  "FRIDGE \00" ;; 146
-  "FAST \00" ;; 147
-  "-\00" ;; 148
-  "+\00" ;; 149
-  "MAX\00" ;; 150
-  "HOME\00" ;; 151
-  "OUT TO \00" ;; 152
-  "RETURNING\00" ;; 153
-  " ROT TOMORROW\00" ;; 154
-  "NEXT END DAY: \00" ;; 155
-  "NO RECIPE SET\00" ;; 156
-  "NEED \00" ;; 157
-  " MORE\00" ;; 158
-  " IN STOCK\00" ;; 159
-  "ROOM \00" ;; 160
-  "WINE IN \00" ;; 161
-  "NOTHING \00" ;; 162
-  "NO PROCESSORS YET\00" ;; 163
-  " II\00" ;; 164
-  " EA\00" ;; 165
-  "FOR \00" ;; 166
-  "NEXT UNITS DROP PRICE\00" ;; 167
-  "SET A QUANTITY\00" ;; 168
-  "SOLD \00" ;; 169
-  "OFFERS\00" ;; 170
-  "ACCEPT \00" ;; 171
-  "DECLINE\00" ;; 172
-  "ACCEPTED\00" ;; 173
-  "DECLINED\00" ;; 174
-  " BY DAY \00" ;; 175
-  "DUE IN \00" ;; 176
-  "ON TRUCK \00" ;; 177
-  "READY\00" ;; 178
-  "TOO LATE\00" ;; 179
-  "SEND TODAY\00" ;; 180
-  "NONE YET\00" ;; 181
-  "TRUCK \00" ;; 182
-  "DISPATCH\00" ;; 183
-  "BUY TRUCK \00" ;; 184
-  "BOUGHT \00" ;; 185
-  "SEND TRUCK\00" ;; 186
-  " SENT TO \00" ;; 187
-  "ARRIVES DAY \00" ;; 188
-  "FILL BEST\00" ;; 189
-  "NEXT\00" ;; 190
-  "BACK\00" ;; 191
-  "STEP \00" ;; 192
-  "NO CONTRACT\00" ;; 193
-  "WRONG MARKET\00" ;; 194
-  "ON ANOTHER TRUCK\00" ;; 195
-  "EST. SALES \00" ;; 196
-  " PAYS \00" ;; 197
-  " (INSTEAD OF MARKET)\00" ;; 198
-  "FUEL \00" ;; 199
-  " SPOIL ON THE WAY\00" ;; 200
-  "LOAD \00" ;; 201
-  "LOAD SOME GOODS\00" ;; 202
-  "TAP AN EMPTY PLOT FOR \00" ;; 203
-  "CANCEL\00" ;; 204
-  "LAND\00" ;; 205
-  "LOAN\00" ;; 206
-  "OWED \00" ;; 207
-  "TAKE \00" ;; 208
-  "REPAY \00" ;; 209
-  "ONE LOAN AT A TIME\00" ;; 210
-  "NOTHING OWED\00" ;; 211
-  "INTEREST IS PAID FIRST\00" ;; 212
-  "BORROWED \00" ;; 213
-  "REPAID \00" ;; 214
-  " OWNED\00" ;; 215
-  "UP TO \00" ;; 216
-  " OF \00" ;; 217
-  "TOO MANY KINDS\00" ;; 218
-  "NEEDS ANOTHER GARAGE\00" ;; 219
-  "-% = PRICE DROP FROM SELLING\00" ;; 220
+  "UPKEEP \00" ;; 81
+  "/DAY\00" ;; 82
+  "STORAGE \00" ;; 83
+  "EMPTY PLOT\00" ;; 84
+  "OFF\00" ;; 85
+  "MAX LEVEL\00" ;; 86
+  "AGING \00" ;; 87
+  "READY IN \00" ;; 88
+  "ROTS IN \00" ;; 89
+  "ROTTING\00" ;; 90
+  "TODAY \00" ;; 91
+  "FORECAST \00" ;; 92
+  "PLANTED \00" ;; 93
+  "HARVESTED \00" ;; 94
+  "BUILT \00" ;; 95
+  "CLEARED \00" ;; 96
+  "UPGRADED \00" ;; 97
+  "LAND BOUGHT: \00" ;; 98
+  "TAP A PLOT TO PLANT OR BUILD\00" ;; 99
+  "E END DAY  H HARVEST  ESC CLOSE\00" ;; 100
+  "NEEDS \00" ;; 101
+  "NEEDS \01\00" ;; 102
+  "FROM DAY \00" ;; 103
+  "BUY THE NEARER RING FIRST\00" ;; 104
+  "FARM IS FULL SIZE\00" ;; 105
+  "WILD LAND\00" ;; 106
+  "CASH\00" ;; 107
+  " PTS\00" ;; 108
+  " LOST\00" ;; 109
+  " SPOILED\00" ;; 110
+  " RIPE\00" ;; 111
+  "NOTHING RIPE\00" ;; 112
+  "PLOT \00" ;; 113
+  "YIELD \00" ;; 114
+  " CAP \00" ;; 115
+  "RECIPE\00" ;; 116
+  "FARM \00" ;; 117
+  "IN STORAGE\00" ;; 118
+  "PICK A CROP\00" ;; 119
+  " UNITS\00" ;; 120
+  "ALL YEAR\00" ;; 121
+  ", \00" ;; 122
+  "X\00" ;; 123
+  " PLOTS\00" ;; 124
+  "\00" ;; 125
+  "SURGE \02\00" ;; 126
+  "GLUT \03\00" ;; 127
+  "ROAD CLOSED\00" ;; 128
+  "FESTIVAL\00" ;; 129
+  "FUEL SPIKE\00" ;; 130
+  "BUMPER CROP\00" ;; 131
+  "STAND\00" ;; 132
+  "TOWN\00" ;; 133
+  "CITY\00" ;; 134
+  "PRICES\00" ;; 135
+  "SELL\00" ;; 136
+  "CONTRACTS\00" ;; 137
+  "WHERE TO?\00" ;; 138
+  "CARGO\00" ;; 139
+  "CONTRACT\00" ;; 140
+  "CONFIRM\00" ;; 141
+  "+20 CAP \00" ;; 142
+  "FRIDGE \00" ;; 143
+  "FAST \00" ;; 144
+  "-\00" ;; 145
+  "+\00" ;; 146
+  "MAX\00" ;; 147
+  "HOME\00" ;; 148
+  "OUT TO \00" ;; 149
+  "RETURNING\00" ;; 150
+  " ROT TOMORROW\00" ;; 151
+  "NEXT END DAY: \00" ;; 152
+  "NO RECIPE SET\00" ;; 153
+  "NEED \00" ;; 154
+  " MORE\00" ;; 155
+  " IN STOCK\00" ;; 156
+  "ROOM \00" ;; 157
+  "WINE IN \00" ;; 158
+  "NOTHING \00" ;; 159
+  "NO PROCESSORS YET\00" ;; 160
+  " II\00" ;; 161
+  " EA\00" ;; 162
+  "FOR \00" ;; 163
+  "NEXT UNITS DROP PRICE\00" ;; 164
+  "SET A QUANTITY\00" ;; 165
+  "SOLD \00" ;; 166
+  "OFFERS\00" ;; 167
+  "ACCEPT \00" ;; 168
+  "DECLINE\00" ;; 169
+  "ACCEPTED\00" ;; 170
+  "DECLINED\00" ;; 171
+  " BY DAY \00" ;; 172
+  "DUE IN \00" ;; 173
+  "ON TRUCK \00" ;; 174
+  "READY\00" ;; 175
+  "TOO LATE\00" ;; 176
+  "SEND TODAY\00" ;; 177
+  "NONE YET\00" ;; 178
+  "TRUCK \00" ;; 179
+  "DISPATCH\00" ;; 180
+  "BUY TRUCK \00" ;; 181
+  "BOUGHT \00" ;; 182
+  "SEND TRUCK\00" ;; 183
+  " SENT TO \00" ;; 184
+  "ARRIVES DAY \00" ;; 185
+  "FILL BEST\00" ;; 186
+  "NEXT\00" ;; 187
+  "BACK\00" ;; 188
+  "STEP \00" ;; 189
+  "NO CONTRACT\00" ;; 190
+  "WRONG MARKET\00" ;; 191
+  "ON ANOTHER TRUCK\00" ;; 192
+  "EST. SALES \00" ;; 193
+  " PAYS \00" ;; 194
+  " (INSTEAD OF MARKET)\00" ;; 195
+  "FUEL \00" ;; 196
+  " SPOIL ON THE WAY\00" ;; 197
+  "LOAD \00" ;; 198
+  "LOAD SOME GOODS\00" ;; 199
+  "TAP AN EMPTY PLOT FOR \00" ;; 200
+  "CANCEL\00" ;; 201
+  "LAND\00" ;; 202
+  "LOAN\00" ;; 203
+  "OWED \00" ;; 204
+  "TAKE \00" ;; 205
+  "REPAY \00" ;; 206
+  "ONE LOAN AT A TIME\00" ;; 207
+  "NOTHING OWED\00" ;; 208
+  "INTEREST IS PAID FIRST\00" ;; 209
+  "BORROWED \00" ;; 210
+  "REPAID \00" ;; 211
+  " OWNED\00" ;; 212
+  "UP TO \00" ;; 213
+  " OF \00" ;; 214
+  "TOO MANY KINDS\00" ;; 215
+  "NEEDS ANOTHER GARAGE\00" ;; 216
+  "-% = PRICE DROP FROM SELLING\00" ;; 217
+  "HARVESTCHAIN\00" ;; 218
+  "MORNING GAZETTE\00" ;; 219
+  "JOURNAL\00" ;; 220
+  "RUN COMPLETE!\00" ;; 221
+  "BANKRUPT\00" ;; 222
+  "HOW TO PLAY\00" ;; 223
+  "PLAYING\00" ;; 224
+  "ENDLESS\00" ;; 225
+  "PLANT ON A PLOT. END DAY GROWS IT.\00" ;; 226
+  "HARVEST WHEN RIPE.\00" ;; 227
+  "A MILL TURNS WHEAT INTO FLOUR:\00" ;; 228
+  "GOODS SELL FOR MORE.\00" ;; 229
+  "SELL AT THE STAND, TRUCK TO TOWN\00" ;; 230
+  "AND CITY. GROW YOUR NET WORTH!\00" ;; 231
+  "FIRST PROCESSED SALE\00" ;; 232
+  "GROWING CONCERN\00" ;; 233
+  "TRUSTED SUPPLIER\00" ;; 234
+  "A GOOD FIRST YEAR\00" ;; 235
+  "LOCAL FAVOURITE\00" ;; 236
+  "VINTNER\00" ;; 237
+  "HARVEST TYCOON\00" ;; 238
+  "SOLD \00" ;; 239
+  "NET WORTH \00" ;; 240
+  "CONTRACTS \00" ;; 241
+  "NET WORTH \00" ;; 242
+  "REP \01\00" ;; 243
+  "WINE \00" ;; 244
+  "NET WORTH \00" ;; 245
+  "YEAR 3 COMPLETE\00" ;; 246
+  "GROW. PROCESS. SELL. DELIVER.\00" ;; 247
+  "CONTINUE\00" ;; 248
+  "NEW GAME\00" ;; 249
+  "TAP AGAIN: REPLACES SAVE\00" ;; 250
+  "DAILY SEED #\00" ;; 251
+  "LARGE TEXT\00" ;; 252
+  "AUTO GAZETTE\00" ;; 253
+  "0 IMAGE FILES ^ 0 FONT FILES ^ 1 WASM\00" ;; 254
+  "LOADED IN \00" ;; 255
+  " MS\00" ;; 256
+  " KB\00" ;; 257
+  " ^ \00" ;; 258
+  "PAGE \00" ;; 259
+  ", YEAR \00" ;; 260
+  "% SURE\00" ;; 261
+  " TOMORROW\00" ;; 262
+  " STEADY\00" ;; 263
+  "NEARLY FULL\00" ;; 264
+  "START DAY\00" ;; 265
+  "DON'T SHOW\00" ;; 266
+  "SCORE \00" ;; 267
+  " TO \00" ;; 268
+  "REPUTATION \00" ;; 269
+  "LOAN UNPAID, GRACE OVER\00" ;; 270
+  "TRY AGAIN\00" ;; 271
+  " IN \00" ;; 272
 )
-(global $STR_COUNT i32 (i32.const 221))
+(global $STR_BASE i32 (i32.const 0x7200))
+(global $STR_COUNT i32 (i32.const 273))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -242,13 +295,18 @@
 (global $STR_TAB i32 (i32.const 33))
 (global $STR_ERR i32 (i32.const 38))
 (global $STR_BINFO i32 (i32.const 58))
-(global $STR_EV i32 (i32.const 128))
-(global $STR_MKT i32 (i32.const 135))
-(global $STR_MSUB i32 (i32.const 138))
-(global $STR_STEPN i32 (i32.const 141))
-(global $STR_UPG i32 (i32.const 145))
-(global $STR_STP i32 (i32.const 148))
-(global $STR_TST i32 (i32.const 151))
+(global $STR_EV i32 (i32.const 125))
+(global $STR_MKT i32 (i32.const 132))
+(global $STR_MSUB i32 (i32.const 135))
+(global $STR_STEPN i32 (i32.const 138))
+(global $STR_UPG i32 (i32.const 142))
+(global $STR_STP i32 (i32.const 145))
+(global $STR_TST i32 (i32.const 148))
+(global $STR_SCR i32 (i32.const 218))
+(global $STR_ST i32 (i32.const 224))
+(global $STR_HOW i32 (i32.const 226))
+(global $STR_MNAME i32 (i32.const 232))
+(global $STR_MP i32 (i32.const 239))
 (global $STR_DAY i32 (i32.const 68))
 (global $STR_END_DAY i32 (i32.const 69))
 (global $STR_HARVEST i32 (i32.const 70))
@@ -262,121 +320,145 @@
 (global $STR_DAYS i32 (i32.const 78))
 (global $STR_DAY1 i32 (i32.const 79))
 (global $STR_RIPE i32 (i32.const 80))
-(global $STR_GROWING i32 (i32.const 81))
-(global $STR_UPKEEP i32 (i32.const 82))
-(global $STR_PER_DAY i32 (i32.const 83))
-(global $STR_STORAGE i32 (i32.const 84))
-(global $STR_EMPTY i32 (i32.const 85))
-(global $STR_OFF i32 (i32.const 86))
-(global $STR_MAX_LEVEL i32 (i32.const 87))
-(global $STR_AGING i32 (i32.const 88))
-(global $STR_READY_IN i32 (i32.const 89))
-(global $STR_ROTS_IN i32 (i32.const 90))
-(global $STR_ROTTING i32 (i32.const 91))
-(global $STR_TODAY i32 (i32.const 92))
-(global $STR_FORECAST i32 (i32.const 93))
-(global $STR_PLANTED i32 (i32.const 94))
-(global $STR_HARVESTED i32 (i32.const 95))
-(global $STR_BUILT i32 (i32.const 96))
-(global $STR_CLEARED i32 (i32.const 97))
-(global $STR_UPGRADED i32 (i32.const 98))
-(global $STR_LAND_BOUGHT i32 (i32.const 99))
-(global $STR_HINT i32 (i32.const 100))
-(global $STR_KEYS i32 (i32.const 101))
-(global $STR_NEEDS i32 (i32.const 102))
-(global $STR_NEEDS_STAR i32 (i32.const 103))
-(global $STR_FROM_DAY i32 (i32.const 104))
-(global $STR_NEXT_RING i32 (i32.const 105))
-(global $STR_FULL_FARM i32 (i32.const 106))
-(global $STR_WILD i32 (i32.const 107))
-(global $STR_CASH i32 (i32.const 108))
-(global $STR_PTS i32 (i32.const 109))
-(global $STR_LOST i32 (i32.const 110))
-(global $STR_SPOILED i32 (i32.const 111))
-(global $STR_NOW_RIPE i32 (i32.const 112))
-(global $STR_NO_RIPE i32 (i32.const 113))
-(global $STR_PLOT i32 (i32.const 114))
-(global $STR_YIELD i32 (i32.const 115))
-(global $STR_CAP i32 (i32.const 116))
-(global $STR_RECIPE i32 (i32.const 117))
-(global $STR_FARM_SIZE i32 (i32.const 118))
-(global $STR_STOCK i32 (i32.const 119))
-(global $STR_PICK i32 (i32.const 120))
-(global $STR_UNITS i32 (i32.const 121))
-(global $STR_SELECTED i32 (i32.const 122))
-(global $STR_RUN_OVER i32 (i32.const 123))
-(global $STR_SEASON_ANY i32 (i32.const 124))
-(global $STR_SEP i32 (i32.const 125))
-(global $STR_X i32 (i32.const 126))
-(global $STR_PLOTS i32 (i32.const 127))
-(global $STR_ROT i32 (i32.const 154))
-(global $STR_PLAN i32 (i32.const 155))
-(global $STR_NO_RECIPE i32 (i32.const 156))
-(global $STR_NEED i32 (i32.const 157))
-(global $STR_MORE i32 (i32.const 158))
-(global $STR_IN_STOCK i32 (i32.const 159))
-(global $STR_ROOM i32 (i32.const 160))
-(global $STR_WINE_IN i32 (i32.const 161))
-(global $STR_NOTHING i32 (i32.const 162))
-(global $STR_NO_PROC i32 (i32.const 163))
-(global $STR_II i32 (i32.const 164))
-(global $STR_EA i32 (i32.const 165))
-(global $STR_FOR i32 (i32.const 166))
-(global $STR_DROP i32 (i32.const 167))
-(global $STR_SET_QTY i32 (i32.const 168))
-(global $STR_SOLD i32 (i32.const 169))
-(global $STR_OFFERS i32 (i32.const 170))
-(global $STR_ACCEPT i32 (i32.const 171))
-(global $STR_DECLINE i32 (i32.const 172))
-(global $STR_ACCEPTED i32 (i32.const 173))
-(global $STR_DECLINED i32 (i32.const 174))
-(global $STR_BY_DAY i32 (i32.const 175))
-(global $STR_DUE i32 (i32.const 176))
-(global $STR_ON_TRUCK i32 (i32.const 177))
-(global $STR_READY i32 (i32.const 178))
-(global $STR_TOO_LATE i32 (i32.const 179))
-(global $STR_SEND_TODAY i32 (i32.const 180))
-(global $STR_NONE i32 (i32.const 181))
-(global $STR_TRUCK i32 (i32.const 182))
-(global $STR_DISPATCH i32 (i32.const 183))
-(global $STR_BUY_TRUCK i32 (i32.const 184))
-(global $STR_BOUGHT i32 (i32.const 185))
-(global $STR_SEND i32 (i32.const 186))
-(global $STR_SENT i32 (i32.const 187))
-(global $STR_ARRIVES i32 (i32.const 188))
-(global $STR_FILL i32 (i32.const 189))
-(global $STR_NEXT i32 (i32.const 190))
-(global $STR_BACK i32 (i32.const 191))
-(global $STR_STEP i32 (i32.const 192))
-(global $STR_NO_CON i32 (i32.const 193))
-(global $STR_WRONG_MKT i32 (i32.const 194))
-(global $STR_TAKEN i32 (i32.const 195))
-(global $STR_EST i32 (i32.const 196))
-(global $STR_PAYS i32 (i32.const 197))
-(global $STR_INSTEAD i32 (i32.const 198))
-(global $STR_FUEL i32 (i32.const 199))
-(global $STR_SPOIL i32 (i32.const 200))
-(global $STR_LOAD i32 (i32.const 201))
-(global $STR_EMPTY_T i32 (i32.const 202))
-(global $STR_PLACE i32 (i32.const 203))
-(global $STR_CANCEL i32 (i32.const 204))
-(global $STR_LAND i32 (i32.const 205))
-(global $STR_LOAN i32 (i32.const 206))
-(global $STR_OWED i32 (i32.const 207))
-(global $STR_TAKE i32 (i32.const 208))
-(global $STR_REPAY i32 (i32.const 209))
-(global $STR_ONE_LOAN i32 (i32.const 210))
-(global $STR_NOTHING_OWED i32 (i32.const 211))
-(global $STR_FIRST i32 (i32.const 212))
-(global $STR_BORROWED i32 (i32.const 213))
-(global $STR_REPAID i32 (i32.const 214))
-(global $STR_OWNED i32 (i32.const 215))
-(global $STR_UP_TO i32 (i32.const 216))
-(global $STR_OF i32 (i32.const 217))
-(global $STR_KINDS i32 (i32.const 218))
-(global $STR_ANOTHER i32 (i32.const 219))
-(global $STR_LEGEND i32 (i32.const 220))
-;; icons: 28 x 24 B at 0x640
+(global $STR_UPKEEP i32 (i32.const 81))
+(global $STR_PER_DAY i32 (i32.const 82))
+(global $STR_STORAGE i32 (i32.const 83))
+(global $STR_EMPTY i32 (i32.const 84))
+(global $STR_OFF i32 (i32.const 85))
+(global $STR_MAX_LEVEL i32 (i32.const 86))
+(global $STR_AGING i32 (i32.const 87))
+(global $STR_READY_IN i32 (i32.const 88))
+(global $STR_ROTS_IN i32 (i32.const 89))
+(global $STR_ROTTING i32 (i32.const 90))
+(global $STR_TODAY i32 (i32.const 91))
+(global $STR_FORECAST i32 (i32.const 92))
+(global $STR_PLANTED i32 (i32.const 93))
+(global $STR_HARVESTED i32 (i32.const 94))
+(global $STR_BUILT i32 (i32.const 95))
+(global $STR_CLEARED i32 (i32.const 96))
+(global $STR_UPGRADED i32 (i32.const 97))
+(global $STR_LAND_BOUGHT i32 (i32.const 98))
+(global $STR_HINT i32 (i32.const 99))
+(global $STR_KEYS i32 (i32.const 100))
+(global $STR_NEEDS i32 (i32.const 101))
+(global $STR_NEEDS_STAR i32 (i32.const 102))
+(global $STR_FROM_DAY i32 (i32.const 103))
+(global $STR_NEXT_RING i32 (i32.const 104))
+(global $STR_FULL_FARM i32 (i32.const 105))
+(global $STR_WILD i32 (i32.const 106))
+(global $STR_CASH i32 (i32.const 107))
+(global $STR_PTS i32 (i32.const 108))
+(global $STR_LOST i32 (i32.const 109))
+(global $STR_SPOILED i32 (i32.const 110))
+(global $STR_NOW_RIPE i32 (i32.const 111))
+(global $STR_NO_RIPE i32 (i32.const 112))
+(global $STR_PLOT i32 (i32.const 113))
+(global $STR_YIELD i32 (i32.const 114))
+(global $STR_CAP i32 (i32.const 115))
+(global $STR_RECIPE i32 (i32.const 116))
+(global $STR_FARM_SIZE i32 (i32.const 117))
+(global $STR_STOCK i32 (i32.const 118))
+(global $STR_PICK i32 (i32.const 119))
+(global $STR_UNITS i32 (i32.const 120))
+(global $STR_SEASON_ANY i32 (i32.const 121))
+(global $STR_SEP i32 (i32.const 122))
+(global $STR_X i32 (i32.const 123))
+(global $STR_PLOTS i32 (i32.const 124))
+(global $STR_ROT i32 (i32.const 151))
+(global $STR_PLAN i32 (i32.const 152))
+(global $STR_NO_RECIPE i32 (i32.const 153))
+(global $STR_NEED i32 (i32.const 154))
+(global $STR_MORE i32 (i32.const 155))
+(global $STR_IN_STOCK i32 (i32.const 156))
+(global $STR_ROOM i32 (i32.const 157))
+(global $STR_WINE_IN i32 (i32.const 158))
+(global $STR_NOTHING i32 (i32.const 159))
+(global $STR_NO_PROC i32 (i32.const 160))
+(global $STR_II i32 (i32.const 161))
+(global $STR_EA i32 (i32.const 162))
+(global $STR_FOR i32 (i32.const 163))
+(global $STR_DROP i32 (i32.const 164))
+(global $STR_SET_QTY i32 (i32.const 165))
+(global $STR_SOLD i32 (i32.const 166))
+(global $STR_OFFERS i32 (i32.const 167))
+(global $STR_ACCEPT i32 (i32.const 168))
+(global $STR_DECLINE i32 (i32.const 169))
+(global $STR_ACCEPTED i32 (i32.const 170))
+(global $STR_DECLINED i32 (i32.const 171))
+(global $STR_BY_DAY i32 (i32.const 172))
+(global $STR_DUE i32 (i32.const 173))
+(global $STR_ON_TRUCK i32 (i32.const 174))
+(global $STR_READY i32 (i32.const 175))
+(global $STR_TOO_LATE i32 (i32.const 176))
+(global $STR_SEND_TODAY i32 (i32.const 177))
+(global $STR_NONE i32 (i32.const 178))
+(global $STR_TRUCK i32 (i32.const 179))
+(global $STR_DISPATCH i32 (i32.const 180))
+(global $STR_BUY_TRUCK i32 (i32.const 181))
+(global $STR_BOUGHT i32 (i32.const 182))
+(global $STR_SEND i32 (i32.const 183))
+(global $STR_SENT i32 (i32.const 184))
+(global $STR_ARRIVES i32 (i32.const 185))
+(global $STR_FILL i32 (i32.const 186))
+(global $STR_NEXT i32 (i32.const 187))
+(global $STR_BACK i32 (i32.const 188))
+(global $STR_STEP i32 (i32.const 189))
+(global $STR_NO_CON i32 (i32.const 190))
+(global $STR_WRONG_MKT i32 (i32.const 191))
+(global $STR_TAKEN i32 (i32.const 192))
+(global $STR_EST i32 (i32.const 193))
+(global $STR_PAYS i32 (i32.const 194))
+(global $STR_INSTEAD i32 (i32.const 195))
+(global $STR_FUEL i32 (i32.const 196))
+(global $STR_SPOIL i32 (i32.const 197))
+(global $STR_LOAD i32 (i32.const 198))
+(global $STR_EMPTY_T i32 (i32.const 199))
+(global $STR_PLACE i32 (i32.const 200))
+(global $STR_CANCEL i32 (i32.const 201))
+(global $STR_LAND i32 (i32.const 202))
+(global $STR_LOAN i32 (i32.const 203))
+(global $STR_OWED i32 (i32.const 204))
+(global $STR_TAKE i32 (i32.const 205))
+(global $STR_REPAY i32 (i32.const 206))
+(global $STR_ONE_LOAN i32 (i32.const 207))
+(global $STR_NOTHING_OWED i32 (i32.const 208))
+(global $STR_FIRST i32 (i32.const 209))
+(global $STR_BORROWED i32 (i32.const 210))
+(global $STR_REPAID i32 (i32.const 211))
+(global $STR_OWNED i32 (i32.const 212))
+(global $STR_UP_TO i32 (i32.const 213))
+(global $STR_OF i32 (i32.const 214))
+(global $STR_KINDS i32 (i32.const 215))
+(global $STR_ANOTHER i32 (i32.const 216))
+(global $STR_LEGEND i32 (i32.const 217))
+(global $STR_YEAR3 i32 (i32.const 246))
+(global $STR_TAGLINE i32 (i32.const 247))
+(global $STR_CONTINUE i32 (i32.const 248))
+(global $STR_NEW_GAME i32 (i32.const 249))
+(global $STR_REPLACES i32 (i32.const 250))
+(global $STR_DAILY i32 (i32.const 251))
+(global $STR_LARGE i32 (i32.const 252))
+(global $STR_AUTO_GAZ i32 (i32.const 253))
+(global $STR_FILES i32 (i32.const 254))
+(global $STR_LOADED i32 (i32.const 255))
+(global $STR_MS i32 (i32.const 256))
+(global $STR_KB i32 (i32.const 257))
+(global $STR_DOTS i32 (i32.const 258))
+(global $STR_PAGE i32 (i32.const 259))
+(global $STR_YEAR i32 (i32.const 260))
+(global $STR_SURE i32 (i32.const 261))
+(global $STR_TOMORROW i32 (i32.const 262))
+(global $STR_STEADY i32 (i32.const 263))
+(global $STR_NEARLY i32 (i32.const 264))
+(global $STR_START_DAY i32 (i32.const 265))
+(global $STR_DONT_SHOW i32 (i32.const 266))
+(global $STR_SCORE i32 (i32.const 267))
+(global $STR_TO i32 (i32.const 268))
+(global $STR_REPUTATION i32 (i32.const 269))
+(global $STR_CAUSE i32 (i32.const 270))
+(global $STR_TRY i32 (i32.const 271))
+(global $STR_IN i32 (i32.const 272))
+;; icons: 29 x 24 B at 0x640
 (data (i32.const 0x640)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN
   "\00\01\00\1d\00\64\40\e5\56\a4\6a\40\6a\40\9a\06\19\19\14\50\00\10\16\17" ;; 1 STAR
@@ -406,6 +488,7 @@
   "\00\01\00\1d\00\fd\01\a9\1a\95\5a\41\6a\00\a9\01\a4\06\50\15\00\08\0a\0b" ;; 25 UP
   "\40\05\54\55\05\00\00\fd\1f\b4\7b\d0\ee\41\bb\07\a9\1a\50\15\00\3d\2e\2f" ;; 26 TRASH
   "\40\05\00\1d\00\64\40\d5\55\bd\aa\55\59\05\64\00\90\01\40\05\00\08\0a\0b" ;; 27 PLUS
+  "\54\55\91\aa\46\fe\1b\a9\6a\e4\bf\91\aa\46\aa\1a\55\55\f0\ff\03\24\26\3b" ;; 28 BOOK
 )
 (global $I_COIN i32 (i32.const 0))
 (global $I_STAR i32 (i32.const 1))
@@ -435,4 +518,5 @@
 (global $I_UP i32 (i32.const 25))
 (global $I_TRASH i32 (i32.const 26))
 (global $I_PLUS i32 (i32.const 27))
+(global $I_BOOK i32 (i32.const 28))
 ;; <<< END GENERATED strings

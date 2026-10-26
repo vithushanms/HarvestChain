@@ -95,6 +95,8 @@ The UI states are scripted in `tests/render/uistates.mjs` through the same `poin
 
 The five tabs are Farm (tile sheet, `src/22a_farm.wat`) and Process, Market (prices / Farm Stand sell / contracts), Trucks (cards, route strip, the four-step dispatch flow) and Build (placement mode, land, loan) in `src/22b_tabs.wat`. Their content lives in the PANEL rect: a tall bottom sheet in portrait (the farm stays visible above it), the side panel on laptop. Every action goes through `act()`; the read-only `quote(market, good, qty)` export (what selling would pay, saturation included) prices the sell panel and the dispatch summary.
 
+The screens over the farm live in `src/22c_screens.wat`: the Title (shown on every boot: Continue / New Game / Daily Seed / How to play / Journal, Large text and Auto gazette toggles, the zero-asset footer and the load line), the morning Gazette (after End Day unless switched off, or tap the DAY box), the Journal (milestones, score preview; Build tab, Title or `J`), Results / Game Over. They reuse the sheet's card (`$draw_box`) and `$put` rows; Esc closes the Gazette, Journal and How to play.
+
 ## Looking after it
 
 **Changing game numbers (prices, costs, grow times…).** Every tunable number lives in `src/03_balance.wat` as u16 data, one commented row per entry. Edit the hex *and* the matching expected value in `tests/balance.test.mjs`; the test checks every value against the spec, so a typo shows up immediately. Values must fit in 0–65535. New scalars are appended as `T_K` columns at the end (and named in `tools/balance.json`); `warehouseStorage` is reserved and unused.
@@ -111,7 +113,7 @@ The five tabs are Farm (tile sheet, `src/22a_farm.wat`) and Process, Market (pri
 
 **Changing the farm art.** Crop, building, truck and prop models are data: readable primitive lists in `tools/gen-models.mjs` (boxes, prisms, cylinders, spheres, stem tufts, line segments, with ripe / upgraded / season conditions). Edit them there, run `npm run gen` to rewrite the table in `src/21c_scene.wat`, look at the PNGs, then refresh the render goldens (`UPDATE_GOLDEN=1 node --test tests/render/`), review and commit. A test fails if the committed table drifts from the generator.
 
-**Changing UI text or icons.** Every word the UI shows is in the string table in `tools/gen-strings.mjs` (UPPERCASE, short; budget 2.5 KB), next to the 9x9 glyph icons drawn as ASCII art. Edit there, run `npm run gen` (rewrites `src/02b_strings.wat`), look at the PNGs, refresh the render goldens. A test fails if the committed table drifts from the generator. Keyboard codes the loader forwards are in `tools/keycodes.json` (documented in `src/22_ui.wat`).
+**Changing UI text or icons.** Every word the UI shows is in the string table in `tools/gen-strings.mjs` (UPPERCASE, at most 40 chars a string; spec budget 2.5 KB, now about 2.8 KB pending a ruling), next to the 9x9 glyph icons drawn as ASCII art. Edit there, run `npm run gen` (rewrites `src/02b_strings.wat`), look at the PNGs, refresh the render goldens. A test fails if the committed table drifts from the generator. Keyboard codes the loader forwards are in `tools/keycodes.json` (documented in `src/22_ui.wat`).
 
 **Golden hashes.** `tests/golden.json` pins the state after 80 bot days (seeds 1-3) and after 240 bot days (seed 1); the bot plays loans, every building, two trucks, contracts and Wine, and a test asserts which actions it covers. A missing file fails the test; after a deliberate rule change run `UPDATE_GOLDEN=1 npm test`, review why the hashes moved, and commit the file.
 

@@ -13,7 +13,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const FILE = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', '02b_strings.wat');
-export const STR_ADDR = 0x7700, STR_END = 0x8000, ICON_ADDR = 0x0640, ICON_END = 0x1000;
+export const STR_ADDR = 0x7200, STR_END = 0x8000, ICON_ADDR = 0x0640, ICON_END = 0x1000;
 
 const STAR = '\x01';
 // [group or key, text]. A group entry is ['@NAME', [texts...]].
@@ -44,7 +44,6 @@ export const STRINGS = [
   ['DAYS', ' DAYS'],
   ['DAY1', ' DAY'],
   ['RIPE', 'RIPE'],
-  ['GROWING', 'GROWING'],
   ['UPKEEP', 'UPKEEP '],
   ['PER_DAY', '/DAY'],
   ['STORAGE', 'STORAGE '],
@@ -85,8 +84,6 @@ export const STRINGS = [
   ['STOCK', 'IN STORAGE'],
   ['PICK', 'PICK A CROP'],
   ['UNITS', ' UNITS'],
-  ['SELECTED', 'SELECTED '],
-  ['RUN_OVER', 'RUN IS OVER'],
   ['SEASON_ANY', 'ALL YEAR'],
   ['SEP', ', '],
   ['X', 'X'],
@@ -167,6 +164,42 @@ export const STRINGS = [
   ['KINDS', 'TOO MANY KINDS'],
   ['ANOTHER', 'NEEDS ANOTHER GARAGE'],
   ['LEGEND', '-% = PRICE DROP FROM SELLING'],
+  // Task 5c: Title, Gazette, Journal, Results / Game Over, How to play (22c_screens.wat). '^' = middle dot.
+  ['@SCR', ['HARVESTCHAIN', 'MORNING GAZETTE', 'JOURNAL', 'RUN COMPLETE!', 'BANKRUPT', 'HOW TO PLAY']],
+  ['@ST', ['PLAYING', 'ENDLESS']],
+  ['@HOW', ['PLANT ON A PLOT. END DAY GROWS IT.', 'HARVEST WHEN RIPE.',
+    'A MILL TURNS WHEAT INTO FLOUR:', 'GOODS SELL FOR MORE.',
+    'SELL AT THE STAND, TRUCK TO TOWN', 'AND CITY. GROW YOUR NET WORTH!']],
+  ['@MNAME', ['FIRST PROCESSED SALE', 'GROWING CONCERN', 'TRUSTED SUPPLIER', 'A GOOD FIRST YEAR',
+    'LOCAL FAVOURITE', 'VINTNER', 'HARVEST TYCOON']],
+  ['@MP', ['SOLD ', 'NET WORTH ', 'CONTRACTS ', 'NET WORTH ', 'REP ' + STAR, 'WINE ', 'NET WORTH ']],
+  ['YEAR3', 'YEAR 3 COMPLETE'],
+  ['TAGLINE', 'GROW. PROCESS. SELL. DELIVER.'],
+  ['CONTINUE', 'CONTINUE'],
+  ['NEW_GAME', 'NEW GAME'],
+  ['REPLACES', 'TAP AGAIN: REPLACES SAVE'],
+  ['DAILY', 'DAILY SEED #'],
+  ['LARGE', 'LARGE TEXT'],
+  ['AUTO_GAZ', 'AUTO GAZETTE'],
+  ['FILES', '0 IMAGE FILES ^ 0 FONT FILES ^ 1 WASM'],
+  ['LOADED', 'LOADED IN '],
+  ['MS', ' MS'],
+  ['KB', ' KB'],
+  ['DOTS', ' ^ '],
+  ['PAGE', 'PAGE '],
+  ['YEAR', ', YEAR '],
+  ['SURE', '% SURE'],
+  ['TOMORROW', ' TOMORROW'],
+  ['STEADY', ' STEADY'],
+  ['NEARLY', 'NEARLY FULL'],
+  ['START_DAY', 'START DAY'],
+  ['DONT_SHOW', "DON'T SHOW"],
+  ['SCORE', 'SCORE '],
+  ['TO', ' TO '],
+  ['REPUTATION', 'REPUTATION '],
+  ['CAUSE', 'LOAN UNPAID, GRACE OVER'],
+  ['TRY', 'TRY AGAIN'],
+  ['IN', ' IN '],
 ];
 
 // Icons: name, [c1, c2, c3] palette indices (hue*4 + step), 9 rows of 9 chars ('.' = clear).
@@ -454,6 +487,16 @@ export const ICONS = [
     '...121...',
     '...121...',
     '...111...']],
+  ['BOOK', [P(9, 0), P(9, 2), P(14, 3)], [
+    '.11111111',
+    '.12222221',
+    '.12333321',
+    '.12222221',
+    '.12333321',
+    '.12222221',
+    '.12222221',
+    '.11111111',
+    '..3333333']],
 ];
 
 export function strBytes() {
@@ -491,10 +534,11 @@ export function generate() {
   if (STR_ADDR + s.size > STR_END) throw new Error(`string table ${s.size} B overflows 0x${STR_END.toString(16)}`);
   const ic = iconBytes();
   if (ICON_ADDR + ic.length * 24 > ICON_END) throw new Error('icon table overflows');
-  let t = `;; string table: ${s.count} strings, ${s.size} B at 0x${STR_ADDR.toString(16)} (budget 2560 B)\n`;
+  let t = `;; string table: ${s.count} strings, ${s.size} B at 0x${STR_ADDR.toString(16)} (spec budget 2560 B)\n`;
   t += `(data (i32.const 0x${STR_ADDR.toString(16)})\n`;
   for (const e of s.out) t += `  "${watStr(e.text)}\\00" ;; ${e.id}\n`;
   t += ')\n';
+  t += `(global $STR_BASE i32 (i32.const 0x${STR_ADDR.toString(16)}))\n`;
   t += `(global $STR_COUNT i32 (i32.const ${s.count}))\n`;
   for (const [g, id] of Object.entries(s.groups)) t += `(global $STR_${g} i32 (i32.const ${id}))\n`;
   for (const [k, id] of s.ids) t += `(global $STR_${k} i32 (i32.const ${id}))\n`;
