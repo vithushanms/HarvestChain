@@ -2,7 +2,38 @@
 
 A small turn-based farm supply-chain strategy game: grow, process, sell, deliver. It is written entirely in hand-written WebAssembly text (`.wat`), including an integer-only software renderer that draws a lit isometric 3D farm. It ships as three static files (`index.html`, `game.wasm` and `sw.js`) with no framework, no asset files and no backend. It plays on a phone in portrait (360×640 and up) and on a desktop from one build.
 
+<p align="center">
+  <img src="docs/screenshots/title.png" alt="Title screen" width="23%">
+  <img src="docs/screenshots/farm.png" alt="Farm tab with the starting plots" width="23%">
+  <img src="docs/screenshots/market.png" alt="Market tab showing prices at the Stand, Town and City" width="23%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/desktop.png" alt="Desktop layout of a developed farm with a windmill, orchard and truck" width="70%">
+</p>
+
+The shots are rendered headlessly by `node tools/dump-ppm.mjs` (see [Development](#development)). The phone shots are 360×640 at 2× and the desktop shot is 640×400 logical at 2×.
+
 The design spec is [`requirement-spec.md`](requirement-spec.md). The implementation plans are in [`docs/superpowers/plans/`](docs/superpowers/plans/).
+
+## Why it exists: skipping the layers made for humans
+
+Most software is built in layers that exist so people can read and write it: a language, a framework, a component library, a bundler, a transpiler, a package tree. HarvestChain asks what is left if the author is an AI agent ([Claude Code](https://claude.com/claude-code)) and the target is the machine's own portable format, WebAssembly.
+
+<p align="center">
+  <img src="docs/architecture.svg" alt="Left: a typical web game stack of game code, framework, bundler, engine and JS runtime above the browser. Right: HarvestChain, where Claude Code writes WAT that builds to one wasm module (sim, 3D renderer, UI, replay and QR, one linear memory), with a small loader between it and the browser." width="100%">
+</p>
+
+The left side is an illustration of a common stack, not a measured build. The right side is this repo.
+
+What that buys, all of it measured or enforced in this repo:
+- **No runtime layers.** One wasm module with no imports, no allocator and no garbage collector. The 3D renderer, the UI toolkit, the replay system and the QR encoder are all in it.
+- **Tiny.** The whole game is about 40 KB gzipped over the wire: 0 image files, 0 font files, 1 wasm. A full redraw takes about 0.5 ms and End Day about 5 µs.
+- **Deterministic by construction.** Integer-only maths and a fixed RNG draw order mean the same seed and input log give byte-identical state on every device. That is what makes replays and share codes work.
+- **No framework to fall behind.** The deliverable is three static files. There is no dependency tree to update and no backend.
+
+The honest edge of the claim: `index.html` is about 3.4 KB gz of JavaScript glue that only loads the module, forwards input, blits the framebuffer and touches `localStorage`, the clipboard and the service worker. It holds no game logic. The browser has to supply those capabilities, because wasm cannot reach them by itself.
+
+Writing WAT by hand is not a sensible choice for a person. It is a reasonable one for an agent that does not tire of stack machines, and the guardrails live in tests and build checks, not in the language: size budgets, a ban on `f32`/`f64`, determinism checks and render-purity tests. See [Architecture](#architecture).
 
 ## How to play
 
