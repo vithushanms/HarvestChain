@@ -85,7 +85,7 @@ The service worker needs `http://localhost` or HTTPS. Opened from `file://`, the
 
 | Command | What it does |
 |---|---|
-| `npm test` | Builds, then runs every `tests/**/*.test.mjs` with `node:test`: sim, render, UI, replay, QR, build and memory map (565 tests, about 30 s). |
+| `npm test` | Builds, then runs every `tests/**/*.test.mjs` with `node:test`: sim, render, UI, replay, QR, build and memory map (564 tests, about 30 s). |
 | `node --test tests/state.test.mjs` | One file. Build first: tests load `build/game.test.wasm`. |
 | `node --test --test-name-pattern="round-trip" tests/state.test.mjs` | One test. |
 | `npm run test:e2e` | Runs `npm run dist`, then Playwright (chromium, phone 360×640@2 and desktop 1280×800). Run `npx playwright install chromium` once first. 130 tests. |
