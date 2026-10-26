@@ -16,6 +16,7 @@ const REGIONS = [
   ['balance tables + scene models + string table', 0x6000, 0x7FFF],
   ['layout rect table, UI block, hit table (20_layout)', 0x8000, 0x8BFF],
   ['UI text builders, toasts, announce ring, button list, label log (22_ui)', 0x8C00, 0xA8FF],
+  ['onboarding hint / step line / announce builders TBUF (22d_onboard)', 0xA900, 0xA9BF],
   ['End Day summary + screen announce builder (22c_screens)', 0xAA00, 0xAC3F],
   ['stats overlay frame ring + row builders (23_overlay)', 0xAC40, 0xAF1F],
   ['replay viewer log VLOG', 0xB000, 0xBFFF],
@@ -99,6 +100,12 @@ test('memory map: region bases and sizes match the constants in the sources', ()
   assert.equal(end('UI text builders, toasts, announce ring, button list, label log (22_ui)') + 1, 0xA900);
   assert.ok(end('UI text builders, toasts, announce ring, button list, label log (22_ui)') < constOf('SUMMARY'));
   assert.match(ui, /0xA100\.\.0xA8FF/);
+  // onboarding builders (22d_onboard.wat): three 64 B strings at TBUF, TBUF + 64, TBUF + 128
+  const TB = 'onboarding hint / step line / announce builders TBUF (22d_onboard)';
+  assert.equal(constOf('TBUF'), at(TB));
+  const onb = readFileSync('src/22d_onboard.wat', 'utf8');
+  const offs = [...onb.matchAll(/\(i32\.add \(global\.get \$TBUF\) \(i32\.const (\d+)\)\)/g)].map((m) => Number(m[1]));
+  assert.ok(offs.length > 0 && Math.max(...offs) + 64 - 1 === end(TB) - at(TB), 'TBUF builders fill exactly 0xC0 B');
   // qr_encode's overlap check names exactly the QR region
   const qr = readFileSync('src/25_qr.wat', 'utf8');
   assert.match(qr, /\(i32\.const 0x14000\)\)\s*\n\s*\(i32\.lt_u \(local\.get \$ptr\) \(i32\.const 0x16DC1\)\)/);
@@ -106,6 +113,7 @@ test('memory map: region bases and sizes match the constants in the sources', ()
   const hdr = readFileSync('src/00_memory.wat', 'utf8');
   assert.match(hdr, /0x10000\.\.0x13FFF/);
   assert.match(hdr, /0x14000\.\.0x16DC0/);
+  assert.match(hdr, /0xA900\.\.0xA9BF/);
 });
 
 // Active data segments of a wasm binary: [offset, length].
