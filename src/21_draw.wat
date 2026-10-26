@@ -17,8 +17,12 @@
 (func $resize (param $w i32) (param $h i32) (param $dpr i32)
   (local $pw i32) (local $ph i32) (local $s i32) (local $lw i32) (local $lh i32)
   (local $need i32) (local $pages i32)
-  (call $lput (global.get $L_CSSW) (call $imin (local.get $w) (i32.const 16384)))
-  (call $lput (global.get $L_CSSH) (call $imin (local.get $h) (i32.const 16384)))
+  ;; css size clamped to [1, 16384]: a zero / negative size (display:none, prerender, a rotation
+  ;; in flight) must not divide by zero in $cu / $css_to_fb_*
+  (local.set $w (call $clamp (local.get $w) (i32.const 1) (i32.const 16384)))
+  (local.set $h (call $clamp (local.get $h) (i32.const 1) (i32.const 16384)))
+  (call $lput (global.get $L_CSSW) (local.get $w))
+  (call $lput (global.get $L_CSSH) (local.get $h))
   (call $lput (i32.const 0x108) (local.get $dpr))
   (local.set $dpr (select (local.get $dpr) (i32.const 100) (i32.gt_s (local.get $dpr) (i32.const 100))))
   (local.set $dpr (select (local.get $dpr) (i32.const 200) (i32.lt_s (local.get $dpr) (i32.const 200))))

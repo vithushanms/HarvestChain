@@ -113,7 +113,7 @@
     (then (i32.div_s (i32.mul (local.get $c) (global.get $fb_h)) (call $lget (global.get $L_CSSH))))
     (else (local.get $c))))
 
-;; css px * k/2 -> logical px, rounded up (k = 2 plain, 3 = large-text 1.5x). Needs css_w > 0.
+;; css px * k/2 -> logical px, rounded up (k = 2 plain, 3 = large-text 1.5x). css_w >= 1 ($resize clamps).
 (func $cu (param $v i32) (param $k i32) (result i32)
   (call $cdiv (i32.mul (i32.mul (local.get $v) (local.get $k)) (global.get $fb_w))
               (i32.shl (call $lget (global.get $L_CSSW)) (i32.const 1))))
