@@ -30,7 +30,7 @@ test('set_metrics: distinct prime sentinels show exactly, with units and KB roun
   assert.equal(line(g, 6), 'LAST END DAY 7,919 US');
   assert.equal(line(g, 7), 'LAST FRAME 104,729 US');
   assert.equal(line(g, 8), 'FRAME MIN/AVG/MAX 104,729/104,729/104,729 US');
-  assert.deepEqual([9, 10, 11].map((i) => line(g, i)), ['TYPICAL ENGINE BUILD OF A GAME', 'THIS SIZE: 5-15 MB, 2-6 S', '(TYPICAL, NOT MEASURED)']);
+  assert.deepEqual([9, 10, 11].map((i) => line(g, i)), ['A TYPICAL ENGINE BUILD:', '5-15 MB, 2-6 S TO LOAD', '(TYPICAL, NOT MEASURED)']);
   assert.equal(g.str(ov(g, OV.LOAD)), 'LOADED IN 1,009 MS ^ 18.2 KB');
   // KB rounding boundaries: 1075 B = 1.0498 KB, 1076 B = 1.0508 KB; 2^31 - 1 B never overflows
   for (const [b, s] of [[1075, '1.0'], [1076, '1.1'], [1023, '1.0'], [51, '0.0'], [52, '0.1'], [10240, '10.0'], [0x7FFFFFFF, '2,097,152.0']]) {

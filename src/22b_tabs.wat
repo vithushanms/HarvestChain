@@ -336,11 +336,18 @@
 
 ;; Market: segmented control, then the price board, the Farm Stand sell panel or the contracts.
 (func $market_body
-  (local $i i32)
+  (local $i i32) (local $h i32) (local $d i32)
+  ;; one label scale for the three (never mixed): large only when CONTRACTS fits its third
+  (local.set $h (call $btnh))
+  (local.set $d (global.get $flag_large))
+  (if (i32.gt_s (i32.add (call $tw (call $str (i32.add (global.get $STR_MSUB) (i32.const 2)))) (i32.shl (i32.add (global.get $lgap) (i32.const 2)) (i32.const 1)))
+                (i32.div_s (i32.sub (global.get $uw) (i32.shl (global.get $lgap) (i32.const 1))) (i32.const 3)))
+    (then (global.set $flag_large (i32.const 0))))
   (loop $l
     (call $put (i32.add (i32.const 0x230) (local.get $i)) (call $str (i32.add (global.get $STR_MSUB) (local.get $i))) (i32.const -1)
-      (select (i32.const 3) (i32.const 0) (i32.eq (local.get $i) (global.get $msub))) (i32.const 1) (i32.const 3) (call $btnh))
+      (select (i32.const 3) (i32.const 0) (i32.eq (local.get $i) (global.get $msub))) (i32.const 1) (i32.const 3) (local.get $h))
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
+  (global.set $flag_large (local.get $d))
   (if (i32.eqz (global.get $msub)) (then (call $prices)))
   (if (i32.eq (global.get $msub) (i32.const 1)) (then (call $sell_body)))
   (if (i32.eq (global.get $msub) (i32.const 2)) (then (call $contracts_body))))
@@ -405,8 +412,13 @@
       (drop (call $txt (local.get $k) (local.get $y) (global.get $SB1) (call $pal (select (i32.const 63) (i32.const 61) (i32.lt_s (local.get $g) (i32.const 0))))))
       (if (i32.lt_u (local.get $s) (i32.const 9000)) (then
         (call $sb (global.get $SB2)) (call $sc (i32.const 45)) (call $sn0 (i32.div_u (i32.sub (i32.const 10050) (local.get $s)) (i32.const 100))) (call $sc (i32.const 37))
-        (global.set $tscale (i32.const 1))
-        (drop (call $txt (i32.sub (local.get $k) (i32.add (call $tw (global.get $SB2)) (i32.const 3))) (i32.sub (i32.add (local.get $y) (local.get $lh)) (i32.const 7))
+        ;; the tag at the text scale when it fits the cell left of the price, else scale 1; a gap of
+        ;; 3 px a scale before the "$"; bottoms aligned
+        (if (i32.lt_s (i32.sub (local.get $k) (i32.add (call $tw (global.get $SB2)) (i32.mul (local.get $ts) (i32.const 3))))
+                      (i32.add (i32.add (global.get $ux) (local.get $nw)) (i32.mul (local.get $m) (local.get $cw))))
+          (then (global.set $tscale (i32.const 1))))
+        (drop (call $txt (i32.sub (local.get $k) (i32.add (call $tw (global.get $SB2)) (i32.mul (global.get $tscale) (i32.const 3))))
+          (i32.sub (i32.add (local.get $y) (local.get $lh)) (i32.mul (global.get $tscale) (i32.const 7)))
           (global.get $SB2) (call $pal (i32.const 37))))
         (global.set $tscale (local.get $ts))))
       (br_if $c (i32.lt_u (local.tee $m (i32.add (local.get $m) (i32.const 1))) (i32.const 3))))
@@ -515,6 +527,8 @@
   (if (i32.eq (local.get $ph) (i32.const 1)) (then (local.set $k (i32.add (i32.sub (local.get $t) (local.get $k)) (i32.const 1)))))
   (local.set $x (i32.add (local.get $x0) (i32.div_s (i32.mul (i32.mul (local.get $w) (local.get $m)) (call $clamp (local.get $k) (i32.const 0) (local.get $t)))
     (i32.add (i32.shl (local.get $t) (i32.const 1)) (i32.const 1)))))
+  ;; at home the truck parks on the road right of the barn (not over it)
+  (if (i32.eqz (local.get $ph)) (then (local.set $x (i32.add (local.get $x0) (i32.mul (i32.const 18) (local.get $ts))))))
   (global.set $flip (i32.eq (local.get $ph) (i32.const 2)))
   (call $ui_icon (global.get $I_TRUCK) (i32.sub (local.get $x) (i32.shr_s (i32.mul (i32.const 9) (local.get $ts)) (i32.const 1)))
     (i32.sub (i32.sub (local.get $y) (i32.mul (i32.const 7) (local.get $ts)))

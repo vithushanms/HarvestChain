@@ -192,7 +192,7 @@ export const STRINGS = [
   ['US', ' US'],
   ['SLASH', '/'],
   ['CACHED', 'CACHED'],
-  ['@TYP', ['TYPICAL ENGINE BUILD OF A GAME', 'THIS SIZE: 5-15 MB, 2-6 S', '(TYPICAL, NOT MEASURED)']],
+  ['@TYP', ['A TYPICAL ENGINE BUILD:', '5-15 MB, 2-6 S TO LOAD', '(TYPICAL, NOT MEASURED)']],   // each <= 23 chars: one line at scale 2 on a phone
   ['DOTS', ' ^ '],
   ['PAGE', 'PAGE '],
   ['YEAR', ', YEAR '],
@@ -544,6 +544,17 @@ export const ICONS = [
     '...122221',
     '...122221',
     '...111111']],
+  // an empty check box: the off state of a toggle (CLOSE read as "remove"; Task 8b polish)
+  ['BOX', [P(15, 1), P(14, 3), P(14, 2)], [
+    '.........',
+    '.1111111.',
+    '.1222221.',
+    '.12...21.',
+    '.12...21.',
+    '.12...21.',
+    '.1222221.',
+    '.1111111.',
+    '.........']],
 ];
 
 export function strBytes() {

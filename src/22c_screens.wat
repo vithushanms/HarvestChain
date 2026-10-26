@@ -339,7 +339,7 @@
   (call $s_tog (local.get $c))
   (call $announce (global.get $SB3)))
 (func $toggle (param $c i32) (param $s i32) (param $on i32) (param $cols i32) (param $h i32)
-  (call $put (local.get $c) (call $str (local.get $s)) (select (global.get $I_CHECK) (global.get $I_CLOSE) (local.get $on))
+  (call $put (local.get $c) (call $str (local.get $s)) (select (global.get $I_CHECK) (global.get $I_BOX) (local.get $on))
     (select (i32.const 6) (i32.const 0) (local.get $on)) (i32.const 1) (local.get $cols) (local.get $h)))
 
 ;; Ripe plots whose crop rots tonight (End Day step 2 ages ripe crops by 1, a Heatwave more outside
@@ -374,6 +374,8 @@
   (call $sb (global.get $SB1)) (call $si (global.get $STR_SCORE)) (call $sn (call $score) (i32.const 2))
   (call $lab (global.get $I_UP) (i32.const 61))
   (local.set $m (i32.load8_u (global.get $S_MILESTONES)))
+  ;; the detail lines at one scale (1) for every row: large text would fit some and shrink others
+  (global.set $b_sub1 (i32.const 1))
   (loop $l
     (call $sb (global.get $SB1))
     (local.set $f (i32.and (i32.shr_u (local.get $m) (local.get $i)) (i32.const 1)))
@@ -408,6 +410,7 @@
     (call $put (i32.const 0x2FF) (call $str (i32.add (global.get $STR_MNAME) (local.get $i))) (select (global.get $I_STAR) (global.get $I_LOCK) (local.get $f))
       (select (i32.const 2) (i32.const 0) (local.get $f)) (i32.const 1) (call $lget (global.get $L_COLS)) (call $rowh))
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 7))))
+  (global.set $b_sub1 (i32.const 0))
   (call $flush (call $rowh))
   (if (i32.and (i32.load8_u (global.get $S_STATUS)) (i32.const 1)) (then
     (call $put (i32.const 0x3CD) (call $st_name) (global.get $I_STAR) (i32.const 1) (i32.const 1) (i32.const 1) (call $btnh)))))
@@ -431,6 +434,11 @@
   (call $sb (global.get $SB1)) (call $si (global.get $STR_SCORE)) (call $sn (call $score) (i32.const 2))
   (call $lab_log (global.get $SB1))
   (global.set $tscale (i32.shl (call $ui_ts) (i32.const 1)))
+  ;; (one scale down while it would run past the card: large text on a 320 px phone)
+  (block $f (loop $fl
+    (br_if $f (i32.or (i32.le_s (call $tw (global.get $SB1)) (global.get $uw)) (i32.le_s (global.get $tscale) (i32.const 1))))
+    (global.set $tscale (i32.sub (global.get $tscale) (i32.const 1)))
+    (br $fl)))
   (call $center (global.get $SB1) (i32.add (global.get $uy) (global.get $lgap)) (i32.const 17))
   (global.set $uy (i32.add (global.get $uy) (i32.add (i32.mul (call $ui_ts) (i32.const 14)) (i32.mul (global.get $lgap) (i32.const 3)))))
   ;; shareable summary on a tinted slip: "HARVESTCHAIN DAY 240 . SCORE 21,340 . *4 . 22 CONTRACTS"
@@ -518,6 +526,9 @@
   (call $sb (global.get $SB2)) (call $ss (local.get $s)) (i32.store8 offset=7 (global.get $SB2) (i32.const 0))
   (drop (call $txt (local.get $x) (local.get $y) (global.get $SB2) (call $pal (i32.const 19))))
   (global.set $tscale (call $ui_ts))
+  ;; the tagline never runs past the sign (large text on a phone): one scale down
+  (if (i32.gt_s (call $tw (call $str (global.get $STR_TAGLINE))) (i32.sub (local.get $sw) (i32.shl (local.get $g) (i32.const 1))))
+    (then (global.set $tscale (call $imax (i32.sub (global.get $tscale) (i32.const 1)) (i32.const 1)))))
   (call $center (call $str (global.get $STR_TAGLINE)) (i32.add (local.get $y) (i32.add (i32.mul (local.get $k) (i32.const 8)) (i32.add (local.get $g) (i32.shl (local.get $g) (i32.const 1))))) (i32.const 59))
   ;; buttons, stacked up from the footer
   (local.set $bh (call $btnh))
@@ -547,6 +558,14 @@
   ;; footer: zero asset files, load time and transfer size
   (global.set $tscale (i32.const 1))
   (local.set $y (i32.sub (global.get $fb_h) (i32.add (local.get $g) (i32.const 20))))
+  ;; a 3/4-ink band under the two lines keeps them legible over the pond or the sky
+  (global.set $pmode (i32.const 1))
+  (local.set $k (i32.sub (local.get $y) (i32.const 4)))
+  (loop $fb
+    (call $span (i32.const 0) (local.get $w) (local.get $k) (call $pal (i32.const 60)))
+    (call $span (i32.const 0) (local.get $w) (local.get $k) (call $pal (i32.const 60)))
+    (br_if $fb (i32.lt_s (local.tee $k (i32.add (local.get $k) (i32.const 1))) (global.get $fb_h))))
+  (global.set $pmode (i32.const 0))
   (call $center (call $str (global.get $STR_FILES)) (local.get $y) (i32.const 58))
   (call $s_load)
   (call $center (global.get $SB1) (i32.add (local.get $y) (i32.const 11)) (i32.const 58))

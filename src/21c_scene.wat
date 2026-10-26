@@ -66,13 +66,13 @@
   "\00\18\2d\3b\40\3b\2d\18\00\e8\d3\c5\c0\c5\d3\e8"
   "\00\01\02\03\0a\0a\09\01\01\09\0a\0b\0c\0d\0e\0f"
   "\31\32\33" "\31\33\3a" "\2e\33\3b" "\2d\2e\2f" "\3d\3e\2d" "\3f\23\3a" "\32\33\13" "\32\3a\13"
-  "\0e\09" "\0e\0d" "\3b\3b" "\09\08" "\09\08" "\0b\0a" "\0e\0d" "\03\0e"
+  "\0e\09" "\0e\0d" "\3b\33" "\09\08" "\09\08" "\0b\0a" "\0e\0d" "\03\0e"
   "\09\2a\3a\08\3e\2e\0d\02"
   "\00\00" "\11\02" "\33\04" "\2d\03" "\3d\05" "\37\04" "\16\05" "\03\03"
   "\f6\01\05" "\fc\fe\06" "\03\fd\07" "\09\00\05" "\00\02\06" "\00"
   "\14\de\0b" "\ec\0c\0b" "\e6\2c\1c" "\38\e2\1c" "\5c\dc\0b" "\ee\4c\0b" "\e2\64\1c" "\7c\e4\0b"
   "\0a\0e\0b\0f" "\0a\09\0a\0b" "\0e\12\0e\0f" "\3b\33\3b\3a" "\0e\03\0f\03"
-  "\0b\33\0b\33"
+  "\0b\32\0b\32"
   "\ff\03\07\04\05\06" "\00\00\01\02"
   "\a0\8c\1d" "\d2\6e\0b" "\6e\d2\0b" "\96\c8\1c" "\c8\aa\1e" "\82\f0\1c" "\e6\96\1c" "\fa\aa\0b"
   "\02\00\01\01\00")
@@ -817,7 +817,7 @@
       (local.set $c (call $pi (i32.add (local.get $row) (local.get $k))))
       (global.set $c2 (call $pi (i32.add (local.get $row) (i32.sub (i32.const 1) (local.get $k)))))
       (global.set $dlev (i32.add (i32.const 3) (i32.and (i32.shr_u (local.get $n) (i32.const 4)) (i32.const 3))))
-      (if (i32.eq (global.get $sc_wx) (i32.const 4)) (then (global.set $dlev (i32.const 2))))))   ;; frost: sparse rime
+      (if (i32.eq (global.get $sc_wx) (i32.const 4)) (then (global.set $dlev (i32.const 1))))))   ;; frost: sparse soft rime
   (call $iso_quad (local.get $wx) (local.get $wy) (i32.const 0) (i32.const 16) (i32.const 16) (local.get $c))
   (local.set $glow (i32.or (i32.eq (local.get $i) (global.get $sel_tile)) (i32.eq (local.get $i) (global.get $hover_tile))))
   ;; placement: 1 = a free plot (soft green), 2 = a used one (dimmed)
@@ -1047,9 +1047,10 @@
   (if (i32.ge_u (local.get $i) (i32.const 64)) (then (return)))
   (local.set $wx (i32.shl (i32.and (local.get $i) (i32.const 7)) (i32.const 4)))
   (local.set $wy (i32.shl (i32.shr_u (local.get $i) (i32.const 3)) (i32.const 4)))
-  (local.set $k (i32.eqz (local.get $strong)))
+  (local.set $k (i32.const 0))
   (loop $l
-    ;; k: 0 dark drop (+2 rows), 1 outline, 2 outline (+1 row), 3 bracket shadow (+1), 4 brackets
+    ;; k: 0 dark drop (+2 rows), 1 outline, 2 outline (+1 row), 3 bracket shadow (+1), 4 brackets;
+    ;; a soft hilite (hover, placement) draws the drop and one outline (contrast on light tints)
     (local.set $z (select (i32.const 6) (i32.const 0) (i32.ge_u (local.get $k) (i32.const 3))))
     (local.set $o (i32.load8_u (i32.add (global.get $SCD) (i32.add (i32.const 194) (local.get $k)))))
     (local.set $col (call $hc (select (global.get $H_PAPER) (global.get $H_WHEAT)
@@ -1070,7 +1071,7 @@
         (call $bracket (local.get $b) (local.get $c) (local.get $a) (local.get $col))
         (call $bracket (local.get $c) (local.get $d) (local.get $b) (local.get $col))
         (call $bracket (local.get $d) (local.get $a) (local.get $c) (local.get $col))))
-    (br_if $l (i32.and (local.get $strong) (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 5))))))
+    (br_if $l (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (select (i32.const 5) (i32.const 2) (local.get $strong))))))
 
 (func $bracket (param $p i32) (param $a i32) (param $b i32) (param $c i32)
   (local $x i32) (local $y i32)
@@ -1214,7 +1215,7 @@
   ;; placement: free plots get a pulsing outline (steady under reduced motion)
   (local.set $i (i32.const 0))
   (loop $o
-    (if (i32.and (i32.and (global.get $place_hi) (i32.const 2)) (i32.and (call $in_grid (local.get $i)) (i32.eqz (i32.load8_u (call $tile_ptr (local.get $i))))))
+    (if (i32.and (i32.shr_u (i32.and (global.get $place_hi) (i32.const 2)) (i32.const 1)) (i32.and (call $in_grid (local.get $i)) (i32.eqz (i32.load8_u (call $tile_ptr (local.get $i))))))
       (then (call $hilite (local.get $i) (i32.const 0))))
     (br_if $o (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
   (call $hilite (global.get $sel_tile) (i32.const 1))

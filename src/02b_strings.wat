@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 323 strings, 3453 B at 0x7200 (spec budget 2560 B)
+;; string table: 323 strings, 3443 B at 0x7200 (spec budget 2560 B)
 (data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -281,8 +281,8 @@
   " US\00" ;; 266
   "/\00" ;; 267
   "CACHED\00" ;; 268
-  "TYPICAL ENGINE BUILD OF A GAME\00" ;; 269
-  "THIS SIZE: 5-15 MB, 2-6 S\00" ;; 270
+  "A TYPICAL ENGINE BUILD:\00" ;; 269
+  "5-15 MB, 2-6 S TO LOAD\00" ;; 270
   "(TYPICAL, NOT MEASURED)\00" ;; 271
   " ^ \00" ;; 272
   "PAGE \00" ;; 273
@@ -533,7 +533,7 @@
 (global $STR_TOO_LONG i32 (i32.const 305))
 (global $STR_NO_SHARE i32 (i32.const 306))
 (global $STR_QR_LONG i32 (i32.const 307))
-;; icons: 30 x 24 B at 0xa00
+;; icons: 31 x 24 B at 0xa00
 (data (i32.const 0xa00)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN
   "\00\01\00\1d\00\64\40\e5\56\a4\6a\40\6a\40\9a\06\19\19\14\50\00\10\16\17" ;; 1 STAR
@@ -565,6 +565,7 @@
   "\40\05\00\1d\00\64\40\d5\55\bd\aa\55\59\05\64\00\90\01\40\05\00\08\0a\0b" ;; 27 PLUS
   "\54\55\91\aa\46\fe\1b\a9\6a\e4\bf\91\aa\46\aa\1a\55\55\f0\ff\03\24\26\3b" ;; 28 BOOK
   "\55\05\04\10\10\54\55\90\6a\41\aa\55\a9\06\a4\1a\90\6a\40\55\01\3d\33\3b" ;; 29 COPY
+  "\00\00\50\55\41\aa\06\09\18\24\60\90\80\41\aa\06\55\15\00\00\00\3d\3b\3a" ;; 30 BOX
 )
 (global $I_COIN i32 (i32.const 0))
 (global $I_STAR i32 (i32.const 1))
@@ -596,4 +597,5 @@
 (global $I_PLUS i32 (i32.const 27))
 (global $I_BOOK i32 (i32.const 28))
 (global $I_COPY i32 (i32.const 29))
+(global $I_BOX i32 (i32.const 30))
 ;; <<< END GENERATED strings

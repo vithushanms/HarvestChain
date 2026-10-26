@@ -81,6 +81,7 @@
 (global $sb0 (mut i32) (i32.const 0x8C00))
 (global $sblim (mut i32) (i32.const 55))       ;; builder capacity in chars (27 for draw-list fields)
 (global $b_sub (mut i32) (i32.const 0))        ;; $btn extras, reset by every $btn
+(global $b_sub1 (mut i32) (i32.const 0))       ;; 1: list-row second lines at scale 1 (one scale for a whole list)
 (global $b_right (mut i32) (i32.const 0))
 (global $b_why (mut i32) (i32.const 0))
 (global $b_row (mut i32) (i32.const 0))
@@ -274,8 +275,9 @@
     (local.set $n (i32.const 0)) (local.set $cut (i32.const 0))
     (block $e (loop $scan
       (local.set $ch (i32.load8_u (i32.add (local.get $s) (local.get $n))))
-      (if (i32.eqz (local.get $ch)) (then (local.set $cut (local.get $n)) (br $e)))
+      ;; past the width first: a rest one char too long breaks at its last space, not mid-word
       (br_if $e (i32.gt_u (local.get $n) (local.get $max)))
+      (if (i32.eqz (local.get $ch)) (then (local.set $cut (local.get $n)) (br $e)))
       (if (i32.eq (local.get $ch) (i32.const 32)) (then (local.set $cut (local.get $n))))
       (local.set $n (i32.add (local.get $n) (i32.const 1)))
       (br $scan)))
@@ -372,6 +374,7 @@
       (drop (call $txt (local.get $tx) (local.get $ty) (local.get $label) (local.get $tc)))
       (if (local.get $two) (then
         (call $fit (local.get $s2) (select (i32.add (local.get $lw) (local.get $rw)) (local.get $lw) (local.get $wide)))
+        (if (global.get $b_sub1) (then (global.set $tscale (i32.const 1))))
         (drop (call $txt (local.get $tx) (i32.add (local.get $ty) (local.get $ls)) (local.get $s2) (local.get $c2))))))
     (else
       ;; centred: [icon] label, reason (if any) on a second centred line
