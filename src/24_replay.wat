@@ -209,7 +209,7 @@
     (br $l)))
   (if (i32.ne (local.get $cnt) (i32.load16_u offset=6 (local.get $b))) (then (return (i32.const 4))))
   (global.set $chk_days (local.get $d))
-  (global.set $chk_run (select (i32.sub (local.get $last) (local.get $b)) (i32.const 0) (i32.ge_u (local.get $op) (i32.const 0x1E))))
+  (global.set $chk_run (select (i32.sub (local.get $last) (local.get $b)) (i32.const 0) (i32.lt_u (i32.sub (local.get $op) (i32.const 0x1E)) (i32.const 2))))
   (i32.const 0))
 
 ;; base64url digit <-> 6-bit value (-1 for any other char)

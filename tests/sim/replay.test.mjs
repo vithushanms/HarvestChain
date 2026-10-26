@@ -286,3 +286,22 @@ test('replay_restore: the matching log of a saved game keeps recording; a mismat
     assert.deepEqual(bytes(c), save, `${why}: state untouched`);
   }
 });
+
+test('replay_restore: a log that ends with an action (compact, inline, plain) continues correctly', async () => {
+  for (const last of [[1, 9, 0], [16, 0, 0], [18, 50, 0]]) {   // compact PLANT, inline DECLINE slot 0, plain REPAY 50
+    const play = async (n) => {
+      const g = await loadGame(); g.ex.init(21); runBot(g.ex, g.mem, 3);
+      if (n) { g.ex.act(5, 9, 0, 0); assert.equal(g.ex.act(...last, 0), 0, `${last}`); }
+      return g;
+    };
+    const full = await play(1);
+    full.ex.end_day(); full.ex.end_day();
+    const a = await play(1);
+    const b = await loadGame();
+    b.mem().set(bytes(a), b.ex.io_buf());
+    assert.equal(b.ex.load(b.ex.io_buf(), LEN), 0);
+    assert.equal(restore(b, codeOf(a)), 0);
+    b.ex.end_day(); b.ex.end_day();
+    assert.deepEqual(logOf(b), logOf(full), `${last}`);
+  }
+});

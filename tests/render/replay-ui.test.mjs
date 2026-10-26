@@ -289,3 +289,25 @@ test('render-only frames in the viewer leave sim state and RNG identical; seekin
   assert.deepEqual(bytes(h), bytes(b));
   assert.ok(worst < 25, `${worst} ms`);
 });
+
+test('fuzzed logs that pass validation play to their end in the viewer without trapping', async () => {
+  const g = await uiGame(360, 640, 200, { boot: 0 });
+  const base = Buffer.from(CODES.BOT40, 'base64url');
+  let seed = 99, played = 0, bad = 0;
+  const rnd = (n) => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed % n; };
+  const t0 = performance.now();
+  for (let i = 0; i < 4000 && played < 300; i++) {
+    const b = Buffer.from(base);
+    for (let j = 1 + rnd(3); j--;) b[8 + rnd(b.length - 8)] = rnd(256);
+    if (g.load(b.toString('base64url')) !== 0) continue;
+    g.tap(RP.WATCH);
+    assert.equal(g.ui(UI.SCR), RP.SCR);
+    g.ex.t_rp_seek(65535);
+    if (rp(g, RPF.BAD)) bad++;
+    g.key(KEY.ESC);
+    assert.equal(g.ui(UI.SCR), SCR.TITLE);
+    played++;
+  }
+  console.log(`fuzz playback: ${played} valid mutants played (${bad} invalid mid-run) in ${(performance.now() - t0).toFixed(0)} ms`);
+  assert.ok(played >= 100);
+});
