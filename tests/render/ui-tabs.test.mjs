@@ -277,7 +277,7 @@ test('FILL BEST loads the highest revenue per unit first (quote), within capacit
   g.tabTo(TAB.TRUCKS); g.tap(BTN.DISPATCH); g.tap(BTN.DEST + 2);
   g.tapR(BTN.FILL);
   g.tapR(BTN.NEXT); g.tapR(BTN.NEXT);
-  const rows = g.btns().filter((b) => b.code === 0x2FF);
+  const rows = g.btns().filter((b) => (b.code & 0x3F0) === BTN.PLUS);
   assert.equal(rows.length, 0, 'confirm step has no stepper rows');
   g.tapR(BTN.SEND);
   const cargo = truck(g).cargo.filter((c) => c.qty);
@@ -305,7 +305,7 @@ test('Trucks: BUY TRUCK needs a Garage (reason shown), then works; upgrades need
   g.frame();
   assert.equal(g.btn(BTN.UPG + 0).reason, 'MAX LEVEL');
   g.reach(BTN.BUY_TRUCK);
-  assert.equal(g.btn(BTN.BUY_TRUCK).reason, 'NEEDS A GARAGE', 'one garage = one extra slot');
+  assert.equal(g.btn(BTN.BUY_TRUCK).reason, 'NEEDS ANOTHER GARAGE', 'one garage = one extra slot');
 });
 
 test('Build: select Mill -> placement mode -> tap an empty plot builds it (cash -250), mode exits', async () => {

@@ -147,7 +147,7 @@ export const STRINGS = [
   ['SPOIL', ' SPOIL ON THE WAY'],
   ['LOAD', 'LOAD '],
   ['EMPTY_T', 'LOAD SOME GOODS'],
-  ['PLACE', 'TAP AN EMPTY PLOT: '],
+  ['PLACE', 'TAP AN EMPTY PLOT FOR '],
   ['CANCEL', 'CANCEL'],
   ['LAND', 'LAND'],
   ['LOAN', 'LOAN'],
@@ -161,6 +161,10 @@ export const STRINGS = [
   ['REPAID', 'REPAID '],
   ['OWNED', ' OWNED'],
   ['UP_TO', 'UP TO '],
+  // fix round 1
+  ['OF', ' OF '],
+  ['KINDS', 'TOO MANY KINDS'],
+  ['ANOTHER', 'NEEDS ANOTHER GARAGE'],
 ];
 
 // Icons: name, [c1, c2, c3] palette indices (hue*4 + step), 9 rows of 9 chars ('.' = clear).

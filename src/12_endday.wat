@@ -115,8 +115,7 @@
   (local $t i32) (local $g i32) (local $prot i32) (local $step i32) (local $v i32) (local $was i32)
   (local.set $w (i32.load8_u (global.get $S_WEATHER)))
   (local.set $well (i32.ne (call $count_bld (global.get $BLD_WELL)) (i32.const 0)))
-  (local.set $step (i32.add (i32.const 1)
-    (select (call $k (global.get $K_HEAT_AGE_EXTRA)) (i32.const 0) (i32.eq (local.get $w) (global.get $W_HEAT)))))
+  (local.set $step (call $age_step))
   (loop $tiles
     (if (call $in_grid (local.get $i))
       (then

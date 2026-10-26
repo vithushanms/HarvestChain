@@ -94,8 +94,24 @@
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (global.get $CARGO_SLOTS))))
   (i32.const 0))
 
+;; Dry run of a load of q units of good g onto truck p, oldest first: the new cargo slots it needs
+;; (an age that already has a (good, age) slot shares it). Also used by the dispatch UI.
+(func $load_slots (param $p i32) (param $g i32) (param $q i32) (result i32)
+  (local $a i32) (local $take i32) (local $need i32)
+  (local.set $a (call $k (global.get $K_MAX_AGE)))
+  (loop $dry
+    (local.set $take (i32.load16_u (call $inv_ptr (local.get $g) (local.get $a))))
+    (if (i32.gt_u (local.get $take) (local.get $q)) (then (local.set $take (local.get $q))))
+    (if (local.get $take)
+      (then
+        (if (i32.eqz (call $find_slot (local.get $p) (local.get $g) (local.get $a)))
+          (then (local.set $need (i32.add (local.get $need) (i32.const 1)))))
+        (local.set $q (i32.sub (local.get $q) (local.get $take)))))
+    (br_if $dry (i32.ge_s (local.tee $a (i32.sub (local.get $a) (i32.const 1))) (i32.const 0))))
+  (local.get $need))
+
 (func $a_truck_load (param $t i32) (param $g i32) (param $q i32) (result i32)
-  (local $p i32) (local $a i32) (local $left i32) (local $take i32) (local $need i32) (local $s i32) (local $bp i32)
+  (local $p i32) (local $a i32) (local $left i32) (local $take i32) (local $s i32) (local $bp i32)
   (if (i32.or (i32.gt_u (local.get $g) (i32.const 12)) (i32.eqz (local.get $q)))
     (then (return (global.get $E_BAD_ARG))))
   (local.set $p (call $truck_ptr (local.get $t)))
@@ -105,18 +121,7 @@
   (if (i32.gt_u (i32.add (call $cargo_total (local.get $p)) (local.get $q)) (call $truck_cap_of (local.get $p)))
     (then (return (global.get $E_TRUCK_FULL))))
   ;; dry run: how many new slots does an oldest-first move need?
-  (local.set $left (local.get $q))
-  (local.set $a (call $k (global.get $K_MAX_AGE)))
-  (loop $dry
-    (local.set $take (i32.load16_u (call $inv_ptr (local.get $g) (local.get $a))))
-    (if (i32.gt_u (local.get $take) (local.get $left)) (then (local.set $take (local.get $left))))
-    (if (local.get $take)
-      (then
-        (if (i32.eqz (call $find_slot (local.get $p) (local.get $g) (local.get $a)))
-          (then (local.set $need (i32.add (local.get $need) (i32.const 1)))))
-        (local.set $left (i32.sub (local.get $left) (local.get $take)))))
-    (br_if $dry (i32.ge_s (local.tee $a (i32.sub (local.get $a) (i32.const 1))) (i32.const 0))))
-  (if (i32.gt_u (local.get $need) (call $free_slots (local.get $p))) (then (return (global.get $E_TRUCK_FULL))))
+  (if (i32.gt_u (call $load_slots (local.get $p) (local.get $g) (local.get $q)) (call $free_slots (local.get $p))) (then (return (global.get $E_TRUCK_FULL))))
   ;; move
   (local.set $left (local.get $q))
   (local.set $a (call $k (global.get $K_MAX_AGE)))
@@ -270,12 +275,17 @@
   (i32.store8 offset=4 (local.get $p) (i32.add (local.get $u) (local.get $bit)))
   (i32.const 0))
 
+;; Days perishables age tonight: 1, +heatAgeExtra while today is a Heatwave (End Day steps 2
+;; and 5; the UI's rot and truck spoilage estimates).
+(func $age_step (result i32)
+  (i32.add (i32.const 1)
+    (select (call $k (global.get $K_HEAT_AGE_EXTRA)) (i32.const 0) (i32.eq (i32.load8_u (global.get $S_WEATHER)) (global.get $W_HEAT)))))
+
 ;; Step 5 (trucks): cargo ages with the day (Heatwave +2) unless refrigerated; perishables
 ;; at or past perishDays are removed. Trucks in index order, home or away.
 (func $step_truck_spoil
   (local $t i32) (local $p i32) (local $i i32) (local $s i32) (local $g i32) (local $d i32) (local $age i32) (local $step i32)
-  (local.set $step (i32.add (i32.const 1)
-    (select (call $k (global.get $K_HEAT_AGE_EXTRA)) (i32.const 0) (i32.eq (i32.load8_u (global.get $S_WEATHER)) (global.get $W_HEAT)))))
+  (local.set $step (call $age_step))
   (loop $trucks
     (local.set $p (call $truck_ptr (local.get $t)))
     (if (local.get $p)

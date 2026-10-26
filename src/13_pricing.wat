@@ -66,8 +66,11 @@
   (local.get $total))
 
 ;; Read-only quote: what $sell_units(m, g, qty) would pay right now (shipping export "quote").
+;; Out-of-range market / good or qty <= 0 quote 0; qty is capped at 65535 (a u16 stock).
 (func $quote (param $m i32) (param $g i32) (param $qty i32) (result i32)
-  (call $sell_walk (local.get $m) (local.get $g) (local.get $qty) (i32.const 0)))
+  (if (i32.or (i32.or (i32.gt_u (local.get $m) (i32.const 2)) (i32.gt_u (local.get $g) (i32.const 12))) (i32.le_s (local.get $qty) (i32.const 0)))
+    (then (return (i32.const 0))))
+  (call $sell_walk (local.get $m) (local.get $g) (call $imin (local.get $qty) (i32.const 65535)) (i32.const 0)))
 
 ;; Sell qty units (saturation lowered per unit) and count them for the milestones.
 ;; Returns total dollars. Does not remove inventory.

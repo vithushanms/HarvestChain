@@ -21,6 +21,7 @@
 (global $dstep (mut i32) (i32.const 0))        ;; 0 destination 1 cargo 2 contract 3 confirm
 (global $dm (mut i32) (i32.const 1))           ;; destination market
 (global $dc (mut i32) (i32.const 255))         ;; contract tag (255 none)
+(global $qk (mut i32) (i32.const 0))           ;; last $qmax / $qv: the cargo-slot limit binds
 (global $QTY i32 (i32.const 0xA040))
 (global $REM i32 (i32.const 0xA080))
 ;; 0x937 truck upgrade cost columns (K), 0x948 good -> icon (crop model / the building that makes it)
@@ -45,20 +46,37 @@
     (local.set $n (i32.add (local.get $n) (call $q (local.get $g))))
     (br_if $l (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13))))
   (local.get $n))
-;; Upper limit of amount a: the stock (dispatch: also the truck's free room), loanMax, min(owed, cash).
+;; Upper limit of amount a: the stock (dispatch: also the truck's free room and its free cargo
+;; slots less those the other planned lines need), loanMax, min(owed, cash). $qk = the slots bind.
 (func $qmax (param $a i32) (result i32)
-  (local $v i32) (local $p i32)
+  (local $v i32) (local $p i32) (local $g i32) (local $s i32)
+  (global.set $qk (i32.const 0))
   (if (i32.eq (local.get $a) (i32.const 13)) (then (return (call $k (global.get $K_LOAN_MAX)))))
   (if (i32.eq (local.get $a) (i32.const 14)) (then (return (call $imax (i32.const 0) (call $imin (call $loan_owed) (i32.load (global.get $S_CASH)))))))
   (local.set $v (call $inv_count (local.get $a)))
   (local.set $p (call $truck_ptr (global.get $dsp)))
-  (if (local.get $p) (then (local.set $v (call $imin (local.get $v)
-    (i32.add (i32.sub (i32.sub (call $truck_cap_of (local.get $p)) (call $cargo_total (local.get $p))) (call $qsum)) (call $q (local.get $a)))))))
+  (if (local.get $p) (then
+    (local.set $v (call $imax (i32.const 0) (call $imin (local.get $v)
+      (i32.add (i32.sub (i32.sub (call $truck_cap_of (local.get $p)) (call $cargo_total (local.get $p))) (call $qsum)) (call $q (local.get $a))))))
+    ;; cargo slots ($load_slots is TRUCK_LOAD's own dry run): free ones less the other lines' needs
+    (local.set $s (call $free_slots (local.get $p)))
+    (loop $l
+      (if (i32.ne (local.get $g) (local.get $a)) (then
+        (local.set $s (i32.sub (local.get $s) (call $load_slots (local.get $p) (local.get $g) (call $q (local.get $g)))))))
+      (br_if $l (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13))))
+    (local.set $g (local.get $v))
+    (block $f (loop $fit
+      (br_if $f (i32.or (i32.le_s (local.get $v) (i32.const 0)) (i32.le_s (call $load_slots (local.get $p) (local.get $a) (local.get $v)) (local.get $s))))
+      (local.set $v (i32.sub (local.get $v) (i32.const 1)))
+      (br $fit)))
+    (global.set $qk (i32.lt_s (local.get $v) (local.get $g)))))
   (call $imax (local.get $v) (i32.const 0)))
-;; Amount a clamped to [0, max] (stored back).
+;; Amount a clamped to [0, max] (stored back); $qk = the slot limit stops a + here.
 (func $qv (param $a i32) (result i32)
-  (local $v i32)
-  (local.set $v (call $clamp (call $q (local.get $a)) (i32.const 0) (call $qmax (local.get $a))))
+  (local $v i32) (local $m i32)
+  (local.set $m (call $qmax (local.get $a)))
+  (local.set $v (call $clamp (call $q (local.get $a)) (i32.const 0) (local.get $m)))
+  (global.set $qk (i32.and (global.get $qk) (i32.eq (local.get $v) (local.get $m))))
   (i32.store (call $qa (local.get $a)) (local.get $v))
   (local.get $v))
 ;; Stepper k (0 -, 1 +, 2 MAX) on amount a; loans step $100.
@@ -85,9 +103,12 @@
   (call $btn (i32.const 0x2FF) (global.get $ux) (global.get $uy) (local.get $w) (local.get $h) (local.get $label) (local.get $icon) (i32.const 0) (i32.const 1))
   (local.set $x (i32.add (i32.add (global.get $ux) (local.get $w)) (global.get $lgap)))
   (loop $l
+    ;; + stops at the 8-cargo-slot limit (its reason is toasted on a tap)
+    (global.set $b_why (call $str (global.get $STR_KINDS)))
     (call $btn (i32.add (i32.add (i32.const 0x240) (i32.shl (local.get $k) (i32.const 4))) (local.get $a))
       (local.get $x) (i32.add (global.get $uy) (i32.shr_u (i32.sub (local.get $h) (local.get $bs)) (i32.const 1)))
-      (local.get $bs) (local.get $bs) (call $str (i32.add (global.get $STR_STP) (local.get $k))) (i32.const -1) (i32.const 0) (i32.const 1))
+      (local.get $bs) (local.get $bs) (call $str (i32.add (global.get $STR_STP) (local.get $k))) (i32.const -1) (i32.const 0)
+      (i32.eqz (i32.and (i32.eq (local.get $k) (i32.const 1)) (global.get $qk))))
     (local.set $x (i32.add (local.get $x) (i32.add (local.get $bs) (global.get $lgap))))
     (br_if $l (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 3))))
   (global.set $uy (i32.add (global.get $uy) (i32.add (local.get $h) (global.get $lgap)))))
@@ -122,8 +143,7 @@
 ;; minus the Cold Store's protected oldest units (shared in good id order).
 (func $rot (param $g i32) (result i32)
   (local $j i32) (local $prot i32) (local $a i32) (local $d i32) (local $ex i32) (local $all i32) (local $v i32) (local $step i32)
-  (local.set $step (i32.add (i32.const 1)
-    (select (call $k (global.get $K_HEAT_AGE_EXTRA)) (i32.const 0) (i32.eq (i32.load8_u (global.get $S_WEATHER)) (global.get $W_HEAT)))))
+  (local.set $step (call $age_step))
   (local.set $prot (i32.mul (call $count_bld (global.get $BLD_COLD)) (call $k (global.get $K_COLD_PER_STORE))))
   (loop $gl
     (local.set $d (call $bal (global.get $T_GOOD) (local.get $j) (i32.const 1)))
@@ -142,8 +162,7 @@
 ;; Ages a truck's cargo gains before it sells at the destination: travel days, +heatAgeExtra
 ;; when today is a Heatwave (later days are unknown: counted as 1 each).
 (func $aging (result i32)
-  (i32.add (call $travel_days (global.get $dm))
-    (select (call $k (global.get $K_HEAT_AGE_EXTRA)) (i32.const 0) (i32.eq (i32.load8_u (global.get $S_WEATHER)) (global.get $W_HEAT)))))
+  (i32.add (call $travel_days (global.get $dm)) (i32.sub (call $age_step) (i32.const 1))))
 
 ;; Units of good g that spoil before arrival (step 5 on each travel day): truck p's cargo plus the
 ;; n oldest units in storage (loads take the oldest first); none in a refrigerated truck.
@@ -169,13 +188,10 @@
 ;; Why accepted contract s cannot ride truck p to $dm with the planned cargo (0 = it can):
 ;; $contract_check order (market, already carried, deadline, quantity).
 (func $con_why (param $p i32) (param $s i32) (result i32)
-  (local $a i32) (local $t i32) (local $r i32)
+  (local $a i32) (local $r i32)
   (local.set $a (call $acc_ptr (local.get $s)))
   (if (i32.ne (i32.load8_u offset=1 (local.get $a)) (global.get $dm)) (then (return (call $str (global.get $STR_WRONG_MKT)))))
-  (loop $l
-    (local.set $r (call $truck_ptr (local.get $t)))
-    (if (local.get $r) (then (if (i32.eq (i32.load8_u offset=5 (local.get $r)) (local.get $s)) (then (return (call $str (global.get $STR_TAKEN)))))))
-    (br_if $l (i32.lt_u (local.tee $t (i32.add (local.get $t) (i32.const 1))) (i32.const 3))))
+  (if (i32.ge_s (call $carrier (local.get $s)) (i32.const 0)) (then (return (call $str (global.get $STR_TAKEN)))))
   (if (i32.gt_u (i32.add (i32.load16_u (global.get $S_DAY)) (call $travel_days (global.get $dm))) (i32.load16_u offset=4 (local.get $a)))
     (then (return (call $err_str (global.get $E_DEADLINE)))))
   (local.set $r (i32.sub (i32.load8_u offset=2 (local.get $a))
@@ -207,10 +223,17 @@
 ;; ---------------------------------------------------------------- tab bodies
 
 ;; Sheet subtitle while dispatching: "TRUCK 1, STEP 2/4: CARGO" into the current builder.
+;; "TRUCK 1, STEP 2 OF 4: CARGO" (also announced on every step change, $step_to).
 (func $s_step
   (call $si (global.get $STR_TRUCK)) (call $sn0 (i32.add (global.get $dsp) (i32.const 1))) (call $sep)
-  (call $si (global.get $STR_STEP)) (call $sn0 (i32.add (global.get $dstep) (i32.const 1))) (call $sc (i32.const 47)) (call $sc (i32.const 52))
+  (call $si (global.get $STR_STEP)) (call $sn0 (i32.add (global.get $dstep) (i32.const 1))) (call $si (global.get $STR_OF)) (call $sc (i32.const 52))
   (call $sc (i32.const 58)) (call $sp) (call $si (i32.add (global.get $STR_STEPN) (global.get $dstep))))
+(func $step_to (param $s i32)
+  (global.set $dstep (local.get $s))
+  (call $sb (global.get $SB3)) (call $s_step) (call $announce (global.get $SB3)))
+;; "TAP AN EMPTY PLOT FOR MILL" into the current builder.
+(func $s_place
+  (call $si (global.get $STR_PLACE)) (call $si (i32.add (global.get $STR_BLD) (i32.sub (global.get $place) (i32.const 1)))))
 
 (func $tab_body
   (if (i32.eq (global.get $tab) (i32.const 1)) (then (call $process_body)))
@@ -223,7 +246,7 @@
 ;; the processors before it), Cellar aging buckets.
 (func $process_body
   (local $g i32) (local $i i32) (local $p i32) (local $b i32) (local $r i32) (local $in i32) (local $q i32) (local $n i32)
-  (local $v i32) (local $c i32) (local $any i32) (local $j i32)
+  (local $v i32) (local $c i32) (local $any i32) (local $j i32) (local $more i32)
   (call $sb (global.get $SB1)) (call $si (global.get $STR_STORAGE))
   (call $sn0 (call $storage_used)) (call $sc (i32.const 47)) (call $sn0 (call $storage_cap))
   (call $lab (global.get $I_CRATE) (i32.const 61))
@@ -240,8 +263,10 @@
   (loop $tl
     (local.set $p (call $tile_ptr (local.get $i)))
     (local.set $b (i32.load8_u offset=1 (local.get $p)))
-    (if (i32.and (call $in_grid (local.get $i)) (i32.and (i32.eq (i32.load8_u (local.get $p)) (i32.const 2)) (i32.le_u (local.get $b) (i32.const 4)))) (then
+    (if (i32.and (call $in_grid (local.get $i)) (i32.and (i32.eq (i32.load8_u (local.get $p)) (i32.const 2)) (i32.le_u (local.get $b) (i32.const 4)))) (then (block $card
       (local.set $any (i32.const 1))
+      ;; a card takes 3 draw-list records: past the cap the rest are counted ("+12 MORE")
+      (if (i32.gt_u (global.get $btn_n) (i32.const 60)) (then (local.set $more (i32.add (local.get $more) (i32.const 1))) (br $card)))
       (call $hline (global.get $ux) (global.get $uy) (global.get $uw) (call $pal (i32.const 57)))
       (global.set $uy (i32.add (global.get $uy) (global.get $lgap)))
       ;; header card: name (+ II when upgraded), plot; tap = find it on the farm
@@ -301,8 +326,11 @@
             (call $sn0 (local.get $v)) (call $sp)))
           (br_if $al (i32.lt_u (local.tee $j (i32.add (local.get $j) (i32.const 1))) (i32.const 5))))
         (if (i32.eqz (local.get $n)) (then (call $sb (global.get $SB1)) (call $si (global.get $STR_NOTHING)) (call $si (global.get $STR_AGING))))
-        (call $lab (global.get $I_CLOCK) (i32.const 63))))))
+        (call $lab (global.get $I_CLOCK) (i32.const 63)))))))
     (br_if $tl (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
+  (if (local.get $more) (then
+    (call $sb (global.get $SB1)) (call $sc (i32.const 43)) (call $sn0 (local.get $more)) (call $si (global.get $STR_MORE))
+    (call $lab (i32.const -1) (i32.const 63))))
   (if (i32.eqz (local.get $any)) (then (call $ui_label (global.get $I_GEAR) (call $str (global.get $STR_NO_PROC)) (i32.const 63)))))
 
 ;; Market: segmented control, then the price board, the Farm Stand sell panel or the contracts.
@@ -394,7 +422,7 @@
 
 ;; Contracts: the board's offers (ACCEPT / DECLINE), then the accepted ones with their status.
 (func $contracts_body
-  (local $s i32) (local $p i32) (local $n i32) (local $t i32) (local $r i32) (local $ic i32) (local $c i32) (local $en i32) (local $h i32)
+  (local $s i32) (local $p i32) (local $n i32) (local $r i32) (local $ic i32) (local $c i32) (local $en i32) (local $h i32)
   (loop $cnt
     (local.set $n (i32.add (local.get $n) (i32.load8_u offset=3 (call $acc_ptr (local.get $s)))))
     (br_if $cnt (i32.lt_u (local.tee $s (i32.add (local.get $s) (i32.const 1))) (i32.const 3))))
@@ -423,12 +451,8 @@
       (call $sb (global.get $SB1)) (call $si (global.get $STR_DUE))
       (call $s_days (i32.sub (i32.load16_u offset=4 (local.get $p)) (i32.load16_u (global.get $S_DAY)))) (call $sep)
       (local.set $ic (global.get $I_CLOCK)) (local.set $c (i32.const 63))
-      (local.set $t (i32.const 0)) (local.set $h (i32.const -1))
-      (loop $tl
-        (local.set $r (call $truck_ptr (local.get $t)))
-        (if (local.get $r) (then (if (i32.and (i32.eq (i32.load8_u offset=2 (local.get $r)) (i32.const 1)) (i32.eq (i32.load8_u offset=5 (local.get $r)) (local.get $s)))
-          (then (local.set $h (local.get $t))))))
-        (br_if $tl (i32.lt_u (local.tee $t (i32.add (local.get $t) (i32.const 1))) (i32.const 3))))
+      ;; (a tag only rides an outbound truck: it is set by TRUCK_SEND and dropped on arrival)
+      (local.set $h (call $carrier (local.get $s)))
       (if (i32.ge_s (local.get $h) (i32.const 0))
         (then (call $si (global.get $STR_ON_TRUCK)) (call $sn0 (i32.add (local.get $h) (i32.const 1))) (local.set $ic (global.get $I_TRUCK)))
         (else
@@ -525,7 +549,9 @@
   (local.set $n (i32.load8_u (global.get $S_TRUCK_COUNT)))
   (local.set $why (i32.const 0))
   (if (i32.lt_s (i32.load (global.get $S_CASH)) (call $k (global.get $K_TRUCK_PRICE))) (then (local.set $why (call $err_str (global.get $E_CASH)))))
-  (if (i32.gt_u (local.get $n) (call $count_bld (global.get $BLD_GARAGE))) (then (local.set $why (call $err_str (global.get $E_NEED_GARAGE)))))
+  (local.set $c (call $count_bld (global.get $BLD_GARAGE)))
+  (if (i32.gt_u (local.get $n) (local.get $c)) (then
+    (local.set $why (select (call $str (global.get $STR_ANOTHER)) (call $err_str (global.get $E_NEED_GARAGE)) (local.get $c)))))
   (if (i32.ge_u (local.get $n) (call $k (global.get $K_MAX_TRUCKS))) (then (local.set $why (call $err_str (global.get $E_MAX)))))
   (call $sb (global.get $SB2)) (call $si (global.get $STR_BUY_TRUCK)) (call $sn (call $k (global.get $K_TRUCK_PRICE)) (i32.const 1))
   (global.set $b_why (local.get $why))
@@ -543,6 +569,8 @@
   (if (i32.or (i32.eqz (local.get $p)) (i32.ne (i32.load8_u offset=2 (local.get $p)) (i32.const 0))) (then
     (global.set $dsp (i32.const -1)) (return (i32.const 0))))
   (local.set $m (global.get $dm))
+  ;; a tag that stopped being valid (End Day passed its deadline or expired it, cargo changed) is dropped
+  (if (i32.lt_u (global.get $dc) (i32.const 3)) (then (if (call $con_why (local.get $p) (global.get $dc)) (then (global.set $dc (i32.const 255))))))
   ;; step bar: four segments, done and current filled
   (local.set $w (i32.div_s (i32.sub (global.get $uw) (i32.mul (i32.const 3) (global.get $lgap))) (i32.const 4)))
   (loop $s
@@ -691,7 +719,7 @@
   (global.set $dirty (i32.const 1))
   (if (global.get $place) (then (global.set $place (i32.const 0)) (call $open_sheet) (return)))
   (if (i32.ge_s (global.get $dsp) (i32.const 0)) (then
-    (if (global.get $dstep) (then (global.set $dstep (i32.sub (global.get $dstep) (i32.const 1))))
+    (if (global.get $dstep) (then (call $step_to (i32.sub (global.get $dstep) (i32.const 1))))
       (else (global.set $dsp (i32.const -1))))
     (return)))
   (call $close))
@@ -718,7 +746,7 @@
   (local.set $bw (call $imax (call $min_touch) (i32.div_s (local.get $w) (i32.const 3))))
   (drop (call $hit_add (local.get $x) (local.get $y) (local.get $w) (local.get $h) (global.get $HIT_PANEL)))
   (call $rrect (local.get $x) (local.get $y) (local.get $w) (local.get $h) (i32.const 3) (call $pal (i32.const 60)))
-  (call $sb (global.get $SB1)) (call $si (global.get $STR_PLACE)) (call $si (i32.add (global.get $STR_BLD) (i32.sub (global.get $place) (i32.const 1))))
+  (call $sb (global.get $SB1)) (call $s_place)
   (call $fit (global.get $SB1) (i32.sub (local.get $w) (i32.add (local.get $bw) (i32.shl (local.get $g) (i32.const 2)))))
   (drop (call $txt (i32.add (local.get $x) (i32.shl (local.get $g) (i32.const 1))) (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $h) (call $lh)) (i32.const 1)))
     (global.get $SB1) (call $pal (i32.const 59))))
@@ -726,7 +754,8 @@
     (local.get $bw) (local.get $bh) (call $str (global.get $STR_CANCEL)) (global.get $I_CLOSE) (i32.const 0) (i32.const 1)))
 
 ;; FILL BEST: goods by estimated revenue per unit at the destination (quote of one unit), best
-;; first, each up to its stock / the room left; goods that would all spoil on the way are skipped.
+;; first, each up to its stock / the room / the cargo slots left; goods that would all spoil on the
+;; way are skipped.
 (func $fill_best
   (local $n i32) (local $g i32) (local $b i32) (local $bv i32) (local $v i32) (local $p i32)
   (local.set $p (call $truck_ptr (global.get $dsp)))
@@ -734,8 +763,11 @@
   (loop $pick
     (local.set $b (i32.const -1)) (local.set $bv (i32.const 0)) (local.set $g (i32.const 0))
     (loop $l
-      (local.set $v (call $inv_count (local.get $g)))
-      (if (i32.and (i32.eqz (call $q (local.get $g))) (i32.lt_u (call $spoil_n (local.get $p) (local.get $g) (local.get $v)) (local.get $v))) (then
+      ;; what a MAX would load (stock, room, cargo slots); skipped when all of it would spoil
+      ;; (spoilage of cargo already on the truck does not count)
+      (local.set $v (call $qmax (local.get $g)))
+      (if (i32.and (i32.eqz (call $q (local.get $g)))
+            (i32.lt_s (i32.sub (call $spoil_n (local.get $p) (local.get $g) (local.get $v)) (call $spoil_n (local.get $p) (local.get $g) (i32.const 0))) (local.get $v))) (then
         (local.set $v (call $quote (global.get $dm) (local.get $g) (i32.const 1)))
         (if (i32.gt_s (local.get $v) (local.get $bv)) (then (local.set $bv (local.get $v)) (local.set $b (local.get $g))))))
       (br_if $l (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13))))
@@ -779,12 +811,14 @@
     ;; Build tab: a building row starts placement (the portrait sheet gets out of the way)
     (global.set $place (i32.add (local.get $a) (i32.const 1)))
     (global.set $sheet (i32.const 0)) (call $layout_panel (i32.const 0))
-    (call $announce (call $str (global.get $STR_PLACE)))
+    (call $sb (global.get $SB3)) (call $s_place) (call $announce (global.get $SB3))
     (return (i32.const 1))))
   (if (i32.eq (local.get $o) (i32.const 0x23)) (then
-    (if (i32.lt_u (local.get $a) (i32.const 3)) (then (global.set $msub (local.get $a)) (global.set $scroll (i32.const 0))))
+    (if (i32.lt_u (local.get $a) (i32.const 3)) (then (global.set $msub (local.get $a)) (global.set $scroll (i32.const 0))
+      (call $sb (global.get $SB3)) (call $si (i32.add (global.get $STR_TAB) (i32.const 2))) (call $sp) (call $si (i32.add (global.get $STR_MSUB) (local.get $a)))
+      (call $announce (global.get $SB3))))
     (if (i32.eq (local.get $a) (i32.const 3)) (then (call $back)))
-    (if (i32.ge_u (local.get $a) (i32.const 9)) (then (global.set $dm (i32.sub (local.get $a) (i32.const 8))) (global.set $dstep (i32.const 1))))
+    (if (i32.ge_u (local.get $a) (i32.const 9)) (then (global.set $dm (i32.sub (local.get $a) (i32.const 8))) (call $step_to (i32.const 1))))
     (return (i32.const 1))))
   (if (i32.lt_u (i32.sub (local.get $o) (i32.const 0x24)) (i32.const 3)) (then (call $adj (local.get $a) (i32.sub (local.get $o) (i32.const 0x24))) (return (i32.const 1))))
   (if (i32.eq (local.get $o) (i32.const 0x27)) (then
@@ -792,8 +826,8 @@
       (then (call $announce (call $str (select (global.get $STR_ACCEPTED) (global.get $STR_DECLINED) (i32.lt_u (local.get $a) (i32.const 4)))))))
     (return (i32.const 1))))
   (if (i32.eq (local.get $o) (i32.const 0x28)) (then
-    (global.set $dsp (local.get $a)) (global.set $dstep (i32.const 0)) (global.set $dm (i32.const 1)) (global.set $dc (i32.const 255))
-    (global.set $scroll (i32.const 0)) (call $qreset)
+    (global.set $dsp (local.get $a)) (global.set $dm (i32.const 1)) (global.set $dc (i32.const 255))
+    (global.set $scroll (i32.const 0)) (call $qreset) (call $step_to (i32.const 0))
     (return (i32.const 1))))
   (if (i32.eq (local.get $o) (i32.const 0x29)) (then
     (if (i32.eqz (call $do (i32.const 14) (i32.shr_u (local.get $a) (i32.const 2)) (i32.and (local.get $a) (i32.const 3)) (i32.const 0))) (then
@@ -803,23 +837,26 @@
   (if (i32.eq (local.get $o) (i32.const 0x2A)) (then (global.set $dc (select (i32.const 255) (local.get $a) (i32.eq (local.get $a) (i32.const 3)))) (return (i32.const 1))))
   (if (i32.lt_u (i32.sub (local.get $c) (i32.const 0x300)) (i32.const 0x40)) (then (call $set_tab (i32.const 0)) (call $select (i32.and (local.get $c) (i32.const 63)) (i32.const 1)) (return (i32.const 1))))
   (if (i32.eq (local.get $c) (i32.const 0x208)) (then
+    ;; one SELL_STAND per line; a line is zeroed once sold, so after a failure (toasted by $do)
+    ;; the lines already sold cannot be sold twice; the sale so far is toasted too
     (local.set $c0 (i32.load (global.get $S_CASH)))
-    (loop $l
-      (if (call $q (local.get $g)) (then
-        (if (call $do (i32.const 9) (local.get $g) (call $q (local.get $g)) (i32.const 0)) (then (return (i32.const 1))))
-        (local.set $n (i32.add (local.get $n) (call $q (local.get $g))))))
-      (br_if $l (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13))))
-    (call $qreset)
-    (call $sb (global.get $SB3)) (call $si (global.get $STR_SOLD)) (call $sn0 (local.get $n)) (call $si (global.get $STR_UNITS)) (call $sp)
-    (call $sc (i32.const 43)) (call $sn (i32.sub (i32.load (global.get $S_CASH)) (local.get $c0)) (i32.const 1))
-    (call $toast (i32.const 3) (global.get $SB3))))
+    (block $x (loop $l
+      (if (local.tee $a (call $q (local.get $g))) (then
+        (br_if $x (call $do (i32.const 9) (local.get $g) (local.get $a) (i32.const 0)))
+        (i32.store (call $qa (local.get $g)) (i32.const 0))
+        (local.set $n (i32.add (local.get $n) (local.get $a)))))
+      (br_if $l (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13)))))
+    (if (local.get $n) (then
+      (call $sb (global.get $SB3)) (call $si (global.get $STR_SOLD)) (call $sn0 (local.get $n)) (call $si (global.get $STR_UNITS)) (call $sp)
+      (call $sc (i32.const 43)) (call $sn (i32.sub (i32.load (global.get $S_CASH)) (local.get $c0)) (i32.const 1))
+      (call $toast (i32.const 3) (global.get $SB3))))))
   (if (i32.eq (local.get $c) (i32.const 0x209)) (then (call $fill_best)))
   (if (i32.eq (local.get $c) (i32.const 0x20A)) (then (call $do_send)))
   (if (i32.eq (local.get $c) (i32.const 0x20B)) (then
     (if (i32.eqz (call $do (i32.const 13) (i32.const 0) (i32.const 0) (i32.const 0))) (then
       (call $si (global.get $STR_BOUGHT)) (call $si (global.get $STR_TRUCK)) (call $sn0 (i32.load8_u (global.get $S_TRUCK_COUNT)))
       (call $announce (global.get $SB3))))))
-  (if (i32.eq (local.get $c) (i32.const 0x20C)) (then (global.set $dstep (i32.add (global.get $dstep) (i32.const 1)))))
+  (if (i32.eq (local.get $c) (i32.const 0x20C)) (then (call $step_to (i32.add (global.get $dstep) (i32.const 1)))))
   (if (i32.eq (local.get $c) (i32.const 0x20D)) (then (call $back)))
   (if (i32.eq (i32.shr_u (local.get $c) (i32.const 1)) (i32.const 0x107)) (then
     ;; 0x20E TAKE / 0x20F REPAY the stepper amount

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { STATE, readState } from '../helpers.mjs';
 import { farm, CROP, BLD } from './scenes.mjs';
-import { uiGame, uiState, UI_STATES, HIT, BTN, KEY, UI } from './uistates.mjs';
+import { uiGame, uiState, UI_STATES, UI_STATE_LIST, HIT, BTN, KEY, UI } from './uistates.mjs';
 import { generate as genStrings, strBytes, FILE as STR_FILE } from '../../tools/gen-strings.mjs';
 import { extract } from '../../tools/gen-util.mjs';
 
@@ -442,6 +442,13 @@ test('every dynamic hit region is >= 44 css px (min_touch) in every UI state, si
   }
   assert.ok(most > 20 && most < 128, `max hit regions seen: ${most}`);
   console.log(`# max hit regions seen: ${most}`);
+});
+
+test('UI state names are unique (a duplicate would silently drop a state from the sweeps and goldens)', () => {
+  const names = UI_STATE_LIST.map(([n]) => n);
+  assert.equal(new Set(names).size, names.length, names.join(' '));
+  assert.equal(Object.keys(UI_STATES).length, names.length);
+  for (const n of ['ui-build', 'ui-build-tab']) assert.ok(UI_STATES[n], n);
 });
 
 // Golden render hashes (UPDATE_GOLDEN=1 to refresh after a deliberate visual change; review the PNGs).

@@ -112,34 +112,40 @@ const dispatch = (g, m) => {
 
 // Canned UI states: [w, h, dpr, options, script]. Rendered at a fixed time so hashes are stable.
 const poor = (ex) => farm(ex).day(3);
-export const UI_STATES = {
-  'ui-farm': { o: {}, run: () => {} },
-  'ui-plant': { o: {}, run: (g) => g.tapTile(9) },
-  'ui-build': { o: {}, run: (g) => { g.tapTile(9); g.tap(BTN.PICK_BUILD); } },
-  'ui-crop': { o: {}, run: (g) => g.tapTile(0) },
-  'ui-recipe': { o: { setup: (ex) => farm(ex).bld(10, BLD.MILL, { recipe: 1 }).bld(17, BLD.CELLAR) }, run: (g) => g.tapTile(10) },
-  'ui-toast': { o: {}, run: (g) => { g.tapTile(0); g.tap(BTN.HARVEST); } },
-  'ui-large': { o: { large: true }, run: (g) => g.tapTile(9) },
-  'ui-poor': { o: { setup: (ex) => { poor(ex); ex.t_set_cash(25); } }, run: (g) => { g.tapTile(9); g.tap(BTN.PICK_BUILD); } },
-  'ui-ripe': { o: { setup: (ex) => farm(ex).crop(0, CROP.WHEAT, 'ripe').crop(1, CROP.TOMATO, 'ripe', { ripeAge: 1 }).crop(8, CROP.APPLE, 400) }, run: (g) => g.tapTile(1) },
-  'ui-land': { o: {}, run: (g) => g.tapTile(4) },
-  'ui-endday': { o: { setup: (ex) => farm(ex).crop(9, CROP.TOMATO, 'ripe', { ripeAge: 1 }).crop(10, CROP.GRAPE, 500) }, run: (g) => { g.tap(HIT.ENDDAY); g.tap(HIT.DAY); } },
+// [name, state] in order; names must be unique (asserted in tests/render/ui.test.mjs).
+export const UI_STATE_LIST = [
+  ['ui-farm', { o: {}, run: () => {} }],
+  ['ui-plant', { o: {}, run: (g) => g.tapTile(9) }],
+  ['ui-build', { o: {}, run: (g) => { g.tapTile(9); g.tap(BTN.PICK_BUILD); } }],
+  ['ui-crop', { o: {}, run: (g) => g.tapTile(0) }],
+  ['ui-recipe', { o: { setup: (ex) => farm(ex).bld(10, BLD.MILL, { recipe: 1 }).bld(17, BLD.CELLAR) }, run: (g) => g.tapTile(10) }],
+  ['ui-toast', { o: {}, run: (g) => { g.tapTile(0); g.tap(BTN.HARVEST); } }],
+  ['ui-large', { o: { large: true }, run: (g) => g.tapTile(9) }],
+  ['ui-poor', { o: { setup: (ex) => { poor(ex); ex.t_set_cash(25); } }, run: (g) => { g.tapTile(9); g.tap(BTN.PICK_BUILD); } }],
+  ['ui-ripe', { o: { setup: (ex) => farm(ex).crop(0, CROP.WHEAT, 'ripe').crop(1, CROP.TOMATO, 'ripe', { ripeAge: 1 }).crop(8, CROP.APPLE, 400) }, run: (g) => g.tapTile(1) }],
+  ['ui-land', { o: {}, run: (g) => g.tapTile(4) }],
+  ['ui-endday', { o: { setup: (ex) => farm(ex).crop(9, CROP.TOMATO, 'ripe', { ripeAge: 1 }).crop(10, CROP.GRAPE, 500) }, run: (g) => { g.tap(HIT.ENDDAY); g.tap(HIT.DAY); } }],
   // Task 5b tabs
-  'ui-process': { o: { setup: procFarm }, run: (g) => g.tabTo(1) },
-  'ui-market-prices': { o: { setup: (ex) => { ex.t_put_event(0, 1, 2, 10, 4); ex.t_put_event(1, 3, 0, 0, 2); ex.t_set_sat(1, 5, 7600); ex.t_set_sat(0, 0, 8000); } }, run: (g) => g.tabTo(2) },
-  'ui-market-sell': { o: { setup: (ex) => { ex.t_give(0, 12, 0); ex.t_give(5, 6, 0); ex.t_give(2, 4, 1); } },
-    run: (g) => { g.tabTo(2); g.tap(BTN.SUB + 1); for (let i = 0; i < 5; i++) g.tapR(BTN.PLUS); } },
-  'ui-market-contracts': { o: { setup: contractFarm }, run: (g) => { g.tabTo(2); g.tap(BTN.SUB + 2); } },
-  'ui-trucks': { o: { setup: truckFarm }, run: (g) => g.tabTo(3) },
-  'ui-dispatch-1': { o: { setup: contractFarm }, run: (g) => { g.tabTo(3); g.tapR(BTN.DISPATCH); } },
-  'ui-dispatch-2': { o: { setup: contractFarm }, run: (g) => { g.tabTo(3); g.tapR(BTN.DISPATCH); g.tapR(BTN.DEST + 2); g.tapR(BTN.PLUS + 2); g.tapR(BTN.PLUS + 5); g.tapR(BTN.PLUS + 5); } },
-  'ui-dispatch-3': { o: { setup: contractFarm }, run: (g) => { dispatch(g, 2); } },
-  'ui-dispatch-4': { o: { setup: contractFarm }, run: (g) => { dispatch(g, 2); g.tapR(BTN.TAG + 1); g.tapR(BTN.NEXT); } },
-  'ui-build': { o: { setup: (ex) => farm(ex).bld(10, BLD.MILL) }, run: (g) => g.tabTo(4) },
-  'ui-build-placement': { o: {}, run: (g) => { g.tabTo(4); g.tapR(BTN.BUILD + BLD.WELL); } },
-  'ui-loans': { o: { setup: (ex) => { const dv = new DataView(ex.memory.buffer); dv.setInt32(STATE.base + STATE.fields.loanPrincipal.off, 600, true); dv.setInt32(STATE.base + STATE.fields.loanInterest.off, 12, true); } },
-    run: (g) => { g.tabTo(4); g.reach(BTN.REPAY); } },
-};
+  ['ui-process', { o: { setup: procFarm }, run: (g) => g.tabTo(1) }],
+  ['ui-market-prices', { o: { setup: (ex) => { ex.t_put_event(0, 1, 2, 10, 4); ex.t_put_event(1, 3, 0, 0, 2); ex.t_set_sat(1, 5, 7600); ex.t_set_sat(0, 0, 8000); } }, run: (g) => g.tabTo(2) }],
+  ['ui-market-sell', { o: { setup: (ex) => { ex.t_give(0, 12, 0); ex.t_give(5, 6, 0); ex.t_give(2, 4, 1); } },
+    run: (g) => { g.tabTo(2); g.tap(BTN.SUB + 1); for (let i = 0; i < 5; i++) g.tapR(BTN.PLUS); } }],
+  ['ui-market-contracts', { o: { setup: contractFarm }, run: (g) => { g.tabTo(2); g.tap(BTN.SUB + 2); } }],
+  ['ui-trucks', { o: { setup: truckFarm }, run: (g) => g.tabTo(3) }],
+  ['ui-dispatch-1', { o: { setup: contractFarm }, run: (g) => { g.tabTo(3); g.tapR(BTN.DISPATCH); } }],
+  ['ui-dispatch-2', { o: { setup: contractFarm }, run: (g) => { g.tabTo(3); g.tapR(BTN.DISPATCH); g.tapR(BTN.DEST + 2); g.tapR(BTN.PLUS + 2); g.tapR(BTN.PLUS + 5); g.tapR(BTN.PLUS + 5); } }],
+  ['ui-dispatch-3', { o: { setup: contractFarm }, run: (g) => { dispatch(g, 2); } }],
+  ['ui-dispatch-4', { o: { setup: contractFarm }, run: (g) => { dispatch(g, 2); g.tapR(BTN.TAG + 1); g.tapR(BTN.NEXT); } }],
+  ['ui-build-tab', { o: { setup: (ex) => farm(ex).bld(10, BLD.MILL) }, run: (g) => g.tabTo(4) }],
+  ['ui-build-placement', { o: {}, run: (g) => { g.tabTo(4); g.tapR(BTN.BUILD + BLD.WELL); } }],
+  ['ui-loans', { o: { setup: (ex) => { const dv = new DataView(ex.memory.buffer); dv.setInt32(STATE.base + STATE.fields.loanPrincipal.off, 600, true); dv.setInt32(STATE.base + STATE.fields.loanInterest.off, 12, true); } },
+    run: (g) => { g.tabTo(4); g.reach(BTN.REPAY); } }],
+];
+export const UI_STATES = {};
+for (const [name, s] of UI_STATE_LIST) {
+  if (UI_STATES[name]) throw new Error(`duplicate UI state ${name}`);
+  UI_STATES[name] = s;
+}
 
 // Build a UI state at a size and return the game handle with a freshly drawn frame.
 export async function uiState(name, w = 360, h = 640, dpr = 200) {

@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 216 strings, 1964 B at 0x7700 (budget 2560 B)
+;; string table: 219 strings, 2008 B at 0x7700 (budget 2560 B)
 (data (i32.const 0x7700)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -214,7 +214,7 @@
   " SPOIL ON THE WAY\00" ;; 199
   "LOAD \00" ;; 200
   "LOAD SOME GOODS\00" ;; 201
-  "TAP AN EMPTY PLOT: \00" ;; 202
+  "TAP AN EMPTY PLOT FOR \00" ;; 202
   "CANCEL\00" ;; 203
   "LAND\00" ;; 204
   "LOAN\00" ;; 205
@@ -228,8 +228,11 @@
   "REPAID \00" ;; 213
   " OWNED\00" ;; 214
   "UP TO \00" ;; 215
+  " OF \00" ;; 216
+  "TOO MANY KINDS\00" ;; 217
+  "NEEDS ANOTHER GARAGE\00" ;; 218
 )
-(global $STR_COUNT i32 (i32.const 216))
+(global $STR_COUNT i32 (i32.const 219))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -366,6 +369,9 @@
 (global $STR_REPAID i32 (i32.const 213))
 (global $STR_OWNED i32 (i32.const 214))
 (global $STR_UP_TO i32 (i32.const 215))
+(global $STR_OF i32 (i32.const 216))
+(global $STR_KINDS i32 (i32.const 217))
+(global $STR_ANOTHER i32 (i32.const 218))
 ;; icons: 28 x 24 B at 0x640
 (data (i32.const 0x640)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN

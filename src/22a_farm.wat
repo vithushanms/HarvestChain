@@ -434,16 +434,20 @@
 
 ;; $ui_label of the text in SB1.
 (func $lab (param $icon i32) (param $c i32) (call $ui_label (local.get $icon) (global.get $SB1) (local.get $c)))
-;; A wrapped text line at the cursor with an optional glyph icon (palette colour c).
-(func $ui_label (param $icon i32) (param $s i32) (param $c i32)
+;; Label log for tests (on only via the t_lab_on hook, so the shipping build drops it): every
+;; label line and button second line / right text drawn, NUL-separated at 0xA100..0xA8FF,
+;; reset by $render.
+(func $lab_log (param $s i32)
   (local $x i32)
-  ;; label log for tests (on only via the t_lab_on hook, so the shipping build drops it):
-  ;; NUL-separated copies at 0xA100..0xA8FF, reset by $render
-  (if (global.get $lab_on) (then
+  (if (i32.and (global.get $lab_on) (i32.ne (local.get $s) (i32.const 0))) (then
     (local.set $x (i32.add (call $strlen (local.get $s)) (i32.const 1)))
     (if (i32.lt_u (i32.add (global.get $lab_p) (local.get $x)) (i32.const 0xA900)) (then
       (memory.copy (global.get $lab_p) (local.get $s) (local.get $x))
-      (global.set $lab_p (i32.add (global.get $lab_p) (local.get $x)))))))
+      (global.set $lab_p (i32.add (global.get $lab_p) (local.get $x))))))))
+;; A wrapped text line at the cursor with an optional glyph icon (palette colour c).
+(func $ui_label (param $icon i32) (param $s i32) (param $c i32)
+  (local $x i32)
+  (call $lab_log (local.get $s))
   (global.set $tscale (call $ui_ts))
   (local.set $x (global.get $ux))
   (if (i32.ge_s (local.get $icon) (i32.const 0)) (then

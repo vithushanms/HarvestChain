@@ -102,20 +102,26 @@
   (call $contract_roll (local.get $slot))
   (i32.const 0))
 
-;; Validate a TRUCK_SEND tag c (not 255) for truck p going to market m.
-;; Order: tag names an active slot, market, not already carried, deadline, cargo quantity.
-(func $contract_check (param $p i32) (param $m i32) (param $c i32) (result i32)
-  (local $a i32) (local $t i32) (local $q i32)
-  (if (i32.ge_u (local.get $c) (global.get $CONTRACT_SLOTS)) (then (return (global.get $E_CONTRACT))))
-  (local.set $a (call $acc_ptr (local.get $c)))
-  (if (i32.eqz (i32.load8_u offset=3 (local.get $a))) (then (return (global.get $E_CONTRACT))))
-  (if (i32.ne (local.get $m) (i32.load8_u offset=1 (local.get $a))) (then (return (global.get $E_CONTRACT))))
+;; Index of the truck tagged with accepted slot c (any phase), or -1 (also the UI's "ON TRUCK n").
+(func $carrier (param $c i32) (result i32)
+  (local $t i32) (local $q i32)
   (loop $trucks
     (local.set $q (call $truck_ptr (local.get $t)))
     (if (local.get $q)
       (then (if (i32.eq (i32.load8_u offset=5 (local.get $q)) (local.get $c))
-        (then (return (global.get $E_CONTRACT))))))
+        (then (return (local.get $t))))))
     (br_if $trucks (i32.lt_u (local.tee $t (i32.add (local.get $t) (i32.const 1))) (i32.const 3))))
+  (i32.const -1))
+
+;; Validate a TRUCK_SEND tag c (not 255) for truck p going to market m.
+;; Order: tag names an active slot, market, not already carried, deadline, cargo quantity.
+(func $contract_check (param $p i32) (param $m i32) (param $c i32) (result i32)
+  (local $a i32)
+  (if (i32.ge_u (local.get $c) (global.get $CONTRACT_SLOTS)) (then (return (global.get $E_CONTRACT))))
+  (local.set $a (call $acc_ptr (local.get $c)))
+  (if (i32.eqz (i32.load8_u offset=3 (local.get $a))) (then (return (global.get $E_CONTRACT))))
+  (if (i32.ne (local.get $m) (i32.load8_u offset=1 (local.get $a))) (then (return (global.get $E_CONTRACT))))
+  (if (i32.ge_s (call $carrier (local.get $c)) (i32.const 0)) (then (return (global.get $E_CONTRACT))))
   (if (i32.gt_u (i32.add (i32.load16_u (global.get $S_DAY)) (call $travel_days (local.get $m)))
                 (i32.load16_u offset=4 (local.get $a)))
     (then (return (global.get $E_DEADLINE))))

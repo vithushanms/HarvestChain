@@ -47,3 +47,20 @@ test('quote pins: Stand wheat 10 units walks saturation down 2%/unit; festival k
   assert.equal(a.ex.quote(0, 0, 10), 60, 'Festival: Farm Stand saturation disabled');
   assert.equal(a.ex.quote(1, 0, 10) < 80, true, 'Town still saturates under a Festival');
 });
+
+test('quote guards: out-of-range market / good, qty <= 0 return 0; huge qty is capped; every call is fast', async () => {
+  const [a] = fresh(() => {});
+  const before = bytes(a);
+  for (const [m, good, qty] of [[0, 0, -1], [0, 0, 0], [1, 5, -2147483648], [3, 0, 5], [-1, 0, 5], [255, 0, 5], [0, 13, 5], [0, -1, 5], [2, 999, 1]]) {
+    const t0 = performance.now();
+    assert.equal(a.ex.quote(m, good, qty), 0, `quote(${m}, ${good}, ${qty})`);
+    assert.ok(performance.now() - t0 < 5, `quote(${m}, ${good}, ${qty}) fast`);
+  }
+  for (const qty of [65535, 65536, 2147483647]) {
+    const t0 = performance.now();
+    assert.equal(a.ex.quote(0, 0, qty), a.ex.quote(0, 0, 65535), `qty ${qty} capped at 65535`);
+    assert.ok(performance.now() - t0 < 5, `quote(0, 0, ${qty}) fast: ${performance.now() - t0} ms`);
+  }
+  assert.ok(a.ex.quote(0, 0, 65535) > 0);
+  assert.deepEqual(bytes(a), before);
+});
