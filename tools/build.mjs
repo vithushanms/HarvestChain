@@ -3,7 +3,6 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
-import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -108,39 +107,17 @@ if (gzipped > BUDGETS.wasmGz) fail(`game.wasm gz ${gzipped} B > ${BUDGETS.wasmGz
 // Readable sources: tools/loader.src.html, tools/sw.src.js (source of truth); the minified outputs are committed.
 let htmlGz = 0, swGz = 0;
 if (src === join(root, 'src')) {
-  const { minify } = await import('terser');
-  const { makeIcon } = await import('./icon.mjs');
-  const BG = '#1a1f2e';
-  const keys = JSON.parse(readFileSync(join(root, 'tools', 'keycodes.json'), 'utf8'));
-  delete keys._comment;
-  const manifest = JSON.stringify({
-    name: 'HarvestChain', short_name: 'HarvestChain', display: 'standalone', start_url: '.',
-    background_color: BG, theme_color: BG,
-    icons: [{ src: `data:image/png;base64,${makeIcon().toString('base64')}`, sizes: '512x512', type: 'image/png', purpose: 'any' }],
+  const { buildShell } = await import('./shell.mjs');
+  const { html, sw, version } = await buildShell({
+    loader: readFileSync(join(root, 'tools', 'loader.src.html'), 'utf8'),
+    swSrc: readFileSync(join(root, 'tools', 'sw.src.js'), 'utf8'),
+    keys: JSON.parse(readFileSync(join(root, 'tools', 'keycodes.json'), 'utf8')),
+    wasm: buf,
   });
-  const terse = async (code) => {
-    const r = await minify(code, { ecma: 2019, compress: { passes: 2 }, mangle: { toplevel: true }, format: { comments: false } });
-    if (!r.code) fail('terser produced no output');
-    return r.code;
-  };
-  const page = readFileSync(join(root, 'tools', 'loader.src.html'), 'utf8')
-    .replaceAll('%BG%', BG)
-    .replace('%MANIFEST%', `data:application/manifest+json,${manifest.replaceAll('#', '%23')}`)
-    .replace('/*KEYS*/{}', JSON.stringify(keys));
-  const m = page.match(/<script>([\s\S]*)<\/script>/);
-  if (!m) fail('loader.src.html has no <script>');
-  const rest = page.replace(m[0], '\u0000')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/\s*\n\s*/g, '')
-    .replace(/\s*([{};,])\s*/g, '$1')
-    .replace('\u0000', `<script>${await terse(m[1])}</script>`);
-  const html = rest.replace(/^<!doctype html>/i, '<!doctype html>');
   writeFileSync(join(root, 'index.html'), html);
-  const version = createHash('sha256').update(buf).update(html).digest('hex').slice(0, 8);
-  const sw = await terse(readFileSync(join(root, 'tools', 'sw.src.js'), 'utf8').replace('%V%', version));
   writeFileSync(join(root, 'sw.js'), sw);
   htmlGz = gz(Buffer.from(html)); swGz = gz(Buffer.from(sw));
-  console.log(`index.html  ${Buffer.byteLength(html)} B raw  ${htmlGz} B gz  (budget ${BUDGETS.htmlGz})`);
+  console.log(`index.html  ${Buffer.byteLength(html)} B raw  ${htmlGz} B gz  (budget ${BUDGETS.htmlGz}, headroom ${BUDGETS.htmlGz - htmlGz})`);
   console.log(`sw.js  ${Buffer.byteLength(sw)} B raw  ${swGz} B gz  (budget ${BUDGETS.swGz})  cache hc-${version}`);
   const total = gzipped + htmlGz + swGz;
   console.log(`total transfer  ${total} B gz  (spec target ${SPEC_TOTAL} B)`);

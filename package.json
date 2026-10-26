@@ -6,6 +6,7 @@
     "build": "node tools/build.mjs",
     "gen": "node tools/gen-palette.mjs && node tools/gen-font.mjs && node tools/gen-models.mjs && node tools/gen-strings.mjs",
     "test": "npm run build && node --test \"tests/**/*.test.mjs\"",
+    "check:dist": "npm run build && git diff --exit-code index.html sw.js",
     "test:e2e": "npm run build && HC_E2E=1 playwright test"
   },
   "devDependencies": {

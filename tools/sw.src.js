@@ -8,7 +8,7 @@ self.oninstall = (e) => e.waitUntil(
     .then(() => self.skipWaiting()));
 self.onactivate = (e) => e.waitUntil(
   caches.keys()
-    .then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k))))
+    .then((ks) => Promise.all(ks.filter((k) => k.startsWith('hc-') && k !== V).map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
 self.onfetch = (e) => {
   if (e.request.method === 'GET') {
