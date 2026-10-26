@@ -72,7 +72,7 @@ The build **fails** if any of these break:
 |---|---|
 | No `f32` / `f64` anywhere in `src/` | Integer-only maths is what makes replays bit-exact across devices. Money is `i32` dollars; multipliers are basis points (10000 = ×1.0). |
 | Only Wasm MVP + `bulk-memory`, `sign-ext`, `mutable-globals` | One binary that runs on every target browser, including iOS Safari 16.4. |
-| `game.wasm` ≤ 20 KB gzipped and ≤ 48 KB raw | The size budget is a product goal, not a guideline. |
+| `game.wasm` ≤ 32 KB gzipped and ≤ 80 KB raw | Spec target is 20 KB gz / 48 KB raw; the renderer + UI pushed past it, so the enforced ceiling was raised (ruling) and the build warns while above the target. |
 | `index.html` ≤ 3 KB gz, `sw.js` ≤ 1 KB gz | Checked once those files exist. |
 | No sim-RNG call (`call $rng_...`) in presentation files (numeric prefix ≥ 20) | Drawing code must never consume the sim RNG, or visuals would change replays. Use a render-only hash noise function. |
 

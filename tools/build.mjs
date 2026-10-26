@@ -14,7 +14,11 @@ const arg = (flag, dflt) => {
 };
 const fail = (msg) => { console.error(`build: ${msg}`); process.exit(1); };
 
-const BUDGETS = { wasmRaw: 48 * 1024, wasmGz: 20 * 1024, htmlGz: 3 * 1024, swGz: 1 * 1024 };
+// Spec target is 20 KB gz / 48 KB raw. Ruling (presentation plan Decision 4, 2026-10-26): the renderer,
+// UI, replay and QR code do not fit that, so the enforced ceiling is 32 KB gz / 80 KB raw; the build
+// prints a warning while above the spec target.
+const SPEC_TARGET = { wasmRaw: 48 * 1024, wasmGz: 20 * 1024 };
+const BUDGETS = { wasmRaw: 80 * 1024, wasmGz: 32 * 1024, htmlGz: 3 * 1024, swGz: 1 * 1024 };
 
 const src = arg('--src', join(root, 'src'));
 const out = arg('--out', join(root, 'build'));
@@ -52,6 +56,9 @@ const gz = (buf) => gzipSync(buf, { level: 9 }).length;
 const buf = readFileSync(wasm);
 const raw = buf.length, gzipped = gz(buf);
 console.log(`game.wasm  ${raw} B raw  ${gzipped} B gz`);
+if (raw > SPEC_TARGET.wasmRaw || gzipped > SPEC_TARGET.wasmGz) {
+  console.log(`warning: game.wasm is over the spec target (${SPEC_TARGET.wasmGz} B gz / ${SPEC_TARGET.wasmRaw} B raw); ceiling is ${BUDGETS.wasmGz} B gz / ${BUDGETS.wasmRaw} B raw`);
+}
 if (raw > BUDGETS.wasmRaw) fail(`game.wasm raw ${raw} B > ${BUDGETS.wasmRaw} B`);
 if (gzipped > BUDGETS.wasmGz) fail(`game.wasm gz ${gzipped} B > ${BUDGETS.wasmGz} B`);
 
