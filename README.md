@@ -28,18 +28,18 @@ The WebAssembly toolchain (`wat2wasm` from wabt, `wasm-opt` from Binaryen) is in
 
 ```sh
 npm install          # once
-npm run build        # src/*.wat → build/game.wasm, prints sizes
+npm run build        # src/*.wat → build/game.wasm (shipping) + build/game.test.wasm (test hooks), prints sizes
 npm test             # build, then run every test
 ```
 
-Run a single file or a single test (build first — tests load `build/game.wasm`):
+Run a single file or a single test (build first — tests load `build/game.test.wasm`, the build with `t_*` hooks):
 
 ```sh
 node --test tests/state.test.mjs
 node --test --test-name-pattern="round-trip" tests/state.test.mjs
 ```
 
-A healthy build prints one size line (`game.wasm  <raw> B raw  <gz> B gz`), well inside the budgets below.
+A healthy build prints two size lines: `game.wasm  <raw> B raw  <gz> B gz` (the shipping binary, with every `t_*` test-hook export stripped; the budgets below apply to it) and `game.test.wasm  <raw> B raw  <gz> B gz` (all exports; used by tests and dev tools; no budget).
 
 To play the sim in a browser (no graphics yet), serve the repo root and open the dev harness:
 
@@ -51,7 +51,8 @@ npm run build && python3 -m http.server 8000
 ## How it fits together
 
 ```
-src/*.wat ──concat (filename order)──▶ build/game.wat ──wat2wasm──▶ wasm-opt -Oz ──▶ build/game.wasm
+src/*.wat ──concat (filename order)──▶ build/game.wat ──wat2wasm──▶ wasm-opt -Oz ──▶ build/game.test.wasm
+                                      └─ same text minus every (export "t_…") ─▶ build/game.prod.wat ─▶ … ─▶ build/game.wasm (ships)
                                                                                       ▲
                                                                tests/*.test.mjs ──────┘  (node:test)
 ```
@@ -113,7 +114,7 @@ The UI states are scripted in `tests/render/uistates.mjs` through the same `poin
 
 **Exports.** The public surface is in `src/30_exports.wat`. Exports prefixed `t_` are test hooks; they stay in the shipping binary because they cost only a few bytes.
 
-**Watching the size.** `npm run build` prints raw and gzipped sizes every time. If a change grows `game.wasm` noticeably, look at `build/game.wat` (the concatenated source) to see what got bigger.
+**Watching the size.** `npm run build` prints raw and gzipped sizes every time. If a change grows `game.wasm` noticeably (the shipping binary; `tests/prod.test.mjs` proves it has no `t_*` exports and renders byte-identically to the test build), look at `build/game.wat` (the concatenated source) to see what got bigger.
 
 **Updating the toolchain.** `wabt` and `binaryen` are pinned to exact versions in `package.json`. To upgrade, change the version, run `npm install && npm test`, and check that the printed sizes have not jumped and that the feature-guard tests in `tests/build.test.mjs` still fail the bad fixtures for the right reason.
 

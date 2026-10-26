@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, existsSync } from 'node:fs';
+import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -15,7 +15,17 @@ test('real source builds and reports sizes', () => {
   const r = build('src');
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /game\.wasm\s+\d+ B raw\s+\d+ B gz/);
+  assert.match(r.stdout, /game\.test\.wasm\s+\d+ B raw\s+\d+ B gz/);
   assert.ok(existsSync(join(r.out, 'game.wasm')));
+  assert.ok(existsSync(join(r.out, 'game.test.wasm')));
+});
+
+test('shipping build strips t_ exports in any layout; test build keeps them', () => {
+  const r = build('tests/fixtures/texports');
+  assert.equal(r.status, 0, r.stderr);
+  const names = (f) => WebAssembly.Module.exports(new WebAssembly.Module(readFileSync(join(r.out, f)))).map((e) => e.name).sort();
+  assert.deepEqual(names('game.wasm'), ['keep', 'memory']);
+  assert.deepEqual(names('game.test.wasm'), ['keep', 'memory', 't_multi', 't_one', 't_spaced']);
 });
 
 test('float token in source fails the build', () => {
@@ -42,6 +52,8 @@ test('SIMD instruction fails the build', () => {
 
 test('memory is exported', async () => {
   const { loadGame } = await import('./helpers.mjs');
-  const { ex } = await loadGame();
-  assert.ok(ex.memory instanceof WebAssembly.Memory);
+  for (const p of ['build/game.wasm', 'build/game.test.wasm']) {
+    const { ex } = await loadGame(p);
+    assert.ok(ex.memory instanceof WebAssembly.Memory, p);
+  }
 });

@@ -75,9 +75,9 @@ Key cross-file rules:
 Toolchain is pinned npm devDependencies (`wabt` for `wat2wasm`, `binaryen` for `wasm-opt`); no global installs. Node 24, `node:test` only. Playwright arrives in phase 4.
 
 - `npm install`
-- `npm run build` — `tools/build.mjs`: wraps `src/*.wat` (filename order) in `(module …)` → `build/game.wat` → `wat2wasm` → `wasm-opt -Oz` → `build/game.wasm`. Prints raw/gz sizes. Fails on any `f32`/`f64` token, disallowed Wasm feature, or budget breach.
+- `npm run build` — `tools/build.mjs`: wraps `src/*.wat` (filename order) in `(module …)` → `build/game.wat` → `wat2wasm` → `wasm-opt -Oz`, twice: `build/game.test.wasm` (all exports, incl. `t_*` hooks; tests and dev tools use it) and `build/game.wasm` (SHIPPING: every `t_*` export is filtered out of the concatenated text first, so wasm-opt drops code only the hooks kept alive; build fails if one survives). Prints one size line each; the budgets, warnings and `game.wasm  N B raw  M B gz` line are for the shipping binary, the `game.test.wasm` line is informational. Fails on any `f32`/`f64` token, disallowed Wasm feature, or budget breach.
 - Dev harness (browser, no graphics): `npm run build && python3 -m http.server 8000`, then open `/tools/play.html`.
-- `npm test` — build, then all `tests/**/*.test.mjs` (tests load `build/game.wasm`, so build first if running files directly).
+- `npm test` — build, then all `tests/**/*.test.mjs` (tests load `build/game.test.wasm` via `loadGame()`; only `tests/build.test.mjs` and `tests/prod.test.mjs` look at the shipping `build/game.wasm`; build first if running files directly). Never use `t_*` hooks from loader/shipping code.
 - One file: `node --test tests/state.test.mjs`
 - One test: `node --test --test-name-pattern="round-trip" tests/state.test.mjs`
 

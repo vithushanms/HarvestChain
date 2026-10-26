@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HarvestChain — dev harness</title>
 <!--
-  Throwaway developer harness: plays the real game.wasm sim through its exports with
+  Throwaway developer harness: plays the real game.test.wasm sim through its exports with
   plain HTML controls. Not part of the shipped game, not counted in any budget.
   Run from the repo root:  npm run build && python3 -m http.server 8000
   then open http://localhost:8000/tools/play.html
@@ -43,7 +43,7 @@
 </style>
 </head>
 <body>
-<h1>HarvestChain <span class="mut">dev harness (real game.wasm, no graphics)</span></h1>
+<h1>HarvestChain <span class="mut">dev harness (real game.test.wasm, no graphics)</span></h1>
 <div class="bar" id="status">loading…</div>
 <div class="row">
   <button class="primary" id="endday">End Day (E)</button>
@@ -80,7 +80,7 @@ const $ = (id) => document.getElementById(id);
 const [STATE, BAL, bytes] = await Promise.all([
   fetch('./state.json').then(r => r.json()),
   fetch('./balance.json').then(r => r.json()),
-  fetch('../build/game.wasm').then(r => { if (!r.ok) throw new Error('build/game.wasm missing — run npm run build'); return r.arrayBuffer(); }),
+  fetch('../build/game.test.wasm').then(r => { if (!r.ok) throw new Error('build/game.test.wasm missing — run npm run build'); return r.arrayBuffer(); }),
 ]);
 const { instance } = await WebAssembly.instantiate(bytes, {});
 const ex = instance.exports;

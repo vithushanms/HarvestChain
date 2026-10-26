@@ -78,7 +78,7 @@ export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = fa
     const fw = g.ex.fb_w(), fh = g.ex.fb_h();
     return { w: fw, h: fh, rgba: new Uint8Array(g.ex.memory.buffer.slice(g.ex.fb_ptr(), g.ex.fb_ptr() + fw * fh * 4)) };
   }
-  const { instance } = await WebAssembly.instantiate(readFileSync(join(root, 'build', 'game.wasm')), {});
+  const { instance } = await WebAssembly.instantiate(readFileSync(join(root, 'build', 'game.test.wasm')), {});
   const ex = instance.exports;
   ex.init(1);
   if (scene === 'iso-small') ex.resize(180, 320, 100);

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 export const STATE = JSON.parse(readFileSync('tools/state.json', 'utf8'));
 
-export async function loadGame(path = 'build/game.wasm') {
+export async function loadGame(path = 'build/game.test.wasm') {
   const { instance } = await WebAssembly.instantiate(await readFile(path), {});
   const ex = instance.exports;
   return { ex, mem: () => new Uint8Array(ex.memory.buffer) };
