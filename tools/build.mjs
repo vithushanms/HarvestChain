@@ -84,7 +84,8 @@ const assemble = (watFile, name) => {
   const wasm = join(out, `${name}.wasm`);
   run(bin('wat2wasm'), [watFile, '-o', rawWasm, '--disable-simd', '--disable-multi-value',
     '--disable-reference-types', '--disable-saturating-float-to-int']);
-  run(bin('wasm-opt'), [rawWasm, '-o', wasm, '-Oz', '--mvp-features',
+  // --converge repeats -Oz until the binary stops shrinking (size pass, Task 8b: -43 B raw / -46 B gz)
+  run(bin('wasm-opt'), [rawWasm, '-o', wasm, '-Oz', '--converge', '--mvp-features',
     '--enable-bulk-memory', '--enable-sign-ext', '--enable-mutable-globals']);
   return wasm;
 };
