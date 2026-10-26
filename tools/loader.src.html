@@ -174,11 +174,13 @@ function restore() {
   if (m) ex.replay_restore(ex.io_buf(), m);
   return 1;
 }
-// COPY CODE: the module asks during a pointer / key handler (a user gesture); copy the share link
+// COPY CODE: the module asks during a pointer / key handler (a user gesture); copy the share link.
+// ack_copy(0) takes the request now; ack_copy(1) (the COPIED! toast) only once the write resolved.
 function copy() {
   if (!ex.want_copy()) return;
-  try { navigator.clipboard.writeText(str(ex.share_url_ptr(), ex.share_url_len())).catch(() => {}); } catch {}
-  ex.ack_copy();
+  const t = str(ex.share_url_ptr(), ex.share_url_len());
+  ex.ack_copy(0);
+  try { navigator.clipboard.writeText(t).then(guard(() => { ex.ack_copy(1); schedule(); }), () => {}); } catch {}
 }
 function prefs() {
   try { return Object(JSON.parse(ls('hc.prefs'))); } catch { return {}; }   // null / a number -> no prefs

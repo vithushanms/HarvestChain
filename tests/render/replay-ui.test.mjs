@@ -226,7 +226,12 @@ test('Results: share code line, COPY CODE (want_copy -> ack_copy toasts COPIED!)
   assert.equal(g.ex.want_copy(), 1);
   const url = Buffer.from(g.mem().slice(g.ex.share_url_ptr(), g.ex.share_url_ptr() + g.ex.share_url_len())).toString('latin1');
   assert.equal(url, g.code());
-  g.ex.ack_copy(); g.frame();
+  // final review M1: the loader acks with 0 at once (clears the request, no toast) and with 1 only
+  // after the clipboard write resolves
+  g.ex.ack_copy(0); g.frame();
+  assert.equal(g.ex.want_copy(), 0);
+  assert.deepEqual(g.toasts(), [], 'no COPIED! before the write succeeded');
+  g.ex.ack_copy(1); g.frame();
   assert.equal(g.ex.want_copy(), 0);
   assert.deepEqual(g.toasts(), ['COPIED!']);
   const end = bytes(g);

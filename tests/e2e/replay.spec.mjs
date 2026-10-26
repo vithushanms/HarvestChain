@@ -94,6 +94,21 @@ test('COPY CODE writes the share link (page URL + # + code) to the clipboard and
   noErrors(errors);
 });
 
+test('COPY CODE when the clipboard write fails: no COPIED! toast, the request is still cleared', async ({ game, errors, page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('denied')) } }));
+  await game.hooks();
+  await game.open();
+  await page.evaluate(() => { const ex = window.__hc.ex; new DataView(ex.memory.buffer).setUint16(0x100C, 240, true); });
+  await game.press('KeyE');
+  expect(await ui(page, SCR)).toBe(4);
+  const before = await game.announce();
+  await game.tap(await game.hit(COPY));
+  expect(await game.announce()).not.toBe('COPIED!');
+  expect(await game.announce()).toBe(before);
+  expect(await page.evaluate(() => window.__hc.ex.want_copy())).toBe(0);
+  noErrors(errors);
+});
+
 test('a short run played to Results shows a QR in the page canvas that decodes to page URL + # + code', async ({ game, errors, page }) => {
   await game.hooks();
   await game.open();

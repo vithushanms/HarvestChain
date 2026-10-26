@@ -351,9 +351,11 @@
 (func $share_url_len (result i32)
   (i32.add (global.get $sh_n) (select (i32.add (global.get $org_n) (i32.const 1)) (i32.const 0) (global.get $org_n))))
 (func $want_copy (result i32) (global.get $copy_req))
-(func $ack_copy
+;; ack_copy(0): the loader took the request (cleared at once, in the gesture); ack_copy(1): the clipboard
+;; write resolved -> COPIED! (a failed / missing clipboard gets no toast: the code is on screen).
+(func $ack_copy (param $ok i32)
   (global.set $copy_req (i32.const 0))
-  (call $toast (i32.const 3) (call $str (global.get $STR_COPIED))))
+  (if (local.get $ok) (then (call $toast (i32.const 3) (call $str (global.get $STR_COPIED))))))
 
 ;; ---------------------------------------------------------------- playback
 
