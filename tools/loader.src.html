@@ -139,10 +139,10 @@ function save(force) {
 }
 function post() {
   save();
-  const f = ex.get_flags() & 5;               // bit0 large text, bit2 gazette off (bit1 = OS reduced motion, not stored)
+  const f = ex.get_flags() & 13;              // bit0 large text, bit2 gazette off, bit3 tutorial done (bit1 = OS reduced motion, not stored)
   if (f !== lastPrefs) {
     lastPrefs = f;
-    ls('hc.prefs', JSON.stringify({ large: f & 1, noGazette: f >> 2 }));
+    ls('hc.prefs', JSON.stringify({ large: f & 1, noGazette: f >> 2 & 1, tut: f >> 3 }));
   }
   const s = ex.announce_seq();
   if (s !== seq) {
@@ -271,6 +271,7 @@ async function main() {
   ex.set_env(seed | 0, Math.floor(Date.now() / 86400000));
   ex.set_flags(mq.matches, p.large ? 1 : 0);
   ex.set_pref(2, p.noGazette ? 1 : 0);
+  ex.set_pref(3, p.tut ? 1 : 0);
   ex.ui_boot(has);
   // 8. share link origin: the page URL without the hash (the #code itself is taken after the first frame)
   here = location.href.split('#')[0];

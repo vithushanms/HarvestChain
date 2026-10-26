@@ -39,6 +39,8 @@ index.html (loader) ──instantiateStreaming──▶ game.wasm
   passes measured load / size / frame / End Day numbers via set_metrics before every frame
 ```
 
+**Onboarding** (`src/22d_onboard.wat`, Task 8a): six spotlight hints over the real UI (plant, End Day, harvest, sell, Mill, truck, then ALL SET) on every NEW GAME / DAILY SEED / TRY AGAIN until done; steps advance by observing the sim between draws (never acting), UI-only (no save / replay change). `get_flags` bit 3 = done (the loader persists it as `tut` in hc.prefs), bits 4-6 = step; `set_pref(3, v)` / `set_pref(4, step)`; HOW TO PLAY has REPLAY TUTORIAL. Hit codes 0x3DC SKIP / DONE, 0x3DD card, 0x3DE REPLAY. Tests: `tests/render/onboard.test.mjs`, `tests/e2e/onboard.spec.mjs` (the e2e fixture and `uiGame` mark it done unless asked).
+
 **Stats overlay** (`src/23_overlay.wat`): `set_metrics(load_ms, transfer, wasm_wire, wasm_raw, endday_us, frame_us)` + `cur_day()`; a 120-sample frame ring at 0xAC40; Backquote / triple tap on the top-left 44 css px corner toggles the module-drawn overlay (taps pass through except its header, hit 0x3DA); `$s_load` builds the Title / Results "LOADED IN .. MS · .. KB" line. Tests: `tests/render/overlay.test.mjs`, `tests/e2e/overlay.spec.mjs`.
 
 Exports: `init, pointer, key, resize, frame, save_len, load, replay_*` (+ `dirty`/`want_save` flags).

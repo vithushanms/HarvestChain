@@ -72,11 +72,12 @@ export const test = base.extend({
       }, label.source),
       // Every boot shows the Title (Task 5c): open / reload leave it with Enter (NEW GAME without a save,
       // CONTINUE with one) unless { title: true }. The morning Gazette's auto-open is off by default
-      // (hc.prefs noGazette, only when the test has not stored prefs itself) so End Day keeps the farm.
+      // (hc.prefs noGazette, only when the test has not stored prefs itself) so End Day keeps the farm; the
+      // guided first days are marked done (tut) so NEW GAME starts plain (tests/e2e/onboard.spec.mjs covers them).
       open: async (path = '', o = {}) => {
         if (!g.prefsSet) {
           g.prefsSet = 1;
-          await page.addInitScript(() => { try { if (localStorage.getItem('hc.prefs') === null) localStorage.setItem('hc.prefs', '{"large":0,"noGazette":1}'); } catch {} });
+          await page.addInitScript(() => { try { if (localStorage.getItem('hc.prefs') === null) localStorage.setItem('hc.prefs', '{"large":0,"noGazette":1,"tut":1}'); } catch {} });
         }
         await page.goto(server.url + path); await g.ready(); if (!o.title) await g.start();
       },

@@ -4,9 +4,11 @@
 ;; load() accepted the stored save (then the UI only resets). Every boot shows the Title screen
 ;; (Task 5c, 22c_screens.wat): CONTINUE / NEW GAME / DAILY SEED / HOW TO PLAY / JOURNAL.
 ;;
-;; get_flags(): bit0 large_text, bit1 reduced_motion (OS preference), bit2 gazette_auto_off. The
-;; loader persists changes to hc.prefs (UI toggles in later tasks flip the bits via $set_pref).
-;; set_pref(bit, value): sets one bit of the flags; 0 = large, 1 = reduced, 2 = gazette auto-open off.
+;; get_flags(): bit0 large_text, bit1 reduced_motion (OS preference), bit2 gazette_auto_off, bit3
+;; tutorial done / skipped, bits 4-6 the tutorial step (0 off, 1..6, 7 ALL SET; 22d_onboard.wat). The
+;; loader persists bits 0, 2 and 3 to hc.prefs (UI toggles flip the bits via $set_pref).
+;; set_pref(bit, value): sets one bit of the flags; 0 = large, 1 = reduced, 2 = gazette auto-open off,
+;; 3 = tutorial done; set_pref(4, s) sets the tutorial step s (0 off, 1..7; not a bit).
 (global $flag_gazoff (mut i32) (i32.const 0))
 (func $ui_boot (param $has_save i32)
   ;; the Title screen over the saved farm, or over a fresh farm from the env seed that is not saved
@@ -17,12 +19,15 @@
   (global.set $has_save (local.get $has_save))
   (call $go (i32.const 1)))
 (func $get_flags (result i32)
-  (i32.or (i32.or (global.get $flag_large) (i32.shl (global.get $flag_reduced) (i32.const 1)))
-          (i32.shl (global.get $flag_gazoff) (i32.const 2))))
+  (i32.or (i32.or (i32.or (global.get $flag_large) (i32.shl (global.get $flag_reduced) (i32.const 1)))
+                  (i32.shl (global.get $flag_gazoff) (i32.const 2)))
+          (i32.or (i32.shl (global.get $tut_done) (i32.const 3)) (i32.shl (global.get $tut) (i32.const 4)))))
 (func $set_pref (param $bit i32) (param $v i32)
   (local $b i32)
   (local.set $b (i32.ne (local.get $v) (i32.const 0)))
   (if (i32.eq (local.get $bit) (i32.const 2)) (then (global.set $flag_gazoff (local.get $b)) (return)))
+  (if (i32.eq (local.get $bit) (i32.const 3)) (then (global.set $tut_done (local.get $b)) (return)))
+  (if (i32.eq (local.get $bit) (i32.const 4)) (then (call $tut_set (local.get $v)) (return)))
   (call $set_flags
     (select (local.get $b) (global.get $flag_reduced) (i32.eq (local.get $bit) (i32.const 1)))
     (select (local.get $b) (global.get $flag_large) (i32.eqz (local.get $bit)))))

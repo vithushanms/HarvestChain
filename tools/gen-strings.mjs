@@ -229,6 +229,13 @@ export const STRINGS = [
   ['TOO_LONG', 'RUN TOO LONG TO SHARE'],
   ['NO_SHARE', 'SHARE ONLY FOR RUNS STARTED THIS SESSION'],
   ['QR_LONG', 'TOO LONG FOR QR - '],   // + COPY: "TOO LONG FOR QR - COPY CODE" (Task 7 share QR)
+  // Task 8a onboarding hints (22d_onboard.wat indexes this group by offset; "TAP " (14) prefixes some
+  // of them and existing labels: TAP END DAY / START DAY / HARVEST / CANCEL); NEED + money + 11 = the
+  // Mill step's "NEED $250 - SELL MORE WHEAT"
+  ['@TUT', ['AN EMPTY PLOT', 'PLANT, PICK WHEAT', 'END DAY TO GROW CROPS', 'OPEN THE MARKET TAB',
+    'SELL YOUR WHEAT', '+ TO CHOOSE HOW MANY', 'BUILD A MILL TO MAKE FLOUR', 'OPEN THE TRUCKS TAB',
+    'SEND A TRUCK TO TOWN', 'LOAD GOODS, THEN NEXT', 'ALL SET! KEEP GROWING.', ' - SELL MORE WHEAT',
+    'SKIP', 'REPLAY TUTORIAL', 'TAP ']],
 ];
 
 // Icons: name, [c1, c2, c3] palette indices (hue*4 + step), 9 rows of 9 chars ('.' = clear).

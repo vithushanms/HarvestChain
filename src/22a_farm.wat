@@ -156,6 +156,7 @@
 
 (func $tap (param $c i32)
   (local $t i32)
+  (if (call $tut_tap (local.get $c)) (then (return)))   ;; onboarding SKIP / card / REPLAY TUTORIAL (22d_onboard.wat)
   (if (i32.eq (local.get $c) (i32.const 0x3DA)) (then (call $ovl_toggle) (return)))   ;; stats overlay header
   (if (i32.or (global.get $scr) (i32.ge_u (local.get $c) (i32.const 0x3C0))) (then (call $ovl_tap (local.get $c)) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_ENDDAY)) (then (call $do_endday) (return)))
