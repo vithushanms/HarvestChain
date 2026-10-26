@@ -77,9 +77,19 @@ export const test = base.extend({
         }
         return null;
       }, label.source),
-      open: async (path = '') => { await page.goto(server.url + path); await g.ready(); },
+      // Every boot shows the Title (Task 5c): open / reload leave it with Enter (NEW GAME without a save,
+      // CONTINUE with one) unless { title: true }. The morning Gazette's auto-open is off by default
+      // (hc.prefs noGazette, only when the test has not stored prefs itself) so End Day keeps the farm.
+      open: async (path = '', o = {}) => {
+        if (!g.prefsSet) {
+          g.prefsSet = 1;
+          await page.addInitScript(() => { try { if (localStorage.getItem('hc.prefs') === null) localStorage.setItem('hc.prefs', '{"large":0,"noGazette":1}'); } catch {} });
+        }
+        await page.goto(server.url + path); await g.ready(); if (!o.title) await g.start();
+      },
       ready: () => page.waitForFunction(() => window.__hc && window.__hc.t1 > 0),
-      reload: async () => { await page.reload(); await g.ready(); },
+      start: async () => { await page.keyboard.press('Enter'); await g.settle(); },
+      reload: async (o = {}) => { await page.reload(); await g.ready(); if (!o.title) await g.start(); },
       tap: async ([x, y]) => { if (mobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y); await g.settle(); },
       press: async (code) => { await page.keyboard.press(code); await g.settle(); },
       // wait until the frame loop has gone idle or ambient-only for a moment

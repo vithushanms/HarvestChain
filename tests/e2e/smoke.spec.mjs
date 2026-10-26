@@ -26,6 +26,34 @@ test('loads, fills the viewport, draws, no console errors, no horizontal scroll'
   noErrors(errors);
 });
 
+test('Title on every boot: NEW GAME without a save, CONTINUE after one; Gazette after End Day; J opens the Journal', async ({ game, errors }) => {
+  const { page } = game;
+  await game.hooks();
+  await game.open('', { title: true });
+  expect(await game.announce()).toMatch(/^HARVESTCHAIN\. NEW GAME, DAILY SEED #\d+, HOW TO PLAY/);
+  expect(await game.save()).toBe(null);              // the Title farm is not saved
+  expect(await game.button(/^CONTINUE$/)).toBe(null);
+  await game.tap(await game.button(/^NEW GAME$/));
+  expect((await game.save()).day).toBe(1);
+  await game.setRaw('hc.prefs', JSON.stringify({ large: 0, noGazette: 0 }));
+  await game.reload({ title: true });
+  expect(await game.announce()).toMatch(/^HARVESTCHAIN\. CONTINUE, NEW GAME/);
+  await page.screenshot({ path: `build/shots/${game.mobile ? 'phone' : 'desktop'}-title.png` });
+  await game.tap(await game.button(/^CONTINUE$/));
+  await game.tap(await game.hit(1));                 // End Day -> the morning Gazette
+  expect(await game.announce()).toMatch(/^MORNING GAZETTE\. DAY 2/);
+  await page.screenshot({ path: `build/shots/${game.mobile ? 'phone' : 'desktop'}-gazette.png` });
+  await game.press('KeyE');
+  expect((await game.save()).day).toBe(2);           // End Day is blocked under the Gazette
+  await game.press('Escape');
+  await game.press('KeyJ');
+  expect(await game.announce()).toMatch(/^JOURNAL\. DAY 2 OF 240, PLAYING/);
+  await game.press('KeyJ');
+  await game.press('KeyE');
+  expect((await game.save()).day).toBe(3);
+  noErrors(errors);
+});
+
 test('load timer: first non-blank frame under 100 ms', async ({ game }, info) => {
   await game.open();
   const t1 = await game.page.evaluate(() => window.__hc.t1);
@@ -347,6 +375,7 @@ test('the loader itself drops auto-repeat keydowns', async ({ game }) => {
   const { page } = game;
   await game.instrument();
   await game.open();
+  await page.evaluate(() => { window.__log.length = 0; });   // (drop the Enter that left the Title)
   await page.evaluate(() => { for (const repeat of [false, true, true, true]) dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', repeat, cancelable: true })); });
   await page.evaluate(() => dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE' })));
   const keys = await page.evaluate(() => window.__log.filter((l) => l[0] === 'key').map((l) => l.slice(1)));
@@ -357,6 +386,7 @@ test('a key-up with a modifier held still releases the key', async ({ game }) =>
   const { page } = game;
   await game.instrument();
   await game.open();
+  await page.evaluate(() => { window.__log.length = 0; });
   await page.evaluate(() => {
     dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', cancelable: true }));
     dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', ctrlKey: true }));
