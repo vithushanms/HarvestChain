@@ -169,6 +169,14 @@ const BOT40 = await (async () => {
 })();
 const BAD_LOG = Buffer.from([0x52, 1, 5, 0, 0, 0, 2, 0, 0x1E, 3, 1, 63, 0]).toString('base64url');
 export const CODES = { BOT40, BAD_LOG };
+// The loader's set_origin (page URL without its hash) for the share-QR states.
+export const ORIGIN = 'https://harvestchain.example/play/';
+export const setOrigin = (ex, o = ORIGIN) => { new Uint8Array(ex.memory.buffer).set(Buffer.from(o, 'latin1'), ex.io_buf()); ex.set_origin(o.length); };
+const mem = (ex) => () => new Uint8Array(ex.memory.buffer);
+// Task 7 integration: a short real run (3 bot days, then the last day) whose link fits a QR, and the
+// 239-day bot run (log ~3.6 KB) whose link does not.
+const shortRun = (ex) => { setOrigin(ex); runBot(ex, mem(ex), 3); lastDay(ex); };
+const longRun = (ex) => { setOrigin(ex); runBot(ex, mem(ex), 239); };
 
 // Canned UI states: [w, h, dpr, options, script]. Rendered at a fixed time so hashes are stable.
 const poor = (ex) => farm(ex).day(3);
@@ -218,6 +226,8 @@ export const UI_STATE_LIST = [
   ['ui-replay-mid', { o: { boot: 0 }, run: (g) => { g.load(BOT40); g.tap(RP.WATCH); g.ex.t_rp_seek(23); for (let i = 0; i < 2; i++) g.tap(RP.SPEED); } }],
   ['ui-replay-invalid', { o: { boot: 0 }, run: (g) => { g.load(BAD_LOG); g.tap(RP.WATCH); g.tap(RP.NEXT); g.tap(RP.NEXT); g.tap(RP.NEXT); } }],
   ['ui-results-share', { o: { gazette: true, setup: (ex) => { lastDay(ex); for (let i = 0; i < 6; i++) ex.act(17 + (i & 1), 100, 0, 0); } }, run: (g) => g.tap(HIT.ENDDAY) }],
+  ['ui-results-share-qr', { o: { gazette: true, setup: shortRun }, run: (g) => g.tap(HIT.ENDDAY) }],
+  ['ui-results-share-toolong', { o: { gazette: true, setup: longRun }, run: (g) => g.tap(HIT.ENDDAY) }],
 ];
 export const UI_STATES = {};
 for (const [name, s] of UI_STATE_LIST) {

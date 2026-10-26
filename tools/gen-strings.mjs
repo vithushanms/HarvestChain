@@ -220,6 +220,7 @@ export const STRINGS = [
   ['ELLIPSIS', '...'],
   ['TOO_LONG', 'RUN TOO LONG TO SHARE'],
   ['NO_SHARE', 'SHARE ONLY FOR RUNS STARTED THIS SESSION'],
+  ['QR_LONG', 'TOO LONG FOR QR - '],   // + COPY: "TOO LONG FOR QR - COPY CODE" (Task 7 share QR)
 ];
 
 // Icons: name, [c1, c2, c3] palette indices (hue*4 + step), 9 rows of 9 chars ('.' = clear).

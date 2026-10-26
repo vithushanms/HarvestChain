@@ -3,6 +3,7 @@
 import { test, expect, haveBrowser } from './fixtures.mjs';
 import { loadGame } from '../helpers.mjs';
 import { runBot } from '../sim/bot.mjs';
+import jsQR from 'jsqr';
 
 test.skip(!haveBrowser, 'chromium not installed (npx playwright install chromium)');
 const noErrors = (errors) => expect(errors, errors.join('\n')).toEqual([]);
@@ -90,6 +91,35 @@ test('COPY CODE writes the share link (page URL + # + code) to the clipboard and
   await p2.goto(clip);
   await p2.waitForFunction(() => window.__hc && window.__hc.t1 > 0);
   expect(await p2.evaluate(() => location.hash)).toBe('');   // taken by the module (shipping build: no t_ hooks here)
+  noErrors(errors);
+});
+
+test('a short run played to Results shows a QR in the page canvas that decodes to page URL + # + code', async ({ game, errors, page }) => {
+  await game.hooks();
+  await game.open();
+  // a few real days through the UI, then jump to the last day and End Day -> Results
+  await game.press('KeyE');
+  await game.press('KeyE');
+  await page.evaluate(() => { const ex = window.__hc.ex; new DataView(ex.memory.buffer).setUint16(0x100C, 240, true); });
+  await game.press('KeyE');
+  expect(await ui(page, SCR)).toBe(4);
+  expect(await page.evaluate(() => window.__hc.ex.t_qr(3))).toBeGreaterThanOrEqual(2);
+  // the pixels the loader put on the canvas (whole canvas: jsQR has to find the code among the UI)
+  const img = await page.evaluate(() => {
+    const c = document.getElementById('c');
+    return { w: c.width, h: c.height, d: Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data) };
+  });
+  const r = jsQR(Uint8ClampedArray.from(img.d), img.w, img.h);
+  expect(r, 'canvas QR decodes').not.toBeNull();
+  const code = await page.evaluate(() => { const ex = window.__hc.ex; ex.share_build();
+    return new TextDecoder().decode(new Uint8Array(ex.memory.buffer, ex.share_ptr(), ex.share_len())); });
+  const here = await page.evaluate(() => location.href.split('#')[0]);
+  expect(r.data).toBe(`${here}#${code}`);
+  // the decoded link opens the run elsewhere (WATCH SHARED RUN on the Title)
+  const p2 = await page.context().newPage();
+  await p2.goto(r.data);
+  await p2.waitForFunction(() => window.__hc && window.__hc.t1 > 0);
+  expect(await p2.evaluate(() => location.hash)).toBe('');
   noErrors(errors);
 });
 

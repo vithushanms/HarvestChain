@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 290 strings, 2946 B at 0x7200 (spec budget 2560 B)
+;; string table: 291 strings, 2965 B at 0x7200 (spec budget 2560 B)
 (data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -302,9 +302,10 @@
   "...\00" ;; 287
   "RUN TOO LONG TO SHARE\00" ;; 288
   "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 289
+  "TOO LONG FOR QR - \00" ;; 290
 )
 (global $STR_BASE i32 (i32.const 0x7200))
-(global $STR_COUNT i32 (i32.const 290))
+(global $STR_COUNT i32 (i32.const 291))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -491,6 +492,7 @@
 (global $STR_ELLIPSIS i32 (i32.const 287))
 (global $STR_TOO_LONG i32 (i32.const 288))
 (global $STR_NO_SHARE i32 (i32.const 289))
+(global $STR_QR_LONG i32 (i32.const 290))
 ;; icons: 29 x 24 B at 0x640
 (data (i32.const 0x640)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN

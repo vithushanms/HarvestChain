@@ -516,10 +516,14 @@
   (call $put_two (i32.const 0x3D5) (call $str (global.get $STR_TAKE_OVER)) (call $str (global.get $STR_REPLACES)) (i32.const -1) (i32.const 2) (local.get $h))
   (call $put (i32.const 0x3D6) (call $str (global.get $STR_EXIT)) (global.get $I_CLOSE) (i32.const 0) (i32.const 1) (i32.const 2) (local.get $h)))
 
-;; Results / Game Over share slot: the code's first 24 chars and length, COPY CODE, WATCH REPLAY and
-;; the QR slot; the reason instead when the run cannot be shared.
+;; Results / Game Over share slot: the code's first 24 chars and length, then COPY CODE and WATCH
+;; REPLAY with the QR of the share link: beside them (QR left, buttons stacked right) when it fits there
+;; at >= 2 px a module, else below them across the card, else (a link over 858 B, a long run) the line
+;; "TOO LONG FOR QR - COPY CODE". The QR is at most 1/3 of the screen tall; the card scrolls when the
+;; panel gets taller than the screen. The reason instead of all this when the run cannot be shared.
 (func $share_ui
-  (local $n i32) (local $i i32)
+  (local $n i32) (local $i i32) (local $bh i32) (local $w i32) (local $q i32) (local $y i32) (local $hm i32)
+  (global.set $qr_ak (i32.const 0))
   (if (global.get $rec_st) (then
     (call $ui_label (global.get $I_LOCK) (call $str (select (global.get $STR_TOO_LONG) (global.get $STR_NO_SHARE) (i32.eq (global.get $rec_st) (i32.const 1)))) (i32.const 61))
     (return)))
@@ -534,16 +538,67 @@
   (call $lab (global.get $I_UP) (i32.const 61))
   (global.set $lab_on (local.get $i))
   (global.set $uy (i32.add (global.get $uy) (global.get $lgap)))
-  (call $put (i32.const 0x3C8) (call $str (global.get $STR_COPY)) (global.get $I_PLUS) (i32.const 0) (i32.const 1) (call $pcols) (call $btnh))
+  (local.set $bh (call $btnh))
+  (local.set $hm (i32.div_s (global.get $fb_h) (i32.const 3)))
+  ;; QR column: at most half the card, leaving the buttons the width of a two-label row ($pcols)
+  (local.set $w (call $imin (i32.shr_s (global.get $uw) (i32.const 1))
+    (i32.sub (global.get $uw) (i32.add (i32.add (i32.mul (i32.const 93) (call $ui_ts)) (i32.const 20)) (global.get $lgap)))))
+  (local.set $y (global.get $uy))
+  (local.set $q (call $share_qr_slot (global.get $ux) (local.get $y) (local.get $w) (local.get $hm)))
+  (if (local.get $q)
+    (then
+      ;; buttons stacked right of the QR, centred against it
+      (global.set $ux (i32.add (global.get $ux) (i32.add (local.get $w) (global.get $lgap))))
+      (global.set $uw (i32.sub (global.get $uw) (i32.add (local.get $w) (global.get $lgap))))
+      (global.set $uy (i32.add (local.get $y) (call $imax (i32.const 0)
+        (i32.shr_s (i32.sub (local.get $q) (i32.add (i32.shl (local.get $bh) (i32.const 1)) (global.get $lgap))) (i32.const 1)))))
+      (call $share_btns (i32.const 1) (local.get $bh))
+      (global.set $ux (i32.sub (global.get $ux) (i32.add (local.get $w) (global.get $lgap))))
+      (global.set $uw (i32.add (global.get $uw) (i32.add (local.get $w) (global.get $lgap))))
+      (global.set $uy (i32.add (global.get $lgap) (call $imax (global.get $uy) (i32.add (local.get $y) (local.get $q))))))
+    (else
+      (call $share_btns (call $pcols) (local.get $bh))
+      (local.set $q (call $share_qr_slot (global.get $ux) (global.get $uy) (global.get $uw) (local.get $hm)))
+      (if (local.get $q)
+        (then (global.set $uy (i32.add (global.get $uy) (i32.add (local.get $q) (global.get $lgap)))))
+        (else
+          (call $sb (global.get $SB1)) (call $si (global.get $STR_QR_LONG)) (call $si (global.get $STR_COPY))
+          (call $lab (global.get $I_WARN) (i32.const 61))
+          (global.set $uy (i32.add (global.get $uy) (global.get $lgap))))))))
+(func $share_btns (param $c i32) (param $bh i32)
+  (call $put (i32.const 0x3C8) (call $str (global.get $STR_COPY)) (global.get $I_PLUS) (i32.const 0) (i32.const 1) (local.get $c) (local.get $bh))
   (call $sb (global.get $SB2)) (call $si (global.get $STR_WATCH)) (call $si (i32.add (global.get $STR_SCR) (i32.const 6)))
-  (call $put (i32.const 0x3D9) (global.get $SB2) (global.get $I_CLOCK) (i32.const 0) (i32.const 1) (call $pcols) (call $btnh))
-  (global.set $uy (i32.add (global.get $uy) (call $share_qr_slot (global.get $ux) (global.get $uy) (global.get $uw) (global.get $uw)))))
-;; Task 7b draws the QR of share_url (ptr / len) here: at (x, y), at most w wide and h tall; returns
-;; the height it used (0 = no QR: the payload does not fit or QR is not built yet).
+  (call $put (i32.const 0x3D9) (global.get $SB2) (global.get $I_CLOCK) (i32.const 0) (i32.const 1) (local.get $c) (local.get $bh)))
+;; The QR of the share link (share_url_ptr / len, re-encoded on every draw: the matrix is shared
+;; scratch) with the largest integer scale whose square (quiet zone included) fits w x h, centred
+;; across w at the top of the slot; the height used, or 0 (nothing drawn) when the link is over 858 B
+;; or the scale would be under 2 px a module.
 (func $share_qr_slot (param $x i32) (param $y i32) (param $w i32) (param $h i32) (result i32)
-  (i32.const 0))
+  (local $s i32) (local $p i32)
+  (if (i32.eqz (call $qr_encode (call $share_url_ptr) (call $share_url_len))) (then (return (i32.const 0))))
+  (local.set $s (i32.div_s (call $imin (local.get $w) (local.get $h)) (i32.add (call $qr_size) (i32.const 8))))
+  (if (i32.lt_s (local.get $s) (i32.const 2)) (then (return (i32.const 0))))
+  (local.set $p (call $qr_pixels (local.get $s)))
+  (global.set $qr_at (i32.add (local.get $x) (i32.shr_s (i32.sub (local.get $w) (local.get $p)) (i32.const 1))))
+  (global.set $qr_ay (local.get $y)) (global.set $qr_as (local.get $p)) (global.set $qr_ak (local.get $s))
+  (global.set $qr_ct (global.get $clip_t)) (global.set $qr_cb (global.get $clip_b))
+  (call $qr_draw (global.get $qr_at) (local.get $y) (local.get $s))
+  (local.get $p))
 
 ;; Test hooks.
+(global $qr_at (mut i32) (i32.const 0))   ;; last share QR drawn: x, y, side, scale (0 = none)
+(global $qr_ay (mut i32) (i32.const 0))
+(global $qr_as (mut i32) (i32.const 0))
+(global $qr_ak (mut i32) (i32.const 0))
+(global $qr_ct (mut i32) (i32.const 0))   ;; the card body's clip when it was drawn
+(global $qr_cb (mut i32) (i32.const 0))
+(func $t_qr (param $k i32) (result i32)
+  (if (i32.eqz (local.get $k)) (then (return (global.get $qr_at))))
+  (if (i32.eq (local.get $k) (i32.const 1)) (then (return (global.get $qr_ay))))
+  (if (i32.eq (local.get $k) (i32.const 2)) (then (return (global.get $qr_as))))
+  (if (i32.eq (local.get $k) (i32.const 3)) (then (return (global.get $qr_ak))))
+  (if (i32.eq (local.get $k) (i32.const 4)) (then (return (global.get $qr_ct))))
+  (global.get $qr_cb))
 (func $t_log_len (result i32) (global.get $rec_len))
 (func $t_log_st (result i32) (global.get $rec_st))
 (func $t_rp (param $k i32) (result i32)
