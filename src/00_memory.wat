@@ -5,7 +5,7 @@
 ;;                   (button styles, season icons, toast colours, tab icons, badge colours: 22_ui.wat / 22a_farm.wat),
 ;;                   0x937-0x939 truck upgrade cost columns, 0x93A-0x93C route stop models, 0x948-0x954 good -> icon (22b_tabs.wat);
 ;;                   0x955-0x972 screen header icons, Enter buttons, How-to models, confetti colours,
-;;                   milestone progress map (22c_screens.wat); UI icons 0xA00.. (30 x 24 B, generated,
+;;                   milestone progress map (22c_screens.wat); UI icons 0xA00.. (31 x 24 B, generated,
 ;;                   02b_strings.wat; room up to 0xF7F = 58 icons); 0xF80-0xF93 replay arg counts (24_replay.wat);
 ;;                   0x973-0x9FF, the end of the icon table-0xF7F, 0xF94-0xFFF free
 ;;            0x6800-0x70F7 scene model table (generated, 21c_scene.wat; size in its footer),
