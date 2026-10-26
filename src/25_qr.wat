@@ -4,32 +4,33 @@
 ;;
 ;; API: $qr_encode(ptr, len) -> version 1..20 (smallest whose L byte capacity >= len), or 0 when
 ;;      the input is rejected: len > 858 (unsigned, so also len < 0), [ptr, ptr+len) not inside
-;;      memory, or [ptr, ptr+len) intersecting the QR region 0xC000..0xEDC0 (even with len 0 when
+;;      memory, or [ptr, ptr+len) intersecting the QR region 0x14000..0x16DC0 (even with len 0 when
 ;;      ptr is inside it). Rejection writes no memory and sets $qr_n = 0 ("no code": qr_size() = 0,
 ;;      qr_module() = 0, qr_draw draws nothing). len = 0 is valid: an empty version-1 code (returns 1).
 ;;      $qr_size() = 17 + 4v; $qr_module(x, y) -> 0/1 (0 outside); $qr_draw(x, y, scale) paints
 ;;      the code plus a 4-module quiet zone (paper/ink palette colours, clipped by $rect);
 ;;      $qr_pixels(scale) = drawn side length. Scale is clamped to 0..64 (<= 0 draws nothing).
 ;;
-;; Memory (inside the layout region, 00_memory.wat):
-;;   0xC000..0xC013  version table (generated data, 20 B)
-;;   0xC020..0xC03F  Reed-Solomon generator polynomial (ec <= 30 coefficients + a 0 sentinel)
-;;   0xC040..0xC47C  codewords: data (D bytes) then each block's ECC (ec bytes per block); <= 1085 B
-;;   0xC480..0xC8BC  final interleaved codeword stream (<= 1085 B)
-;;   0xC900..0xEDC0  module matrix, n*n bytes (n <= 97): bit0 = dark, bit1 = function module
+;; Memory (upper half of the old 32 KB IO staging area, 00_memory.wat; the loader's staging is now
+;; 0x10000..0x13FFF, so payloads staged there or in the replay / share URL buffers are accepted):
+;;   0x14000..0x14013  version table (generated data, 20 B)
+;;   0x14020..0x1403F  Reed-Solomon generator polynomial (ec <= 30 coefficients + a 0 sentinel)
+;;   0x14040..0x1447C  codewords: data (D bytes) then each block's ECC (ec bytes per block); <= 1085 B
+;;   0x14480..0x148BC  final interleaved codeword stream (<= 1085 B)
+;;   0x14900..0x16DC0  module matrix, n*n bytes (n <= 97): bit0 = dark, bit1 = function module
 ;;
 ;; GF(256) arithmetic uses a shift-and-xor multiply (poly 0x11D) instead of exp/log tables: smaller
 ;; code and no table init; v20 (861 data bytes x 28 ECC) costs well under a millisecond.
 
-(global $QR_GEN i32 (i32.const 0xC020))
-(global $QR_CW  i32 (i32.const 0xC040))
-(global $QR_OUT i32 (i32.const 0xC480))
-(global $QR_M   i32 (i32.const 0xC900))
+(global $QR_GEN i32 (i32.const 0x14020))
+(global $QR_CW  i32 (i32.const 0x14040))
+(global $QR_OUT i32 (i32.const 0x14480))
+(global $QR_M   i32 (i32.const 0x14900))
 (global $qr_n  (mut i32) (i32.const 0))
 (global $qr_bp (mut i32) (i32.const 0))
 
 ;; >>> GENERATED qr: do not hand-edit (npm run gen)
-(data (i32.const 0xc000) "\07\0a\0f\14\1a\32\34\38\3e\72\74\78\7a\7e\b6\b8\bc\be\dc\fc") ;; L: ((blocks-1)<<5)|ecc per block, v1..20
+(data (i32.const 0x14000) "\07\0a\0f\14\1a\32\34\38\3e\72\74\78\7a\7e\b6\b8\bc\be\dc\fc") ;; L: ((blocks-1)<<5)|ecc per block, v1..20
 (global $QR_FMT i32 (i32.const 0x77c4)) ;; format bits: ECC L, mask 0
 (func $qr_mask (param $x i32) (param $y i32) (result i32) ;; mask 0
   (i32.eqz (i32.and (i32.add (local.get $x) (local.get $y)) (i32.const 1))))
@@ -99,18 +100,18 @@
   (local $na i32) (local $step i32) (local $x i32) (local $y i32) (local $right i32) (local $p i32)
   (global.set $qr_n (i32.const 0))
   ;; reject (before any write): len > 858 unsigned (also len < 0), [ptr, ptr+len) beyond memory
-  ;; (overflow-safe: ptr <= memsize - len with len <= 858), or a payload overlapping 0xC000..0xEDC0
+  ;; (overflow-safe: ptr <= memsize - len with len <= 858), or a payload overlapping 0x14000..0x16DC0
   (if (i32.or (i32.or (i32.gt_u (local.get $len) (i32.const 858))
                       (i32.gt_u (local.get $ptr) (i32.sub (i32.shl (memory.size) (i32.const 16)) (local.get $len))))
-              (i32.and (i32.gt_u (i32.add (local.get $ptr) (local.get $len)) (i32.const 0xC000))
-                       (i32.lt_u (local.get $ptr) (i32.const 0xEDC1))))
+              (i32.and (i32.gt_u (i32.add (local.get $ptr) (local.get $len)) (i32.const 0x14000))
+                       (i32.lt_u (local.get $ptr) (i32.const 0x16DC1))))
     (then (return (i32.const 0))))
   ;; smallest version whose data capacity holds 4 + cc + 8*len bits
   (block $found (loop $lv
     (local.set $v (i32.add (local.get $v) (i32.const 1)))
     (if (i32.gt_u (local.get $v) (i32.const 20)) (then (return (i32.const 0))))
     (local.set $R (i32.shr_u (call $qr_raw (local.get $v)) (i32.const 3)))
-    (local.set $t (i32.load8_u offset=0xBFFF (local.get $v)))
+    (local.set $t (i32.load8_u offset=0x13FFF (local.get $v)))
     (local.set $nb (i32.add (i32.shr_u (local.get $t) (i32.const 5)) (i32.const 1)))
     (local.set $ec (i32.and (local.get $t) (i32.const 31)))
     (local.set $D (i32.sub (local.get $R) (i32.mul (local.get $nb) (local.get $ec))))

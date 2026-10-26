@@ -65,7 +65,7 @@ src/*.wat ──concat (filename order)──▶ build/game.wat ──wat2wasm�
 - **`tools/balance.json`** — names of the balance tables, their columns and the enums (goods, buildings, markets…).
 - **`tests/helpers.mjs`** — `loadGame()`, `readState()`, `stateBytes()`.
 
-Memory is one fixed map with no allocator: state (the save image) at `0x1000`, balance tables at `0x6000`, IO staging for the loader at `0x10000`, framebuffer from `0x18000`. The full map is in `src/00_memory.wat`.
+Memory is one fixed map with no allocator: state (the save image) at `0x1000`, balance tables at `0x6000`, IO staging for the loader at `0x10000..0x13FFF` (16 KB), the QR encoder at `0x14000..0x16DC0`, framebuffer from `0x18000`. The full map is in `src/00_memory.wat`; `tests/memory-map.test.mjs` fails if two regions overlap.
 
 ## The rules the build enforces
 

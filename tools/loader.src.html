@@ -116,10 +116,10 @@ function post() {
     live.textContent = str(ex.announce_ptr(), ex.announce_len());
   }
 }
-// bytes -> module io buffer (32 KB region). Returns length or 0 when it does not fit.
+// bytes -> module io buffer (16 KB region 0x10000..0x13FFF = IO_SIZE). Returns length or 0 when it does not fit.
 function toIo(bin) {
   const n = bin.length;
-  if (!n || n > 32768) return 0;
+  if (!n || n > 16384) return 0;
   const u = new Uint8Array(ex.memory.buffer, ex.io_buf(), n);
   u.set(Uint8Array.from(bin, (c) => c.charCodeAt()));
   return n;

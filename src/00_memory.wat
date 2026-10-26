@@ -20,8 +20,13 @@
 ;;                   replay: viewer log 0xB000..0xBFFF, pre-viewer state 0xC000..0xC5AF, share URL / code
 ;;                   0xC800..0xDFFF, base64 decode 0xE000..0xEFFF, pre-action state 0xF000..0xF5AF (24_replay.wat);
 ;;                   0xA900..0xA9FF, 0xAC40..0xAFFF, 0xC5B0..0xC7FF, 0xF5B0..0xFFFF free)
-;;                   QR encoder 0xC000..0xEDC0 (25_qr.wat; OVERLAPS replay, relocated in the next commit)
-;;            (0x10000 upper 32 KB: IO staging for save / replay bytes from the loader)
+;;   0x10000  16 KB  IO staging 0x10000..0x13FFF ($R_IO, $IO_SIZE): save bytes, the hc.log share code,
+;;                   a pasted / #hash code or link, the origin, from the loader (its toIo cap = IO_SIZE;
+;;                   replay_load / replay_restore refuse longer text). Largest legal text: origin
+;;                   (<= 512) + '#' + 5,462-char code (4 KB log) = 5,975 B; a save is 0x5B0 B.
+;;   0x14000  11.4 KB QR encoder 0x14000..0x16DC0: version table (data), RS generator, codewords,
+;;                   interleaved stream, 97x97 module matrix (map in 25_qr.wat); 0x16DC1..0x17FFF free.
+;;                   (tests/memory-map.test.mjs asserts every region here is disjoint.)
 ;;   0x18000  ...    framebuffer w*h*4 bytes + canary word 0xCAFEF00D (memory.grow in $resize)
 
 (memory $mem 2)
@@ -32,5 +37,6 @@
 (global $R_BAL      i32 (i32.const 0x06000))
 (global $R_LAYOUT   i32 (i32.const 0x08000))
 (global $R_IO       i32 (i32.const 0x10000))
+(global $IO_SIZE    i32 (i32.const 0x04000))
 (global $R_FB       i32 (i32.const 0x18000))
 (global $STATE_SIZE i32 (i32.const 0x04000))

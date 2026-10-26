@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { esc, extract as extractIn, splice, isMain } from './gen-util.mjs';
 
 export const QR_FILE = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', '25_qr.wat');
-export const QR_TAB = 0xC000;
+export const QR_TAB = 0x14000;   // = the QR region base in src/25_qr.wat / 00_memory.wat
 // Mask 0 ((x + y) even, a checkerboard) is the fixed mask: no penalty scoring (the spec allows any of
 // the 8 masks; decoders read it from the format bits). Checked with jsQR across the whole test battery.
 export const QR_MASK = 0;

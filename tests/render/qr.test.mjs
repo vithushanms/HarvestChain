@@ -10,8 +10,8 @@ import { loadGame } from '../helpers.mjs';
 import { generate, extract, QR_FILE, QR_MASK } from '../../tools/gen-qr.mjs';
 
 const GOLDEN = 'tests/render/golden-render.json';
-const IN = 0x10000;                 // input staging (IO region)
-const QR_LO = 0xC000, QR_HI = 0x10000;   // QR scratch + matrix region (00_memory.wat)
+const IN = 0x10000;                 // input staging (IO region 0x10000..0x13FFF)
+const QR_LO = 0x14000, QR_HI = 0x16DC1;   // QR scratch + matrix region 0x14000..0x16DC0 (00_memory.wat)
 const R_FB = 0x18000;
 // Byte-mode capacity at ECC level L for versions 1..20 (ISO/IEC 18004 Table 7), typed independently.
 const CAP = [17, 32, 53, 78, 106, 134, 154, 192, 230, 271, 321, 367, 425, 458, 520, 586, 644, 718, 792, 858];
@@ -183,20 +183,28 @@ test('bad input: huge/negative len, out-of-memory ptr, payload overlapping the Q
   const n0 = g.ex.qr_size();
   const cases = [[IN, 2 ** 29], [IN, 2 ** 31 - 1], [IN, 0x20000001], [IN, -1], [IN, -2147483648], [IN, 2 ** 29 - 1],
     [0xFFFFF, 5], [-1, 5], [0x1FFFF0, 100], [0x7FFFFFFF, 1], [0x7FFFFFFF, 0],
-    [0xC000, 5], [0xBFFF, 2], [0xEDC0, 1], [0xD000, 100], [0xBF00, 858]];
+    [0x14000, 5], [0x13FFF, 2], [0x16DC0, 1], [0x15000, 100], [0x13F00, 858], [0x15000, 0], [0x16DC0, 0]];
   for (const [ptr, len] of cases) {
     const before = g.mem().slice();
     assert.equal(g.ex.qr_encode(ptr, len), 0, `ptr ${ptr} len ${len}`);
     assert.ok(Buffer.compare(Buffer.from(g.mem()), Buffer.from(before)) === 0, `ptr ${ptr} len ${len}: memory unchanged`);
     assert.equal(g.ex.qr_size(), 0);
   }
-  // just outside the QR region on both sides is fine
+  // just outside the QR region on both sides is fine, and so is the old (pre-relocation) region,
+  // which now belongs to the replay viewer / share URL (24_replay.wat)
   const mem = g.mem();
-  mem.fill(0x41, 0xBFF0, 0xC000); mem.fill(0x42, 0xEDC1, 0xEDD1);
-  assert.equal(g.ex.qr_encode(0xBFF0, 16), 1);
+  mem.fill(0x41, 0x13FF0, 0x14000); mem.fill(0x42, 0x16DC1, 0x16DD1); mem.fill(0x43, 0xC800, 0xC810);
+  assert.equal(g.ex.qr_encode(0x13FF0, 16), 1);
   assert.equal(decode(matrix(g), 4).data, 'A'.repeat(16));
-  assert.equal(g.ex.qr_encode(0xEDC1, 16), 1);
+  assert.equal(g.ex.qr_encode(0x16DC1, 16), 1);
   assert.equal(decode(matrix(g), 4).data, 'B'.repeat(16));
+  assert.equal(g.ex.qr_encode(0xC800, 16), 1);
+  assert.equal(decode(matrix(g), 4).data, 'C'.repeat(16));
+  // the whole new IO staging area 0x10000..0x13FFF is accepted: a max payload at its very end
+  const last = 0x14000 - 858;
+  for (let i = 0; i < 858; i++) mem[last + i] = 0x30 + (i % 10);
+  assert.equal(g.ex.qr_encode(last, 858), 20);
+  assert.equal(decode(matrix(g), 3).data, Array.from({ length: 858 }, (_, i) => String(i % 10)).join(''));
   assert.ok(n0 > 0);
 });
 
@@ -311,7 +319,7 @@ test('qr_draw: framebuffer image decodes; quiet zone; clips at wild coordinates 
   assert.equal(g.ex.qr_pixels(0), 0);
   assert.equal(g.ex.qr_pixels(-5), 0);
   assert.equal(g.ex.qr_pixels(1000), (n + 8) * 64, 'scale clamps to 64');
-  assert.deepEqual(g.mem().slice(0, QR_LO), sim, 'encode/draw never write below the QR region');
+  assert.deepEqual(g.mem().slice(0, QR_LO), sim, 'encode/draw never write below the QR region (state, replay, UI)');
   assert.equal(new DataView(g.ex.memory.buffer).getUint32(0x1008, true), rng);
   // no code -> draws nothing
   g.ex.t_fill(0xFF00FF00);

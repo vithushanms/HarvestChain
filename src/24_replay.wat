@@ -245,10 +245,11 @@
     (local.set $d (i32.add (local.get $d) (i32.const 1)))))
   (local.get $d))
 ;; Text at p (n bytes) -> log bytes in DEC: everything up to the last '#' and surrounding whitespace
-;; are dropped, the rest must be base64url (length mod 4 != 1) of at most 4 KB. Bytes or -1.
+;; are dropped, the rest must be base64url (length mod 4 != 1) of at most 4 KB. Bytes or -1. The text
+;; itself is at most IO_SIZE (16 KB, the loader's staging area) long.
 (func $b64_in (param $p i32) (param $n i32) (result i32)
   (local $e i32) (local $i i32) (local $v i32) (local $acc i32) (local $bits i32) (local $o i32)
-  (if (i32.or (i32.gt_u (local.get $n) (i32.const 0x8000))
+  (if (i32.or (i32.gt_u (local.get $n) (global.get $IO_SIZE))
               (i32.gt_u (local.get $p) (i32.sub (i32.shl (memory.size) (i32.const 16)) (local.get $n))))
     (then (return (i32.const -1))))
   (local.set $e (i32.add (local.get $p) (local.get $n)))
