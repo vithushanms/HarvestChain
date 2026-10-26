@@ -706,6 +706,8 @@
       (call $draw_tabs)
       (call $draw_sheet)
       (call $draw_place)))
+  ;; the onboarding spotlight and hint card (22d_onboard.wat) over the chrome, under the toasts
+  (call $tut_draw)
   (call $draw_toasts)
   (if (global.get $ann_pend) (then (global.set $ann_pend (i32.const 0)) (call $ovl_say)))
   (call $draw_stats)

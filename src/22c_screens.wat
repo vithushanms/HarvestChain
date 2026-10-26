@@ -79,7 +79,9 @@
   (if (i32.eqz (i32.or (global.get $scr) (global.get $flag_gazoff))) (then (call $open (i32.const 2)))))
 (func $fresh (param $seed i32)
   (call $ui_new_game (local.get $seed))
-  (global.set $has_save (i32.const 1)))
+  (global.set $has_save (i32.const 1))
+  ;; the guided first days (22d_onboard.wat) start with every new game until done or skipped
+  (if (i32.eqz (global.get $tut_done)) (then (call $tut_go (i32.const 1)))))
 (func $next_seed (result i32)
   (local $s i32)
   (local.set $s (call $lget (global.get $L_SEED)))
@@ -244,6 +246,8 @@
     (call $put (i32.const 0x3CB) (call $str (global.get $STR_BACK)) (global.get $I_ARROW_L) (i32.const 0) (i32.const 1) (i32.const 2) (call $btnh))
     (call $put (i32.const 0x3CC) (call $str (select (global.get $STR_ERR) (global.get $STR_NEXT) (i32.eq (global.get $page) (i32.const 2))))
       (global.get $I_ARROW_R) (i32.const 2) (i32.const 1) (i32.const 2) (call $btnh))
+    ;; restart the guided first days (22d_onboard.wat)
+    (call $put (i32.const 0x3DE) (call $str (i32.add (global.get $STR_TUT) (i32.const 13))) (global.get $I_SPROUT) (i32.const 0) (i32.const 1) (i32.const 1) (call $btnh))
     (return)))
   (call $results))
 

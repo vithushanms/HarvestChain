@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 308 strings, 3184 B at 0x7200 (spec budget 2560 B)
+;; string table: 323 strings, 3453 B at 0x7200 (spec budget 2560 B)
 (data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -320,9 +320,24 @@
   "RUN TOO LONG TO SHARE\00" ;; 305
   "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 306
   "TOO LONG FOR QR - \00" ;; 307
+  "AN EMPTY PLOT\00" ;; 308
+  "PLANT, PICK WHEAT\00" ;; 309
+  "END DAY TO GROW CROPS\00" ;; 310
+  "OPEN THE MARKET TAB\00" ;; 311
+  "SELL YOUR WHEAT\00" ;; 312
+  "+ TO CHOOSE HOW MANY\00" ;; 313
+  "BUILD A MILL TO MAKE FLOUR\00" ;; 314
+  "OPEN THE TRUCKS TAB\00" ;; 315
+  "SEND A TRUCK TO TOWN\00" ;; 316
+  "LOAD GOODS, THEN NEXT\00" ;; 317
+  "ALL SET! KEEP GROWING.\00" ;; 318
+  " - SELL MORE WHEAT\00" ;; 319
+  "SKIP\00" ;; 320
+  "REPLAY TUTORIAL\00" ;; 321
+  "TAP \00" ;; 322
 )
 (global $STR_BASE i32 (i32.const 0x7200))
-(global $STR_COUNT i32 (i32.const 308))
+(global $STR_COUNT i32 (i32.const 323))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -345,6 +360,7 @@
 (global $STR_OVL i32 (i32.const 256))
 (global $STR_TYP i32 (i32.const 269))
 (global $STR_GLYPH i32 (i32.const 288))
+(global $STR_TUT i32 (i32.const 308))
 (global $STR_DAY i32 (i32.const 68))
 (global $STR_END_DAY i32 (i32.const 69))
 (global $STR_HARVEST i32 (i32.const 70))

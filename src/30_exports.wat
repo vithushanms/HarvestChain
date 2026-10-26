@@ -143,6 +143,7 @@
 (export "set_pref"    (func $set_pref))
 (export "t_hit"       (func $t_hit))
 (export "t_ui"         (func $t_ui))
+(export "t_tut"        (func $t_tut))
 (export "t_ui_btn"     (func $t_ui_btn))
 (export "t_ui_toast"   (func $t_ui_toast))
 (export "t_fmt"        (func $t_fmt))

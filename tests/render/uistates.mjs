@@ -37,6 +37,8 @@ export async function uiGame(w = 360, h = 640, dpr = 200, o = {}) {
   ex.set_flags(o.reduced ? 1 : 0, o.large ? 1 : 0);
   // the Gazette auto-opens after End Day unless the pref is off: older tests expect the farm
   ex.set_pref(2, o.gazette ? 0 : 1);
+  // the guided first days (Task 8a) start on NEW GAME unless done: older tests expect none
+  ex.set_pref(3, o.tut ? 0 : 1);
   ex.set_env(o.env ?? 4242, o.daily ?? 20387);
   ex.ui_new_game(o.seed ?? 5);
   if (o.setup) { o.setup(ex); ex.ui_loaded(); }
@@ -186,6 +188,9 @@ export const feedMetrics = (ex, m = METRICS, n = 120) => {
 };
 const withStats = (g) => { feedMetrics(g.ex); g.key(KEY.BACKQUOTE); };
 
+// Task 8a: a first visit (no save, tutorial not done) and its NEW GAME.
+const TUT = { boot: 0, tut: true };
+const tutNew = (g) => { g.tap(OVL.NEW); g.settle(); for (let i = 0; i < 3; i++) g.ex.t_toast_drop(0); };
 // Canned UI states: [w, h, dpr, options, script]. Rendered at a fixed time so hashes are stable.
 const poor = (ex) => farm(ex).day(3);
 // [name, state] in order; names must be unique (asserted in tests/render/ui.test.mjs).
@@ -241,6 +246,19 @@ export const UI_STATE_LIST = [
   ['ui-overlay-title', { o: { boot: 1 }, run: withStats }],
   ['ui-title-loaded', { o: { boot: 0 }, run: (g) => { feedMetrics(g.ex, METRICS, 1); g.frame(); } }],
   ['ui-title-cached', { o: { boot: 0 }, run: (g) => { feedMetrics(g.ex, [12, 0, 0, 62191, 0], 1); g.frame(); } }],
+  // Task 8a onboarding (22d_onboard.wat): NEW GAME on the Title starts the guided first days
+  ['ui-tut-plot', { o: TUT, run: tutNew }],
+  ['ui-tut-sheet', { o: TUT, run: (g) => { tutNew(g); g.tapTile(g.ex.t_tut(12) & 63); } }],
+  ['ui-tut-endday', { o: TUT, run: (g) => { tutNew(g); g.ex.set_pref(4, 2); } }],
+  ['ui-tut-harvest', { o: TUT, run: (g) => { tutNew(g); g.ex.set_pref(4, 2); g.tap(HIT.ENDDAY); } }],
+  ['ui-tut-tab', { o: TUT, run: (g) => { tutNew(g); g.ex.t_give(0, 12, 0); g.ex.set_pref(4, 4); } }],
+  ['ui-tut-sell', { o: TUT, run: (g) => { tutNew(g); g.ex.t_give(0, 12, 0); g.ex.set_pref(4, 4); g.tabTo(2); g.tap(BTN.SUB + 1); } }],
+  ['ui-tut-mill', { o: TUT, run: (g) => { tutNew(g); g.ex.set_pref(4, 5); g.tabTo(4); } }],
+  ['ui-tut-need', { o: TUT, run: (g) => { tutNew(g); g.ex.t_give(0, 6, 0); g.ex.set_pref(4, 5); g.ex.t_set_cash(120); } }],
+  ['ui-tut-truck', { o: TUT, run: (g) => { tutNew(g); g.ex.t_give(0, 12, 0); g.ex.set_pref(4, 6); g.tabTo(3); g.tapR(BTN.DISPATCH); } }],
+  ['ui-tut-gazette', { o: { ...TUT, gazette: true }, run: (g) => { tutNew(g); g.ex.set_pref(4, 2); g.tap(HIT.ENDDAY); } }],
+  ['ui-tut-done', { o: TUT, run: (g) => { tutNew(g); g.ex.set_pref(4, 7); } }],
+  ['ui-tut-large', { o: { ...TUT, large: true }, run: (g) => { tutNew(g); g.ex.set_pref(4, 2); } }],
   ['ui-results-loaded', { o: { gazette: true, setup: (ex) => { lastDay(ex); feedMetrics(ex, METRICS, 1); } }, run: (g) => g.tap(HIT.ENDDAY) }],
 ];
 export const UI_STATES = {};
