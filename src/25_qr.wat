@@ -3,8 +3,10 @@
 ;; Pure: no sim state, no RNG, integer only. Verified with the jsQR decoder (tests/render/qr.test.mjs).
 ;;
 ;; API: $qr_encode(ptr, len) -> version 1..20 (smallest whose L byte capacity >= len), or 0 when
-;;      len < 0 or len > 858: then nothing in the QR region is written and $qr_n = 0 ("no code":
-;;      qr_size() = 0, qr_module() = 0, qr_draw draws nothing). The input must not lie in 0xC000..0xFFFF.
+;;      the input is rejected: len > 858 (unsigned, so also len < 0), [ptr, ptr+len) not inside
+;;      memory, or [ptr, ptr+len) intersecting the QR region 0xC000..0xEDC0 (even with len 0 when
+;;      ptr is inside it). Rejection writes no memory and sets $qr_n = 0 ("no code": qr_size() = 0,
+;;      qr_module() = 0, qr_draw draws nothing). len = 0 is valid: an empty version-1 code (returns 1).
 ;;      $qr_size() = 17 + 4v; $qr_module(x, y) -> 0/1 (0 outside); $qr_draw(x, y, scale) paints
 ;;      the code plus a 4-module quiet zone (paper/ink palette colours, clipped by $rect);
 ;;      $qr_pixels(scale) = drawn side length. Scale is clamped to 0..64 (<= 0 draws nothing).
@@ -96,7 +98,13 @@
   (local $sd i32) (local $ns i32) (local $src i32) (local $e i32) (local $f i32) (local $o i32)
   (local $na i32) (local $step i32) (local $x i32) (local $y i32) (local $right i32) (local $p i32)
   (global.set $qr_n (i32.const 0))
-  (if (i32.lt_s (local.get $len) (i32.const 0)) (then (return (i32.const 0))))
+  ;; reject (before any write): len > 858 unsigned (also len < 0), [ptr, ptr+len) beyond memory
+  ;; (overflow-safe: ptr <= memsize - len with len <= 858), or a payload overlapping 0xC000..0xEDC0
+  (if (i32.or (i32.or (i32.gt_u (local.get $len) (i32.const 858))
+                      (i32.gt_u (local.get $ptr) (i32.sub (i32.shl (memory.size) (i32.const 16)) (local.get $len))))
+              (i32.and (i32.gt_u (i32.add (local.get $ptr) (local.get $len)) (i32.const 0xC000))
+                       (i32.lt_u (local.get $ptr) (i32.const 0xEDC1))))
+    (then (return (i32.const 0))))
   ;; smallest version whose data capacity holds 4 + cc + 8*len bits
   (block $found (loop $lv
     (local.set $v (i32.add (local.get $v) (i32.const 1)))

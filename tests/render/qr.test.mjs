@@ -177,6 +177,38 @@ test('capacity: len > 858 (v20 L) returns 0, matrix memory untouched, size 0 (no
   assert.equal(g.ex.qr_size(), 97);
 });
 
+test('bad input: huge/negative len, out-of-memory ptr, payload overlapping the QR region -> 0, no trap, no memory written', async () => {
+  const g = await game();
+  enc(g, utf8('keep me'));
+  const n0 = g.ex.qr_size();
+  const cases = [[IN, 2 ** 29], [IN, 2 ** 31 - 1], [IN, 0x20000001], [IN, -1], [IN, -2147483648], [IN, 2 ** 29 - 1],
+    [0xFFFFF, 5], [-1, 5], [0x1FFFF0, 100], [0x7FFFFFFF, 1], [0x7FFFFFFF, 0],
+    [0xC000, 5], [0xBFFF, 2], [0xEDC0, 1], [0xD000, 100], [0xBF00, 858]];
+  for (const [ptr, len] of cases) {
+    const before = g.mem().slice();
+    assert.equal(g.ex.qr_encode(ptr, len), 0, `ptr ${ptr} len ${len}`);
+    assert.ok(Buffer.compare(Buffer.from(g.mem()), Buffer.from(before)) === 0, `ptr ${ptr} len ${len}: memory unchanged`);
+    assert.equal(g.ex.qr_size(), 0);
+  }
+  // just outside the QR region on both sides is fine
+  const mem = g.mem();
+  mem.fill(0x41, 0xBFF0, 0xC000); mem.fill(0x42, 0xEDC1, 0xEDD1);
+  assert.equal(g.ex.qr_encode(0xBFF0, 16), 1);
+  assert.equal(decode(matrix(g), 4).data, 'A'.repeat(16));
+  assert.equal(g.ex.qr_encode(0xEDC1, 16), 1);
+  assert.equal(decode(matrix(g), 4).data, 'B'.repeat(16));
+  assert.ok(n0 > 0);
+});
+
+test('len 0 encodes an empty version-1 code (byte mode, count 0); jsQR reads it as empty', async () => {
+  const g = await game();
+  assert.equal(g.ex.qr_encode(IN, 0), 1);
+  assert.equal(g.ex.qr_size(), 21);
+  const r = decode(matrix(g), 4);
+  assert.ok(r);
+  assert.equal(r.binaryData.length, 0);
+});
+
 test('function patterns: finders, separators, timing, alignment, dark module for v1, v2, v7, v13, v20', async () => {
   const g = await game();
   for (const v of [1, 2, 7, 13, 20]) {
