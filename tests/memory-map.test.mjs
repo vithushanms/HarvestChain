@@ -114,6 +114,8 @@ test('memory map: region bases and sizes match the constants in the sources', ()
   assert.match(hdr, /0x10000\.\.0x13FFF/);
   assert.match(hdr, /0x14000\.\.0x16DC0/);
   assert.match(hdr, /0xA900\.\.0xA9BF/);
+  // the 0x8000 region ends where IO staging begins: 0x8000..0xFFFF = 32 KB
+  assert.match(hdr, /0x08000  32 KB/);
 });
 
 // Active data segments of a wasm binary: [offset, length].

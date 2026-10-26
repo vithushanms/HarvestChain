@@ -14,7 +14,7 @@
 ;;   0x01000  16 KB  game state = save image
 ;;   0x05000  4 KB   replay / input log (format: 24_replay.wat)
 ;;   0x06000  8 KB   balance tables
-;;   0x08000  64 KB  layout, hit regions, draw lists, announce buffer (rect table 0x8000, UI block 0x8100,
+;;   0x08000  32 KB  layout, hit regions, draw lists, announce buffer (rect table 0x8000, UI block 0x8100,
 ;;                   hit table 0x8200..0x8BFF: map in 20_layout.wat; text builders, toasts, announce
 ;;                   ring, button draw list (64), wrap buffer, tab amounts, label log 0x8C00..0xA8FF: map in
 ;;                   22_ui.wat; End Day summary + screen announce builder 0xAA00..0xAC3F (22c_screens.wat);
