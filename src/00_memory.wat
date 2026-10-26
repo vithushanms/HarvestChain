@@ -16,7 +16,8 @@
 ;;                   hit table 0x8200..0x8BFF: map in 20_layout.wat; text builders, toasts, announce
 ;;                   ring, button draw list (64), wrap buffer, tab amounts, label log 0x8C00..0xA8FF: map in
 ;;                   22_ui.wat; End Day summary + screen announce builder 0xAA00..0xAC3F (22c_screens.wat);
-;;                   0xA900..0xA9FF, 0xAC40.. free)
+;;                   0xA900..0xA9FF, 0xAC40..0xBFFF free; QR encoder 0xC000..0xEDC0: version table, RS generator,
+;;                   codewords, interleaved stream, 97x97 module matrix (map in 25_qr.wat); 0xEDC1.. free)
 ;;            (0x10000 upper 32 KB: IO staging for save / replay bytes from the loader)
 ;;   0x18000  ...    framebuffer w*h*4 bytes + canary word 0xCAFEF00D (memory.grow in $resize)
 

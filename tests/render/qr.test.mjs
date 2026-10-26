@@ -1,0 +1,295 @@
+// QR encoder (src/25_qr.wat): byte mode, ECC level L, versions 1-20, fixed mask.
+// The strong check is a real third-party decoder: every matrix the module produces is rendered
+// to an RGBA image here and decoded with jsQR (devDependency, pure JS); the text must match exactly.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import jsQR from 'jsqr';
+import { loadGame } from '../helpers.mjs';
+import { generate, extract, QR_FILE, QR_MASK } from '../../tools/gen-qr.mjs';
+
+const GOLDEN = 'tests/render/golden-render.json';
+const IN = 0x10000;                 // input staging (IO region)
+const QR_LO = 0xC000, QR_HI = 0x10000;   // QR scratch + matrix region (00_memory.wat)
+const R_FB = 0x18000;
+// Byte-mode capacity at ECC level L for versions 1..20 (ISO/IEC 18004 Table 7), typed independently.
+const CAP = [17, 32, 53, 78, 106, 134, 154, 192, 230, 271, 321, 367, 425, 458, 520, 586, 644, 718, 792, 858];
+// Error correction blocks at level L (Table 9): [EC codewords per block, group-1 blocks, group-2 blocks].
+const BLK = [[7, 1, 0], [10, 1, 0], [15, 1, 0], [20, 1, 0], [26, 1, 0], [18, 2, 0], [20, 2, 0], [24, 2, 0],
+  [30, 2, 0], [18, 2, 2], [20, 4, 0], [24, 2, 2], [26, 4, 0], [30, 3, 1], [22, 5, 1], [24, 5, 1],
+  [28, 1, 5], [30, 5, 1], [28, 3, 4], [28, 3, 5]];
+// Alignment pattern centre coordinates (Annex E), for the versions the tests probe.
+const ALIGN = { 1: [], 2: [6, 18], 7: [6, 22, 38], 13: [6, 34, 62], 20: [6, 34, 62, 90] };
+
+let G;
+const game = async () => {
+  if (!G) { G = await loadGame(); G.ex.init(1); }
+  return G;
+};
+const enc = (g, bytes) => {
+  g.mem().set(bytes, IN);
+  return g.ex.qr_encode(IN, bytes.length);
+};
+const matrix = (g) => {
+  const n = g.ex.qr_size(), m = [];
+  for (let y = 0; y < n; y++) { const row = []; for (let x = 0; x < n; x++) row.push(g.ex.qr_module(x, y)); m.push(row); }
+  return m;
+};
+// Module matrix -> RGBA image with a 4-module quiet zone, s pixels per module.
+const image = (m, s) => {
+  const n = m.length, w = (n + 8) * s, data = new Uint8ClampedArray(w * w * 4).fill(255);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    if (!m[y][x]) continue;
+    for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
+      const o = (((y + 4) * s + dy) * w + (x + 4) * s + dx) * 4;
+      data[o] = data[o + 1] = data[o + 2] = 0;
+    }
+  }
+  return { data, w };
+};
+let roundTrips = 0;
+const decode = (m, s) => {
+  const { data, w } = image(m, s);
+  const r = jsQR(data, w, w, { inversionAttempts: 'dontInvert' });
+  roundTrips++;
+  return r;
+};
+const utf8 = (s) => new TextEncoder().encode(s);
+// Deterministic pseudo-random bytes for test payloads (test-side only).
+const prng = (seed) => () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) & 255; };
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const b64url = (len, seed) => { const r = prng(seed); return Array.from({ length: len }, () => B64[r() & 63]).join(''); };
+const smallest = (len) => CAP.findIndex((c) => c >= len) + 1;
+
+function roundTrip(g, bytes, scales = [4, 3, 2], label = '') {
+  const v = enc(g, bytes);
+  assert.equal(v, smallest(bytes.length), `${label} len ${bytes.length}: smallest version`);
+  assert.equal(g.ex.qr_size(), 17 + 4 * v);
+  const m = matrix(g);
+  for (const s of scales) {
+    const r = decode(m, s);
+    assert.ok(r, `${label} len ${bytes.length} v${v} scale ${s}: jsQR could not decode`);
+    assert.deepEqual(Uint8Array.from(r.binaryData), Uint8Array.from(bytes), `${label} len ${bytes.length} v${v} scale ${s}: bytes`);
+    assert.equal(r.version, v);
+  }
+  return m;
+}
+
+// ---- independent reference values ----
+const bch = (data, poly, deg) => {
+  let r = data << deg;
+  for (let i = 31; i >= deg; i--) if ((r >>> i) & 1) r ^= poly << (i - deg);
+  return (data << deg) | r;
+};
+const formatBits = (mask) => bch((1 << 3) | mask, 0x537, 10) ^ 0x5412;   // ECC L = 01
+const versionBits = (v) => bch(v, 0x1F25, 12);
+// Read the two format copies (bit 14 = MSB) and the two version copies from a matrix.
+const readFormat = (m) => {
+  const n = m.length;
+  const a = [[8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7], [8, 8], [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8]];
+  const b = [];
+  for (let i = 0; i < 8; i++) b.push([n - 1 - i, 8]);
+  for (let i = 8; i < 15; i++) b.push([8, n - 15 + i]);
+  const val = (pts) => pts.reduce((acc, [x, y], i) => acc | (m[y][x] << i), 0);
+  return [val(a), val(b)];
+};
+const readVersion = (m) => {
+  const n = m.length;
+  let a = 0, b = 0;
+  for (let i = 0; i < 18; i++) {
+    const p = n - 11 + (i % 3), q = Math.floor(i / 3);
+    a |= m[q][p] << i;   // top-right block: x = p, y = q
+    b |= m[p][q] << i;   // bottom-left block: x = q, y = p
+  }
+  return [a, b];
+};
+
+test('qr data block is generated by tools/gen-qr.mjs (npm run gen) and has not drifted', () => {
+  assert.equal(extract('qr', QR_FILE), generate());
+});
+
+test('jsQR round trip: every length 1..32 at scales 4, 3 and 2', async () => {
+  const g = await game();
+  for (let len = 1; len <= 32; len++) {
+    const r = prng(len * 7919);
+    roundTrip(g, Array.from({ length: len }, (_, i) => (i % 3 === 2 ? r() : 0x21 + (r() % 90))), [4, 3, 2], 'short');
+  }
+});
+
+test('jsQR round trip: capacity boundaries cap-1, cap, cap+1 of every version 1..20; smallest version chosen', async () => {
+  const g = await game();
+  for (let v = 1; v <= 20; v++) {
+    for (const len of [CAP[v - 1] - 1, CAP[v - 1], CAP[v - 1] + 1]) {
+      if (len > CAP[19]) continue;
+      const text = utf8(`https://example.org/hc/#${b64url(len, v * 31 + len)}`.slice(0, len));
+      assert.equal(text.length, len);
+      roundTrip(g, text, v >= 15 ? [4, 3] : [4, 3, 2], `boundary v${v}`);
+      assert.equal(enc(g, text), len <= CAP[v - 1] ? v : v + 1);
+    }
+  }
+});
+
+test('jsQR round trip: share-code style URLs up to 850 bytes, binary base64url payloads and UTF-8 text', async () => {
+  const g = await game();
+  for (const len of [40, 100, 180, 260, 333, 420, 512, 600, 700, 777, 850]) {
+    const url = `https://example.org/hc/#${b64url(len - 24, len)}`;
+    assert.equal(url.length, len);
+    roundTrip(g, utf8(url), [4, 3], 'url');
+  }
+  for (const len of [1, 5, 64, 129, 255, 300, 858]) {   // raw binary bytes (every value 0..255 appears)
+    const r = prng(len + 99);
+    roundTrip(g, Array.from({ length: len }, (_, i) => (i < 256 ? i : r())), [4], 'binary');
+  }
+  for (const s of ['HarvestChain — récolte, 收获, урожай 🌾', 'é', 'Ünïcödé '.repeat(20)]) {
+    const m = roundTrip(g, utf8(s), [4, 3], 'utf8');
+    const r = decode(m, 4);
+    assert.equal(new TextDecoder().decode(Uint8Array.from(r.binaryData)), s);
+  }
+});
+
+test('ECC blocks: versions with 2+ blocks and with two block groups decode (interleaving)', async () => {
+  const g = await game();
+  const multi = BLK.map(([, a, b], i) => [i + 1, a + b, b]).filter(([, nb]) => nb >= 2);
+  const twoGroups = multi.filter(([, , b]) => b > 0).map(([v]) => v);
+  assert.deepEqual(twoGroups, [10, 12, 14, 15, 16, 17, 18, 19, 20]);
+  for (const [v] of multi) {
+    // a payload filling the version completely exercises every block, including the longer group-2 blocks
+    roundTrip(g, utf8(b64url(CAP[v - 1], v)), [4], `blocks v${v}`);
+    roundTrip(g, utf8(b64url(CAP[v - 2] + 1, v + 50)), [4], `blocks v${v} min`);
+  }
+});
+
+test('capacity: len > 858 (v20 L) returns 0, matrix memory untouched, size 0 (no code)', async () => {
+  const g = await game();
+  enc(g, utf8('hello'));
+  assert.equal(g.ex.qr_size(), 21);
+  const before = g.mem().slice(QR_LO, QR_HI);
+  g.mem().fill(0x41, IN, IN + 2000);
+  for (const len of [859, 860, 1000, 2000]) {
+    assert.equal(g.ex.qr_encode(IN, len), 0, `len ${len}`);
+    assert.deepEqual(g.mem().slice(QR_LO, QR_HI), before, 'scratch and matrix untouched');
+    assert.equal(g.ex.qr_size(), 0);
+    assert.equal(g.ex.qr_module(0, 0), 0);
+  }
+  assert.equal(g.ex.qr_encode(IN, -1), 0);
+  assert.equal(g.ex.qr_encode(IN, 858), 20);
+  assert.equal(g.ex.qr_size(), 97);
+});
+
+test('function patterns: finders, separators, timing, alignment, dark module for v1, v2, v7, v13, v20', async () => {
+  const g = await game();
+  for (const v of [1, 2, 7, 13, 20]) {
+    enc(g, utf8(b64url(CAP[v - 1], v)));
+    const m = matrix(g), n = m.length;
+    assert.equal(n, 17 + 4 * v);
+    for (const [cx, cy] of [[3, 3], [n - 4, 3], [3, n - 4]]) {
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+        const x = cx + dx, y = cy + dy;
+        if (x < 0 || y < 0 || x >= n || y >= n) continue;
+        const d = Math.max(Math.abs(dx), Math.abs(dy));
+        assert.equal(m[y][x], d === 2 || d === 4 ? 0 : 1, `v${v} finder (${cx},${cy}) at ${x},${y}`);
+      }
+    }
+    for (let i = 8; i < n - 8; i++) {
+      assert.equal(m[6][i], (i + 1) & 1, `v${v} timing row at ${i}`);
+      assert.equal(m[i][6], (i + 1) & 1, `v${v} timing col at ${i}`);
+    }
+    assert.equal(m[n - 8][8], 1, 'dark module');
+    const pos = ALIGN[v];
+    for (const cy of pos) for (const cx of pos) {
+      if ((cx === 6 && cy === 6) || (cx === 6 && cy === pos.at(-1)) || (cx === pos.at(-1) && cy === 6)) continue;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const d = Math.max(Math.abs(dx), Math.abs(dy));
+        assert.equal(m[cy + dy][cx + dx], d === 1 ? 0 : 1, `v${v} alignment (${cx},${cy})`);
+      }
+    }
+  }
+});
+
+test(`format information equals BCH(15,5) of (L, mask ${QR_MASK}) ^ 0x5412 in both copies; version info only for v >= 7`, async () => {
+  const g = await game();
+  assert.ok(QR_MASK >= 0 && QR_MASK < 8);
+  const want = formatBits(QR_MASK);
+  assert.equal(formatBits(0), 0x77C4);   // reference value from the spec's format table (L, mask 0)
+  assert.equal(versionBits(7), 0x07C94); // Annex D: version 7
+  for (let v = 1; v <= 20; v++) {
+    enc(g, utf8(b64url(CAP[v - 1] - 2, v + 7)));
+    const m = matrix(g);
+    assert.deepEqual(readFormat(m), [want, want], `v${v} format`);
+    const [a, b] = readVersion(m);
+    if (v >= 7) assert.deepEqual([a, b], [versionBits(v), versionBits(v)], `v${v} version info`);
+    else assert.ok(a !== versionBits(v) || b !== versionBits(v), `v${v}: no version info block below v7`);
+  }
+});
+
+test('deterministic: identical input gives an identical matrix; goldens for 3 fixed inputs', async () => {
+  const g = await game();
+  const inputs = { 'qr-hello': utf8('HELLO HARVESTCHAIN'), 'qr-share': utf8(`https://example.org/hc/#${b64url(200, 5)}`), 'qr-max': utf8(b64url(858, 9)) };
+  const hashes = {};
+  for (const [k, bytes] of Object.entries(inputs)) {
+    enc(g, bytes);
+    const a = matrix(g);
+    enc(g, utf8('something else entirely'));
+    enc(g, bytes);
+    assert.deepEqual(matrix(g), a, `${k} repeatable`);
+    hashes[k] = createHash('sha256').update(Uint8Array.from(a.flat())).digest('hex');
+  }
+  if (process.env.UPDATE_GOLDEN === '1') {
+    const old = existsSync(GOLDEN) ? JSON.parse(readFileSync(GOLDEN, 'utf8')) : {};
+    writeFileSync(GOLDEN, JSON.stringify({ ...old, ...hashes }, null, 2) + '\n');
+  }
+  const gold = JSON.parse(readFileSync(GOLDEN, 'utf8'));
+  for (const [k, v] of Object.entries(hashes)) assert.equal(v, gold[k], `golden ${k} (UPDATE_GOLDEN=1 after a deliberate change)`);
+});
+
+test('qr_draw: framebuffer image decodes; quiet zone; clips at wild coordinates and scales; read-only for sim and RNG', async () => {
+  const g = await loadGame();
+  g.ex.init(7);
+  g.ex.t_set_cash(4321);
+  g.ex.resize(360, 640, 100);
+  const text = `https://example.org/hc/#${b64url(150, 3)}`;
+  const v = enc(g, utf8(text));
+  const n = g.ex.qr_size();
+  const sim = g.mem().slice(0, QR_LO);
+  const rng = new DataView(g.ex.memory.buffer).getUint32(0x1008, true);
+  g.ex.t_fill(0xFF00FF00);
+  g.ex.qr_draw(10, 20, 3);
+  assert.equal(g.ex.qr_pixels(3), (n + 8) * 3);
+  // crop the drawn square out of the framebuffer and decode it
+  const w = (n + 8) * 3, fb = new Uint32Array(g.ex.memory.buffer, R_FB, 360 * 640);
+  const crop = new Uint8ClampedArray(w * w * 4);
+  const out = new Uint32Array(crop.buffer);
+  for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) out[y * w + x] = fb[(20 + y) * 360 + 10 + x];
+  const r = jsQR(crop, w, w); roundTrips++;
+  assert.ok(r, 'framebuffer QR decodes');
+  assert.equal(r.data, text);
+  assert.equal(r.version, v);
+  const paper = fb[20 * 360 + 10];
+  for (let i = 0; i < 12; i++) assert.equal(fb[(20 + i) * 360 + 10 + i], paper, 'quiet zone is paper');
+  assert.notEqual(fb[(20 + 12) * 360 + 10 + 12], paper, 'finder corner is ink');
+  assert.equal(fb[19 * 360 + 10] >>> 0, 0xFF00FF00, 'nothing outside the square');
+  assert.equal(fb[20 * 360 + 9] >>> 0, 0xFF00FF00);
+  assert.equal(fb[(20 + w) * 360 + 10] >>> 0, 0xFF00FF00);
+  for (const [x, y, s] of [[-50, -50, 4], [300, 600, 5], [-2147483648, 5, 3], [2147483647, 2147483647, 2147483647],
+    [5, 5, -3], [5, 5, 0], [0, 0, 1000], [-100000, -100000, 2147483647], [359, 639, 1]]) {
+    g.ex.qr_draw(x, y, s);
+    assert.equal(g.ex.t_canary_ok(), 1, `canary ${x},${y},${s}`);
+  }
+  assert.equal(g.ex.qr_pixels(0), 0);
+  assert.equal(g.ex.qr_pixels(-5), 0);
+  assert.equal(g.ex.qr_pixels(1000), (n + 8) * 64, 'scale clamps to 64');
+  assert.deepEqual(g.mem().slice(0, QR_LO), sim, 'encode/draw never write below the QR region');
+  assert.equal(new DataView(g.ex.memory.buffer).getUint32(0x1008, true), rng);
+  // no code -> draws nothing
+  g.ex.t_fill(0xFF00FF00);
+  g.ex.qr_encode(IN, 5000);
+  g.ex.qr_draw(0, 0, 4);
+  assert.equal(g.ex.qr_pixels(4), 0);
+  assert.equal(fb[5 * 360 + 5] >>> 0, 0xFF00FF00);
+});
+
+test('round-trip count (jsQR decodes performed so far >= 300)', () => {
+  console.log(`# jsQR round trips: ${roundTrips}`);
+  assert.ok(roundTrips >= 300, `${roundTrips}`);
+});

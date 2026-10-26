@@ -148,3 +148,9 @@
 (export "t_str"        (func $str))
 (export "t_toast_drop" (func $toast_drop))
 (export "t_lab_on"     (func $t_lab_on))
+;; QR encoder (25_qr.wat): shipping functions.
+(export "qr_encode" (func $qr_encode))
+(export "qr_size"   (func $qr_size))
+(export "qr_module" (func $qr_module))
+(export "qr_draw"   (func $qr_draw))
+(export "qr_pixels" (func $qr_pixels))
