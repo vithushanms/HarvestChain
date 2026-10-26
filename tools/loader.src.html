@@ -221,7 +221,14 @@ function bind() {
   cv.onpointerup = up;
   cv.onlostpointercapture = up;
   cv.onpointercancel = guard((e) => { if (e.pointerId === active) drop(); });
-  // Task 7: cv.onwheel -> ex.wheel(...) once the export exists (feature-detect it).
+  // mouse wheel / trackpad -> wheel(dx, dy) in CSS px (line mode x16); ctrl+wheel (pinch) stays the browser's zoom
+  cv.onwheel = guard((e) => {
+    if (e.ctrlKey) return;
+    const k = e.deltaMode ? 16 : 1;
+    clk();
+    ex.wheel(Math.round(e.deltaX * k), Math.round(e.deltaY * k));
+    schedule();
+  });
   const key = (d) => guard((e) => {
     const c = KEYS.indexOf(e.code) + 1;
     if (!c || e.isComposing) return;

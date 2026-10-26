@@ -498,6 +498,17 @@
   (call $pointer0 (local.get $x) (local.get $y) (local.get $type)) (call $input_done))
 (func $key (param $code i32) (param $down i32)
   (call $key0 (local.get $code) (local.get $down)) (call $input_done))
+;; Mouse wheel / trackpad (spec 14.2 item 4): CSS px deltas from the loader scroll the open sheet / side
+;; panel / screen card like a drag of -dy would (one shared $scroll); ignored while a press is held (the
+;; drag owns $scroll then). No horizontal scrolling anywhere: dx is accepted and unused.
+(func $wheel (param $dx i32) (param $dy i32)
+  (local $s i32)
+  (if (i32.eqz (global.get $in_st)) (then
+    (local.set $s (call $clamp (i32.add (global.get $scroll)
+      (call $css_to_fb_y (call $clamp (local.get $dy) (i32.const -4096) (i32.const 4096)))) (i32.const 0) (global.get $scroll_max)))
+    (if (i32.ne (local.get $s) (global.get $scroll)) (then
+      (global.set $scroll (local.get $s)) (global.set $dirty (i32.const 1))))))
+  (call $input_done))
 (func $input_done (if (global.get $now_fresh) (then (global.set $now_fresh (i32.const 0)) (call $stamps))))
 
 (func $pointer0 (param $x i32) (param $y i32) (param $type i32)

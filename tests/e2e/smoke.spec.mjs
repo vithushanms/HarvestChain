@@ -456,3 +456,21 @@ test('service worker only deletes its own old caches', async ({ game, page }) =>
   await page.waitForFunction(async () => { const k = await caches.keys(); return !k.includes('hc-00000000'); });
   expect(await page.evaluate(() => caches.keys())).toContain('someone-else');
 });
+
+test('mouse wheel scrolls the side panel (spec 14.2 item 4)', async ({ game, errors }) => {
+  test.skip(game.mobile, 'desktop: phones have no wheel');
+  const { page } = game;
+  await game.hooks();
+  await game.open();
+  await game.press('Digit5');                         // Build tab: its body overflows
+  const ui = (k) => page.evaluate((k) => window.__hc.ex.t_ui(k), k);
+  expect(await ui(4)).toBeGreaterThan(0);             // scroll_max
+  expect(await ui(3)).toBe(0);
+  const [x, y] = await game.hit(5);                   // HIT_PANEL
+  await page.mouse.move(x, y);
+  await page.mouse.wheel(0, 120);
+  await expect.poll(() => ui(3)).toBeGreaterThan(0);
+  await page.mouse.wheel(0, -5000);
+  await expect.poll(() => ui(3)).toBe(0);
+  noErrors(errors);
+});
