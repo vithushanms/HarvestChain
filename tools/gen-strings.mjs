@@ -186,6 +186,13 @@ export const STRINGS = [
   ['LOADED', 'LOADED IN '],
   ['MS', ' MS'],
   ['KB', ' KB'],
+  // stats overlay (23_overlay.wat): header, then the label of each measured line
+  ['@OVL', ['STATS', 'WASM RAW', 'WASM WIRE', 'TRANSFER', 'LOAD TIME', 'MEMORY', 'LAST END DAY', 'LAST FRAME', 'FRAME MIN/AVG/MAX']],
+  ['PAGES', ' PAGES'],
+  ['US', ' US'],
+  ['SLASH', '/'],
+  ['CACHED', 'CACHED'],
+  ['@TYP', ['TYPICAL ENGINE BUILD OF A GAME', 'THIS SIZE: 5-15 MB, 2-6 S', '(TYPICAL, NOT MEASURED)']],
   ['DOTS', ' ^ '],
   ['PAGE', 'PAGE '],
   ['YEAR', ', YEAR '],

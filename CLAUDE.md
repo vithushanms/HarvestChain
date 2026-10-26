@@ -35,8 +35,11 @@ Deliverable is exactly three files: `index.html` (inlines the loader JS), `game.
 index.html (loader) ──instantiateStreaming──▶ game.wasm
   forwards pointer/key/resize, calls frame(now) only while dirty,
   putImageData(framebuffer), persists save bytes to localStorage['hc.save'],
-  feeds #hash to replay_load, mirrors announce buffer to aria-live
+  feeds #hash to replay_load, mirrors announce buffer to aria-live,
+  passes measured load / size / frame / End Day numbers via set_metrics before every frame
 ```
+
+**Stats overlay** (`src/23_overlay.wat`): `set_metrics(load_ms, transfer, wasm_wire, wasm_raw, endday_us, frame_us)` + `cur_day()`; a 120-sample frame ring at 0xAC40; Backquote / triple tap on the top-left 44 css px corner toggles the module-drawn overlay (taps pass through except its header, hit 0x3DA); `$s_load` builds the Title / Results "LOADED IN .. MS · .. KB" line. Tests: `tests/render/overlay.test.mjs`, `tests/e2e/overlay.spec.mjs`.
 
 Exports: `init, pointer, key, resize, frame, save_len, load, replay_*` (+ `dirty`/`want_save` flags).
 

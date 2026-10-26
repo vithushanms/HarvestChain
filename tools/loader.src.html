@@ -23,7 +23,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;t
 // 1. load timer origin (also exposed for tests / the Task 7 load timer via window.__hc)
 const t0 = performance.now();
 const KEYS = '/*KEYS*/'.split(' ');   // KeyboardEvent.code list; key code = index + 1 (tools/keycodes.json)
-const H = window.__hc = { t0, t1: 0, n: 0 };   // t1 = first blit; n = frame() calls
+const H = window.__hc = { t0, t1: 0, n: 0 };   // t1 = first blit; n = frame() calls; m = last set_metrics args
 const cv = document.getElementById('c');
 const live = document.getElementById('a');
 const ctx = cv.getContext('2d');
@@ -52,6 +52,29 @@ function die() {
 const guard = (f) => (e) => { if (!dead) try { f(e); } catch { die(); } };
 
 let ex;
+// ---- metrics (spec 15.1 / 15.2): measured here, passed to the module (set_metrics) before every frame
+let fu = 0, eu = 0;                          // last frame() + blit, last End Day: integer microseconds
+const us = (a) => Math.round((performance.now() - a) * 1e3);
+// Performance entries -> [transfer bytes of the page, game.wasm and sw.js (transferSize: 0 for a response from
+// a cache, so 0 in all = "CACHED"; encodedBodySize where transferSize is missing), game.wasm bytes on the wire
+// (encodedBodySize: gzip when the host compresses), game.wasm bytes decoded]
+function sizes(list) {
+  let t = 0, w = 0, r = 0;
+  for (const e of list) {
+    const n = e.name.split(/[?#]/)[0];
+    if (e.entryType === 'navigation' || /(game\.wasm|sw\.js)$/.test(n)) {
+      t += e.transferSize ?? e.encodedBodySize ?? 0;
+      if (/\.wasm$/.test(n)) { w = e.encodedBodySize; r = e.decodedBodySize; }
+    }
+  }
+  return [t, w, r];
+}
+// a pointer / key call; the one during which the day changed is the End Day timing
+function timed(f) {
+  const d = ex.cur_day(), a = performance.now();
+  f();
+  if (ex.cur_day() !== d) eu = us(a);
+}
 let raf = 0, tm = 0, rz = 1, seq = 0, lastPrefs = -1, active = null, lastT = 0, retry = 0;
 const held = new Set();
 
@@ -68,15 +91,20 @@ function run() {
   try {
     if (rz) resize();
     H.n++;
-    r = ex.frame(Math.floor(performance.now()));   // 0 idle | 1 animating | 2 ambient only
+    const P = performance;
+    ex.set_metrics(...(H.m = [H.t1 ? Math.round(H.t1 - t0) : 0, ...sizes(P.getEntriesByType('navigation').concat(P.getEntriesByType('resource'))), eu, fu]));
+    const a = P.now();
+    r = ex.frame(Math.floor(a));               // 0 idle | 1 animating | 2 ambient only
     blit();
+    fu = us(a);
     post();
     if (!H.t1) {                               // once: the first good frame
       H.t1 = performance.now(); register();
       if (mark) { mark = 0; ls('hc.bad', ''); }
+      r = 1;                                   // one more frame: the load line shows the measured time
       // 8. a #code link: only now, outside the save-mark window (a trap in a hostile hash must not
       //    blame the save); the module decodes and validates it, garbage is ignored, the hash dropped
-      if (location.hash.length > 1 && code(location.hash)) { history.replaceState(null, '', here); r = 1; }
+      if (location.hash.length > 1 && code(location.hash)) history.replaceState(null, '', here);
     }
   } catch { return die(); }
   if (r === 1) raf = requestAnimationFrame(run);
@@ -157,7 +185,7 @@ function prefs() {
 function pt(e, type) {
   const r = cv.getBoundingClientRect();
   lastT = performance.now();
-  ex.pointer(Math.round(e.clientX - r.left), Math.round(e.clientY - r.top), type);
+  timed(() => ex.pointer(Math.round(e.clientX - r.left), Math.round(e.clientY - r.top), type));
   copy();
   schedule();
 }
@@ -201,7 +229,7 @@ function bind() {
     e.preventDefault();
     if (e.repeat) return;                       // module acts once per press; drop auto-repeat
     held.add(c);
-    ex.key(c, 1);
+    timed(() => ex.key(c, 1));
     copy();
     schedule();
   });

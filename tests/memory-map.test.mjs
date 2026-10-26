@@ -17,6 +17,7 @@ const REGIONS = [
   ['layout rect table, UI block, hit table (20_layout)', 0x8000, 0x8BFF],
   ['UI text builders, toasts, announce ring, button list, label log (22_ui)', 0x8C00, 0xA8FF],
   ['End Day summary + screen announce builder (22c_screens)', 0xAA00, 0xAC3F],
+  ['stats overlay frame ring + row builders (23_overlay)', 0xAC40, 0xAF1F],
   ['replay viewer log VLOG', 0xB000, 0xBFFF],
   ['pre-viewer state SNAP', 0xC000, 0xC5AF],
   ['share URL / code', 0xC800, 0xDFFF],

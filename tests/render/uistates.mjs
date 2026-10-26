@@ -178,6 +178,14 @@ const mem = (ex) => () => new Uint8Array(ex.memory.buffer);
 const shortRun = (ex) => { setOrigin(ex); runBot(ex, mem(ex), 3); lastDay(ex); };
 const longRun = (ex) => { setOrigin(ex); runBot(ex, mem(ex), 239); };
 
+// Task 7c: loader metrics as a real boot would pass them (load 47 ms, 18,637 B transferred, 33,255 B wire /
+// 62,191 B raw wasm, End Day 812 us) and 120 frames of a steady-ish frame time with a few spikes.
+export const METRICS = [47, 18637, 33255, 62191, 812];
+export const feedMetrics = (ex, m = METRICS, n = 120) => {
+  for (let i = 0; i < n; i++) ex.set_metrics(...m, 1900 + ((i * 37) % 23) * 40 + (i % 41 === 7 ? 14000 : 0) + (i % 59 === 30 ? 19500 : 0));
+};
+const withStats = (g) => { feedMetrics(g.ex); g.key(KEY.BACKQUOTE); };
+
 // Canned UI states: [w, h, dpr, options, script]. Rendered at a fixed time so hashes are stable.
 const poor = (ex) => farm(ex).day(3);
 // [name, state] in order; names must be unique (asserted in tests/render/ui.test.mjs).
@@ -228,6 +236,12 @@ export const UI_STATE_LIST = [
   ['ui-results-share', { o: { gazette: true, setup: (ex) => { lastDay(ex); for (let i = 0; i < 6; i++) ex.act(17 + (i & 1), 100, 0, 0); } }, run: (g) => g.tap(HIT.ENDDAY) }],
   ['ui-results-share-qr', { o: { gazette: true, setup: shortRun }, run: (g) => g.tap(HIT.ENDDAY) }],
   ['ui-results-share-toolong', { o: { gazette: true, setup: longRun }, run: (g) => g.tap(HIT.ENDDAY) }],
+  // Task 7c stats overlay over the farm, the Title (footer measured) and Results; a cached boot
+  ['ui-overlay', { o: { setup: (ex) => farm(ex).weather(1) }, run: withStats }],
+  ['ui-overlay-title', { o: { boot: 1 }, run: withStats }],
+  ['ui-title-loaded', { o: { boot: 0 }, run: (g) => { feedMetrics(g.ex, METRICS, 1); g.frame(); } }],
+  ['ui-title-cached', { o: { boot: 0 }, run: (g) => { feedMetrics(g.ex, [12, 0, 0, 62191, 0], 1); g.frame(); } }],
+  ['ui-results-loaded', { o: { gazette: true, setup: (ex) => { lastDay(ex); feedMetrics(ex, METRICS, 1); } }, run: (g) => g.tap(HIT.ENDDAY) }],
 ];
 export const UI_STATES = {};
 for (const [name, s] of UI_STATE_LIST) {

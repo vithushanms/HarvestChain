@@ -38,9 +38,6 @@
 (global $oh_icon (mut i32) (i32.const 0))      ;; card header icon / title ($ovl_head)
 (global $oh_title (mut i32) (i32.const 0))
 (global $rp_top (mut i32) (i32.const 0))       ;; replay viewer card top (the farm fits above it)
-;; Task 7 load metrics for the Title footer (0 = not measured yet: shown as "--")
-(global $met_ms (mut i32) (i32.const 0))
-(global $met_bytes (mut i32) (i32.const 0))
 (global $ANNBUF i32 (i32.const 0xAA40))
 (global $SUMMARY i32 (i32.const 0xAA00))
 ;; per screen: header icon (0x955; Gazette = today's weather) and
@@ -459,7 +456,11 @@
       (call $sb (global.get $SB2)) (call $si (global.get $STR_CONTINUE)) (call $si (global.get $STR_IN)) (call $si (i32.add (global.get $STR_ST) (i32.const 1)))
       (call $put (i32.const 0x3C9) (global.get $SB2) (global.get $I_ARROW_R) (i32.const 2) (i32.const 1) (i32.const 1) (call $btnh))
       (call $put_two (i32.const 0x3C1) (call $str (global.get $STR_NEW_GAME)) (call $str (global.get $STR_REPLACES)) (global.get $I_PLUS) (call $pcols) (call $btnh))))
-  (call $put (i32.const 0x3C6) (call $str (i32.add (global.get $STR_SCR) (i32.const 2))) (global.get $I_BOOK) (i32.const 0) (i32.const 1) (call $pcols) (call $btnh)))
+  (call $put (i32.const 0x3C6) (call $str (i32.add (global.get $STR_SCR) (i32.const 2))) (global.get $I_BOOK) (i32.const 0) (i32.const 1) (call $pcols) (call $btnh))
+  ;; footer: the measured load line (spec §15.1), as on the Title
+  (call $flush (call $btnh))
+  (call $s_load)
+  (call $lab (global.get $I_CLOCK) (i32.const 61)))
 
 ;; Title: the lit farm under a warm dim, extruded HARVESTCHAIN lettering, tagline, the button stack,
 ;; the zero-asset footer and the load line (Task 7 metrics; "--" until measured).
@@ -542,8 +543,7 @@
   (global.set $tscale (i32.const 1))
   (local.set $y (i32.sub (global.get $fb_h) (i32.add (local.get $g) (i32.const 20))))
   (call $center (call $str (global.get $STR_FILES)) (local.get $y) (i32.const 58))
-  (call $sb (global.get $SB1)) (call $si (global.get $STR_LOADED)) (call $s_met (global.get $met_ms) (i32.const 1)) (call $si (global.get $STR_MS))
-  (call $si (global.get $STR_DOTS)) (call $s_met (global.get $met_bytes) (i32.const 1024)) (call $si (global.get $STR_KB))
+  (call $s_load)
   (call $center (global.get $SB1) (i32.add (local.get $y) (i32.const 11)) (i32.const 58))
   (global.set $tscale (call $ui_ts)))
 
@@ -555,12 +555,6 @@
   (local.set $x (i32.shr_s (i32.sub (global.get $fb_w) (call $tw (local.get $s))) (i32.const 1)))
   (drop (call $txt (i32.add (local.get $x) (global.get $tscale)) (i32.add (local.get $y) (global.get $tscale)) (local.get $s) (call $pal (i32.const 60))))
   (drop (call $txt (local.get $x) (local.get $y) (local.get $s) (call $pal (local.get $c)))))
-;; A measured metric v / unit with one decimal for KB ("18.2"), or "--" while 0.
-(func $s_met (param $v i32) (param $u i32)
-  (if (i32.eqz (local.get $v)) (then (call $sc (i32.const 45)) (call $sc (i32.const 45)) (return)))
-  (if (i32.eq (local.get $u) (i32.const 1)) (then (call $sn0 (local.get $v)) (return)))
-  (local.set $v (i32.div_u (i32.mul (local.get $v) (i32.const 10)) (local.get $u)))
-  (call $sn0 (i32.div_u (local.get $v) (i32.const 10))) (call $sc (i32.const 46)) (call $sn0 (i32.rem_u (local.get $v) (i32.const 10))))
 
 ;; Announcement for a screen just drawn (see the header): built in ANNBUF, at most 480 chars.
 (func $ovl_say

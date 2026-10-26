@@ -18,9 +18,10 @@
 ;;                   hit table 0x8200..0x8BFF: map in 20_layout.wat; text builders, toasts, announce
 ;;                   ring, button draw list (64), wrap buffer, tab amounts, label log 0x8C00..0xA8FF: map in
 ;;                   22_ui.wat; End Day summary + screen announce builder 0xAA00..0xAC3F (22c_screens.wat);
+;;                   stats overlay frame ring + row builders 0xAC40..0xAF1F (23_overlay.wat);
 ;;                   replay: viewer log 0xB000..0xBFFF, pre-viewer state 0xC000..0xC5AF, share URL / code
 ;;                   0xC800..0xDFFF, base64 decode 0xE000..0xEFFF, pre-action state 0xF000..0xF5AF (24_replay.wat);
-;;                   0xA900..0xA9FF, 0xAC40..0xAFFF, 0xC5B0..0xC7FF, 0xF5B0..0xFFFF free)
+;;                   0xA900..0xA9FF, 0xAF20..0xAFFF, 0xC5B0..0xC7FF, 0xF5B0..0xFFFF free)
 ;;   0x10000  16 KB  IO staging 0x10000..0x13FFF ($R_IO, $IO_SIZE): save bytes, the hc.log share code,
 ;;                   a pasted / #hash code or link, the origin, from the loader (its toIo cap = IO_SIZE;
 ;;                   replay_load / replay_restore refuse longer text). Largest legal text: origin

@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 292 strings, 2990 B at 0x7200 (spec budget 2560 B)
+;; string table: 308 strings, 3184 B at 0x7200 (spec budget 2560 B)
 (data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -268,45 +268,61 @@
   "LOADED IN \00" ;; 253
   " MS\00" ;; 254
   " KB\00" ;; 255
-  " ^ \00" ;; 256
-  "PAGE \00" ;; 257
-  ", YEAR \00" ;; 258
-  "% SURE\00" ;; 259
-  " TOMORROW\00" ;; 260
-  " STEADY\00" ;; 261
-  "NEARLY FULL\00" ;; 262
-  "START DAY\00" ;; 263
-  "DON'T SHOW\00" ;; 264
-  "SCORE \00" ;; 265
-  " TO \00" ;; 266
-  "REPUTATION \00" ;; 267
-  "LOAN UNPAID, GRACE OVER\00" ;; 268
-  "TRY AGAIN\00" ;; 269
-  " IN \00" ;; 270
-  "ON\00" ;; 271
-  "STAR \00" ;; 272
-  "UP\00" ;; 273
-  "DOWN\00" ;; 274
-  "RESTART\00" ;; 275
-  "PLAY\00" ;; 276
-  "PAUSE\00" ;; 277
-  "SPEED \00" ;; 278
-  "TAKE OVER\00" ;; 279
-  "EXIT\00" ;; 280
-  " STOPPED AT DAY \00" ;; 281
-  ": INVALID MOVE\00" ;; 282
-  "WATCH \00" ;; 283
-  "SHARED RUN\00" ;; 284
-  "COPY CODE\00" ;; 285
-  "COPIED!\00" ;; 286
-  "SHARE CODE READY: \00" ;; 287
-  " CHARS\00" ;; 288
-  "RUN TOO LONG TO SHARE\00" ;; 289
-  "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 290
-  "TOO LONG FOR QR - \00" ;; 291
+  "STATS\00" ;; 256
+  "WASM RAW\00" ;; 257
+  "WASM WIRE\00" ;; 258
+  "TRANSFER\00" ;; 259
+  "LOAD TIME\00" ;; 260
+  "MEMORY\00" ;; 261
+  "LAST END DAY\00" ;; 262
+  "LAST FRAME\00" ;; 263
+  "FRAME MIN/AVG/MAX\00" ;; 264
+  " PAGES\00" ;; 265
+  " US\00" ;; 266
+  "/\00" ;; 267
+  "CACHED\00" ;; 268
+  "TYPICAL ENGINE BUILD OF A GAME\00" ;; 269
+  "THIS SIZE: 5-15 MB, 2-6 S\00" ;; 270
+  "(TYPICAL, NOT MEASURED)\00" ;; 271
+  " ^ \00" ;; 272
+  "PAGE \00" ;; 273
+  ", YEAR \00" ;; 274
+  "% SURE\00" ;; 275
+  " TOMORROW\00" ;; 276
+  " STEADY\00" ;; 277
+  "NEARLY FULL\00" ;; 278
+  "START DAY\00" ;; 279
+  "DON'T SHOW\00" ;; 280
+  "SCORE \00" ;; 281
+  " TO \00" ;; 282
+  "REPUTATION \00" ;; 283
+  "LOAN UNPAID, GRACE OVER\00" ;; 284
+  "TRY AGAIN\00" ;; 285
+  " IN \00" ;; 286
+  "ON\00" ;; 287
+  "STAR \00" ;; 288
+  "UP\00" ;; 289
+  "DOWN\00" ;; 290
+  "RESTART\00" ;; 291
+  "PLAY\00" ;; 292
+  "PAUSE\00" ;; 293
+  "SPEED \00" ;; 294
+  "TAKE OVER\00" ;; 295
+  "EXIT\00" ;; 296
+  " STOPPED AT DAY \00" ;; 297
+  ": INVALID MOVE\00" ;; 298
+  "WATCH \00" ;; 299
+  "SHARED RUN\00" ;; 300
+  "COPY CODE\00" ;; 301
+  "COPIED!\00" ;; 302
+  "SHARE CODE READY: \00" ;; 303
+  " CHARS\00" ;; 304
+  "RUN TOO LONG TO SHARE\00" ;; 305
+  "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 306
+  "TOO LONG FOR QR - \00" ;; 307
 )
 (global $STR_BASE i32 (i32.const 0x7200))
-(global $STR_COUNT i32 (i32.const 292))
+(global $STR_COUNT i32 (i32.const 308))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -326,7 +342,9 @@
 (global $STR_HOW i32 (i32.const 226))
 (global $STR_MNAME i32 (i32.const 232))
 (global $STR_MP i32 (i32.const 239))
-(global $STR_GLYPH i32 (i32.const 272))
+(global $STR_OVL i32 (i32.const 256))
+(global $STR_TYP i32 (i32.const 269))
+(global $STR_GLYPH i32 (i32.const 288))
 (global $STR_DAY i32 (i32.const 68))
 (global $STR_END_DAY i32 (i32.const 69))
 (global $STR_HARVEST i32 (i32.const 70))
@@ -462,39 +480,43 @@
 (global $STR_LOADED i32 (i32.const 253))
 (global $STR_MS i32 (i32.const 254))
 (global $STR_KB i32 (i32.const 255))
-(global $STR_DOTS i32 (i32.const 256))
-(global $STR_PAGE i32 (i32.const 257))
-(global $STR_YEAR i32 (i32.const 258))
-(global $STR_SURE i32 (i32.const 259))
-(global $STR_TOMORROW i32 (i32.const 260))
-(global $STR_STEADY i32 (i32.const 261))
-(global $STR_NEARLY i32 (i32.const 262))
-(global $STR_START_DAY i32 (i32.const 263))
-(global $STR_DONT_SHOW i32 (i32.const 264))
-(global $STR_SCORE i32 (i32.const 265))
-(global $STR_TO i32 (i32.const 266))
-(global $STR_REPUTATION i32 (i32.const 267))
-(global $STR_CAUSE i32 (i32.const 268))
-(global $STR_TRY i32 (i32.const 269))
-(global $STR_IN i32 (i32.const 270))
-(global $STR_ON i32 (i32.const 271))
-(global $STR_RESTART i32 (i32.const 275))
-(global $STR_PLAY i32 (i32.const 276))
-(global $STR_PAUSE i32 (i32.const 277))
-(global $STR_SPEED i32 (i32.const 278))
-(global $STR_TAKE_OVER i32 (i32.const 279))
-(global $STR_EXIT i32 (i32.const 280))
-(global $STR_INVALID i32 (i32.const 281))
-(global $STR_INV_MOVE i32 (i32.const 282))
-(global $STR_WATCH i32 (i32.const 283))
-(global $STR_SHARED i32 (i32.const 284))
-(global $STR_COPY i32 (i32.const 285))
-(global $STR_COPIED i32 (i32.const 286))
-(global $STR_SHARE i32 (i32.const 287))
-(global $STR_CHARS i32 (i32.const 288))
-(global $STR_TOO_LONG i32 (i32.const 289))
-(global $STR_NO_SHARE i32 (i32.const 290))
-(global $STR_QR_LONG i32 (i32.const 291))
+(global $STR_PAGES i32 (i32.const 265))
+(global $STR_US i32 (i32.const 266))
+(global $STR_SLASH i32 (i32.const 267))
+(global $STR_CACHED i32 (i32.const 268))
+(global $STR_DOTS i32 (i32.const 272))
+(global $STR_PAGE i32 (i32.const 273))
+(global $STR_YEAR i32 (i32.const 274))
+(global $STR_SURE i32 (i32.const 275))
+(global $STR_TOMORROW i32 (i32.const 276))
+(global $STR_STEADY i32 (i32.const 277))
+(global $STR_NEARLY i32 (i32.const 278))
+(global $STR_START_DAY i32 (i32.const 279))
+(global $STR_DONT_SHOW i32 (i32.const 280))
+(global $STR_SCORE i32 (i32.const 281))
+(global $STR_TO i32 (i32.const 282))
+(global $STR_REPUTATION i32 (i32.const 283))
+(global $STR_CAUSE i32 (i32.const 284))
+(global $STR_TRY i32 (i32.const 285))
+(global $STR_IN i32 (i32.const 286))
+(global $STR_ON i32 (i32.const 287))
+(global $STR_RESTART i32 (i32.const 291))
+(global $STR_PLAY i32 (i32.const 292))
+(global $STR_PAUSE i32 (i32.const 293))
+(global $STR_SPEED i32 (i32.const 294))
+(global $STR_TAKE_OVER i32 (i32.const 295))
+(global $STR_EXIT i32 (i32.const 296))
+(global $STR_INVALID i32 (i32.const 297))
+(global $STR_INV_MOVE i32 (i32.const 298))
+(global $STR_WATCH i32 (i32.const 299))
+(global $STR_SHARED i32 (i32.const 300))
+(global $STR_COPY i32 (i32.const 301))
+(global $STR_COPIED i32 (i32.const 302))
+(global $STR_SHARE i32 (i32.const 303))
+(global $STR_CHARS i32 (i32.const 304))
+(global $STR_TOO_LONG i32 (i32.const 305))
+(global $STR_NO_SHARE i32 (i32.const 306))
+(global $STR_QR_LONG i32 (i32.const 307))
 ;; icons: 30 x 24 B at 0xa00
 (data (i32.const 0xa00)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN

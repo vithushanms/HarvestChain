@@ -150,6 +150,8 @@
 (export "t_lab_on"     (func $t_lab_on))
 ;; Replays and share codes (24_replay.wat).
 (export "replay_load"    (func $replay_load))
+(export "set_metrics"    (func $set_metrics))
+(export "cur_day"        (func $cur_day))
 (export "replay_restore" (func $replay_restore))
 (export "share_build"    (func $share_build))
 (export "share_ptr"      (func $share_ptr))
@@ -162,6 +164,8 @@
 (export "t_log_len"      (func $t_log_len))
 (export "t_log_st"       (func $t_log_st))
 (export "t_rp"           (func $t_rp))
+(export "t_ovl"          (func $t_ovl))
+(export "t_ovl_line"     (func $t_ovl_line))
 (export "t_rp_seek"      (func $rp_seek))
 (export "t_qr"           (func $t_qr))
 ;; QR encoder (25_qr.wat): shipping functions.

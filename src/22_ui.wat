@@ -41,7 +41,7 @@
 ;;   1 KeyE end day    2 KeyH harvest all    3..7 Digit1..5 tabs (Farm Process Market Trucks Build)
 ;;   8 Escape back (leave placement / a dispatch step / the tab, then close the sheet)    9 ArrowUp 10 ArrowDown 11 ArrowLeft 12 ArrowRight: move the tile cursor
 ;;   (Right/Left = +-x, Down/Up = +-y on the board, clamped to the owned grid + the next ring)
-;;   13 Enter / 16 Space open the selected plot    14 Backquote (stats, Task 7)    15 KeyR (replay, Task 7)
+;;   13 Enter / 16 Space open the selected plot    14 Backquote (stats overlay, anywhere; 23_overlay.wat)    15 KeyR (replay, Task 7)
 ;;   17 KeyJ Journal (open / close). While a screen is open (Title, Gazette, Journal, Results, Game
 ;;   Over, How to play: 22c_screens.wat) only Esc (back), Enter / Space (its primary button) and J act.
 ;;   Auto-repeat: a key acts once per press. A down (any non-zero value) for a code already held
@@ -485,6 +485,9 @@
   (local.set $lx (call $css_to_fb_x (local.get $x)))
   (local.set $ly (call $css_to_fb_y (local.get $y)))
   (if (i32.eqz (local.get $type)) (then
+    ;; the third down of a triple tap on the top-left corner toggles the stats overlay (23_overlay.wat)
+    (if (call $tt_down (local.get $x) (local.get $y)) (then
+      (global.set $in_st (i32.const 0)) (global.set $press (i32.const 0)) (return)))
     (if (global.get $dirty) (then (call $render)))
     (global.set $in_st (i32.const 1))
     (global.set $in_x (local.get $x)) (global.set $in_y (local.get $y))
@@ -546,6 +549,9 @@
     (return)))
   (if (i32.and (global.get $keys) (local.get $m)) (then (return)))
   (global.set $keys (i32.or (global.get $keys) (local.get $m)))
+  ;; Backquote toggles the stats overlay anywhere; Esc closes it before anything else
+  (if (i32.or (i32.eq (local.get $code) (i32.const 14)) (i32.and (i32.eq (local.get $code) (i32.const 8)) (global.get $ovl_on)))
+    (then (call $ovl_toggle) (return)))
   ;; the replay viewer takes only its own keys (24_replay.wat)
   (if (i32.eq (global.get $scr) (i32.const 7)) (then (call $rp_key (local.get $code)) (return)))
   ;; J toggles the Journal anywhere; an open screen (22c_screens.wat) takes only Esc and Enter / Space
@@ -638,7 +644,7 @@
         (then (call $toast_drop (local.get $i)) (br $tl)))
       (local.set $low (i32.const 1))))
     (br_if $tl (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
-  (if (global.get $in_st) (then (local.set $anim (i32.const 1))))
+  (if (i32.or (global.get $in_st) (global.get $ovl_on)) (then (local.set $anim (i32.const 1))))
   (if (call $rp_frame) (then (local.set $anim (i32.const 1))))
   ;; rain and storm particles move every frame (none behind Game Over); Results confetti for 6 s
   (local.set $w (i32.load8_u (global.get $S_WEATHER)))
@@ -689,6 +695,7 @@
       (call $draw_place)))
   (call $draw_toasts)
   (if (global.get $ann_pend) (then (global.set $ann_pend (i32.const 0)) (call $ovl_say)))
+  (call $draw_stats)
   (global.set $lab_on (local.get $lo))
   (global.set $tscale (i32.const 1)))
 
