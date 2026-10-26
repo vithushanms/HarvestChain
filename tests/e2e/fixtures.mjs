@@ -11,22 +11,15 @@ export { expect };
 export const haveBrowser = existsSync(chromium.executablePath());
 if (!haveBrowser && process.env.HC_E2E) throw new Error('chromium is not installed: run `npx playwright install chromium`');
 
-// Per-project tap coordinates (CSS px). Layout is the module's business; these only point at known controls.
-export const POS = {
-  phone: { tile: [150, 400], wheat: [180, 476], endDay: [320, 26], tab: (i) => [36 + i * 72, 620] },
-  desktop: { tile: [330, 540], wheat: [1000, 240], endDay: [1200, 25], tab: (i) => [812 + i * 104, 80] },
-};
-
 export const test = base.extend({
   server: [async ({}, use) => { const s = await startServer(); await use(s); await s.close(); }, { scope: 'worker' }],
   errors: async ({}, use) => { await use([]); },
   game: async ({ page, server, errors }, use, info) => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
     page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-    const pos = POS[info.project.name];
     const mobile = info.project.use.isMobile;
     const g = {
-      page, url: server.url, pos, mobile,
+      page, url: server.url, mobile,
       // Serve build/game.test.wasm (t_* hooks) instead of the shipping module; taps are then derived from the module.
       hooks: async () => {
         // no service worker in hook mode: it would cache the shipping wasm and serve it after a reload

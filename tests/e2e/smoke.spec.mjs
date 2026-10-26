@@ -275,7 +275,8 @@ test('hash without replay support is ignored; wrong wasm MIME falls back', async
 test('failed wasm load shows a readable message instead of a blank page', async ({ page, server }) => {
   await page.route('**/game.wasm', (r) => r.fulfill({ status: 404, body: 'nope' }));
   await page.goto(server.url);
-  await expect(page.locator('body')).toContainText('COULD NOT LOAD GAME');
+  await expect(page.getByRole('alert')).toContainText('COULD NOT LOAD GAME');
+  expect(await page.locator('#a[aria-live]').count()).toBe(1);
 });
 
 test('no external requests', async ({ game, page }) => {
@@ -302,7 +303,8 @@ for (const trap of ['frame', 'pointer', 'key']) {
     if (trap === 'frame') await page.evaluate(() => dispatchEvent(new Event('resize')));
     else if (trap === 'pointer') await fire(page, 'pointerdown', 1);
     else await page.keyboard.press('KeyE');
-    await expect(page.locator('body')).toContainText('SOMETHING WENT WRONG');
+    await expect(page.getByRole('alert')).toContainText('SOMETHING WENT WRONG');
+    expect(await page.locator('#a[aria-live]').count()).toBe(1);   // the live region survives
     const n = await page.evaluate(() => JSON.stringify(window.__calls));
     await page.evaluate(() => { window.__trap = null; });
     await page.keyboard.press('KeyH');
@@ -333,7 +335,7 @@ test('blur sends a release for a pointer whose up never arrived', async ({ game 
   await fire(page, 'pointerdown', 8);
   const types = (await log(page)).map((l) => l[2]);
   expect(types.at(0)).toBe(0);
-  expect(types.slice(1, -1).at(-1)).toBe(2);
+  expect(types.slice(1, -1)).toEqual([3]);            // a cancel (type 3), never an up
   expect(types.at(-1)).toBe(0);
 });
 
@@ -346,7 +348,7 @@ test('a stale pointer (no events for over 1 s) does not block a new press', asyn
   expect((await log(page)).map((l) => l[2])).toEqual([0]);
   await page.waitForTimeout(1100);
   await fire(page, 'pointerdown', 8);
-  expect((await log(page)).map((l) => l[2])).toEqual([0, 1, 2, 0]);   // stale one is cancelled off-canvas first
+  expect((await log(page)).map((l) => l[2])).toEqual([0, 3, 0]);   // the stale one is cancelled (type 3) first
 });
 
 test('pointercancel on END DAY does not fire it', async ({ game, errors }) => {
@@ -360,14 +362,50 @@ test('pointercancel on END DAY does not fire it', async ({ game, errors }) => {
   await game.settle();
   expect((await game.save()).day).toBe(1);
   const l = await log(page);
-  expect(l.at(-1)).toEqual([-1, -1, 2]);
-  expect(l.some((p) => p[2] === 2 && p[0] >= 0)).toBe(false);
+  expect(l.at(-1)).toEqual([-1, -1, 3]);
+  expect(l.some((p) => p[2] === 2)).toBe(false);
   // a cancelled press on the board must not select a tile either
   const [tx, ty] = await game.tileAt(27);
   await fire(page, 'pointerdown', 4, tx, ty);
   await fire(page, 'pointercancel', 4, tx, ty);
   await game.settle();
   expect(await game.announce()).not.toMatch(/^PLOT/);
+  // a cancelled drag in the Build sheet keeps its scroll (no jump) and does not dismiss it
+  await game.press('Digit5');
+  const [px, py] = await game.hit(5);                   // HIT_PANEL
+  await fire(page, 'pointerdown', 5, px, py);
+  await fire(page, 'pointermove', 5, px, py - 60);
+  const s = await page.evaluate(() => window.__hc.ex.t_ui(3));
+  expect(s).toBeGreaterThan(0);
+  await fire(page, 'pointercancel', 5, px, py - 60);
+  await game.settle();
+  expect(await page.evaluate(() => [window.__hc.ex.t_ui(3), window.__hc.ex.t_ui(1)])).toEqual([s, 1]);
+  noErrors(errors);
+});
+
+test('a save that traps frame() after restore is skipped on the next boot; the bad copy is kept', async ({ game, errors }) => {
+  const { page } = game;
+  await game.instrument();
+  await page.addInitScript(() => { if (sessionStorage.getItem('trapOnce')) { sessionStorage.removeItem('trapOnce'); window.__trap = 'frame'; } });
+  await game.open();
+  await game.press('KeyE');
+  expect((await game.save()).day).toBe(2);
+  const good = await game.raw('hc.save');
+  await page.evaluate(() => sessionStorage.setItem('trapOnce', '1'));
+  await page.reload();                                  // restores day 2, then frame() traps
+  await expect(page.getByRole('alert')).toContainText('SOMETHING WENT WRONG');
+  expect(await game.raw('hc.bad')).toBe('1');
+  expect(await game.raw('hc.save.bad')).toBe(good);
+  await game.reload({ title: true });                   // next boot: no restore, a plain Title
+  expect(await game.announce()).toMatch(/^HARVESTCHAIN\. NEW GAME/);
+  await game.start();                                   // NEW GAME
+  expect((await game.save()).day).toBe(1);
+  expect(await game.raw('hc.bad')).toBeFalsy();         // cleared by the successful New Game save
+  expect(await game.raw('hc.save.bad')).toBe(good);
+  await game.press('KeyE');
+  expect((await game.save()).day).toBe(2);
+  await game.reload({ title: true });
+  expect(await game.announce()).toMatch(/^HARVESTCHAIN\. CONTINUE/);
   noErrors(errors);
 });
 

@@ -12,8 +12,8 @@
 <link rel="manifest" href='%MANIFEST%'>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:%BG%;color:#fff}
-canvas{position:fixed;left:0;top:0;width:100%;height:100%;display:block;image-rendering:pixelated;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-#a{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+#a{position:fixed;clip-path:inset(50%)}
 </style>
 </head>
 <body>
@@ -33,19 +33,23 @@ const ls = (k, v) => {
   try { return v === undefined ? localStorage.getItem(k) : (localStorage.setItem(k, v), 1); }
   catch { return v === undefined ? null : 0; }
 };
-const fail = (m) => { document.body.textContent = (m || 'COULD NOT LOAD GAME') + ' - RELOAD'; };
+// Failure message: replaces the canvas with an announced role=alert line; the aria-live region stays.
+const fail = (m) => { cv.remove(); document.body.insertAdjacentHTML('afterbegin', '<p role=alert>' + (m || 'COULD NOT LOAD GAME') + ' - RELOAD</p>'); };
 // A wasm trap (or any exception from a module call) ends the session: show a message, stop scheduling and input.
-// The stored save is left as it is.
-let dead = 0;
+// The stored save is left as it is. If this boot restored that save, it may be what traps: it is marked
+// (hc.bad) and copied to hc.save.bad, and the next boot starts without it (plain Title, no CONTINUE);
+// the first successful save after that (a New Game) clears the mark. The copy is kept.
+let dead = 0, restored = 0;
 function die() {
   dead = 1;
   cancelAnimationFrame(raf); clearTimeout(tm);
+  if (restored) { ls('hc.bad', '1'); ls('hc.save.bad', ls('hc.save')); }
   fail('SOMETHING WENT WRONG');
 }
 const guard = (f) => (e) => { if (!dead) try { f(e); } catch { die(); } };
 
 let ex;
-let raf = 0, tm = 0, rz = 1, seq = 0, lastPrefs = -1, active = null, last = [0, 0], lastT = 0, retry = 0;
+let raf = 0, tm = 0, rz = 1, seq = 0, lastPrefs = -1, active = null, lastT = 0, retry = 0;
 const held = new Set();
 
 // ---- scheduling (5): frame() only while the module wants it; idle = zero CPU
@@ -87,7 +91,7 @@ const dirty = () => { rz = 1; schedule(); };
 // ---- persistence (6), prefs (7), aria-live (9): all after every frame
 function save(force) {
   if (!ex.need_save() || (!force && performance.now() < retry)) return;
-  if (ls('hc.save', btoa(String.fromCharCode(...new Uint8Array(ex.memory.buffer, ex.save_ptr(), ex.save_len()))))) ex.ack_save();
+  if (ls('hc.save', btoa(String.fromCharCode(...new Uint8Array(ex.memory.buffer, ex.save_ptr(), ex.save_len()))))) { ex.ack_save(); ls('hc.bad', ''); }
   else {                                     // storage full / blocked: keep need_save set and try again in 2 s
     retry = performance.now() + 2000;
     setTimeout(schedule, 2100);                // the next frame saves again
@@ -121,23 +125,21 @@ function restore() {
   } catch { return 0; }
 }
 function prefs() {
-  try { const p = JSON.parse(ls('hc.prefs')); return p && typeof p === 'object' ? p : {}; } catch { return {}; }
+  try { return Object(JSON.parse(ls('hc.prefs'))); } catch { return {}; }   // null / a number -> no prefs
 }
 
 // ---- input (4)
 function pt(e, type) {
   const r = cv.getBoundingClientRect();
-  last = [Math.round(e.clientX - r.left), Math.round(e.clientY - r.top)];
   lastT = performance.now();
-  ex.pointer(last[0], last[1], type);
+  ex.pointer(Math.round(e.clientX - r.left), Math.round(e.clientY - r.top), type);
   schedule();
 }
-// release the active pointer. cancel = true: send an off-canvas move then up, so nothing fires.
-function drop(cancel) {
+// cancel the active pointer: type 3 ends the press with no tap, scroll or dismiss (src/22_ui.wat)
+function drop() {
   if (active === null) return;
   active = null;
-  if (cancel) ex.pointer(-1, -1, 1);
-  ex.pointer(cancel ? -1 : last[0], cancel ? -1 : last[1], 2);
+  ex.pointer(-1, -1, 3);
   schedule();
 }
 function bind() {
@@ -146,7 +148,7 @@ function bind() {
     if (!e.isPrimary || e.button > 0) return;                  // primary pointer, left button / touch only
     if (active !== null) {
       if (performance.now() - lastT < 1000) return;
-      drop(1);                                                 // stale: its up never arrived
+      drop();                                                  // stale: its up never arrived
     }
     active = e.pointerId;
     try { cv.setPointerCapture(e.pointerId); } catch {}
@@ -160,7 +162,7 @@ function bind() {
   });
   cv.onpointerup = up;
   cv.onlostpointercapture = up;
-  cv.onpointercancel = guard((e) => { if (e.pointerId === active) drop(1); });
+  cv.onpointercancel = guard((e) => { if (e.pointerId === active) drop(); });
   // Task 7: cv.onwheel -> ex.wheel(...) once the export exists (feature-detect it).
   const key = (d) => guard((e) => {
     const c = KEYS.indexOf(e.code) + 1;
@@ -178,15 +180,14 @@ function bind() {
   });
   onkeydown = key(1);
   onkeyup = key(0);
-  const release = guard(() => { for (const c of held) ex.key(c, 0); held.clear(); drop(1); schedule(); });
+  const release = guard(() => { for (const c of held) ex.key(c, 0); held.clear(); drop(); schedule(); });
   onblur = release;
-  addEventListener('resize', dirty);
-  addEventListener('orientationchange', dirty);
-  if (window.visualViewport) visualViewport.addEventListener('resize', dirty);
-  addEventListener('pagehide', guard(() => { release(); save(1); }));
-  document.addEventListener('visibilitychange', guard(() => {
+  onresize = onorientationchange = dirty;     // (event handler properties: nothing else sets them)
+  if (window.visualViewport) visualViewport.onresize = dirty;
+  onpagehide = guard(() => { release(); save(1); });
+  document.onvisibilitychange = guard(() => {
     if (document.hidden) { release(); save(1); } else dirty();
-  }));
+  });
   const flags = guard(() => { ex.set_flags(mq.matches, ex.get_flags() & 1); schedule(); });
   mq.onchange = flags;
 }
@@ -200,10 +201,10 @@ function register() {
 async function main() {
   let r;
   try { r = await WebAssembly.instantiateStreaming(fetch('game.wasm'), {}); }
-  catch (e) { r = await WebAssembly.instantiate(await (await fetch('game.wasm')).arrayBuffer(), {}); }
+  catch { r = await WebAssembly.instantiate(await (await fetch('game.wasm')).arrayBuffer(), {}); }
   H.ex = ex = r.instance.exports;
   const p = prefs();
-  const has = restore();
+  const has = restored = ls('hc.bad') ? 0 : restore();   // a save marked bad by a trap is skipped
   const seed = crypto.getRandomValues(new Uint32Array(1))[0];
   ex.set_env(seed | 0, Math.floor(Date.now() / 86400000));
   ex.set_flags(mq.matches, p.large ? 1 : 0);
