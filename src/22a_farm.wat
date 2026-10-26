@@ -280,7 +280,7 @@
   (if (i32.eq (local.get $c) (i32.const 0x207)) (then
     (local.set $e (call $act (i32.const 8) (i32.const 0) (i32.const 0) (i32.const 0)))
     (if (i32.eqz (local.get $e)) (then
-      (call $ui_refit)
+      ;; no explicit refit (ruling C6): $scene_fit reads the grid size on every draw / hit test
       (call $si (global.get $STR_LAND_BOUGHT)) (call $s_farm_size (i32.load8_u (global.get $S_GRID)))))))
   (if (local.get $e) (then (call $fail (local.get $e)) (return)))
   (global.set $want_save (i32.const 1))
@@ -465,9 +465,13 @@
   (global.set $uy (i32.add (global.get $uy) (i32.add (i32.const 2)
     (call $ui_wrap (local.get $x) (global.get $uy) (i32.sub (i32.add (global.get $ux) (global.get $uw)) (local.get $x)) (local.get $s) (call $pal (local.get $c)))))))
 
+;; The content height is known only after the body is laid out: when the scroll position is past
+;; the new end (content shrank, e.g. after a resize), the sheet is drawn again at the clamped
+;; position with its hit regions and draw-list entries rolled back, so taps never see stale rows.
 (func $draw_sheet
   (local $x i32) (local $y i32) (local $w i32) (local $h i32) (local $g i32) (local $hh i32) (local $oy i32) (local $ox i32)
-  (local $c i32) (local $t i32)
+  (local $c i32) (local $t i32) (local $hn i32) (local $bn i32)
+  (local.set $hn (call $hit_n)) (local.set $bn (global.get $btn_n))
   (local.set $w (call $lay_w (global.get $LR_PANEL)))
   (global.set $scroll_max (i32.const 0))
   (if (i32.eqz (local.get $w)) (then (return)))
@@ -499,7 +503,11 @@
   (local.set $c (i32.sub (i32.add (global.get $uy) (global.get $scroll)) (local.get $t)))
   (global.set $scroll_max (call $imax (i32.const 0) (i32.sub (local.get $c) (i32.sub (global.get $clip_b) (local.get $t)))))
   (if (i32.gt_s (global.get $scroll) (global.get $scroll_max)) (then
-    (global.set $scroll (global.get $scroll_max)) (global.set $dirty (i32.const 1))))
+    (global.set $scroll (global.get $scroll_max))
+    (call $lput (global.get $L_HITN) (local.get $hn)) (global.set $btn_n (local.get $bn))
+    (global.set $clip_t (i32.const 0)) (global.set $clip_b (i32.const 0x7FFFFFFF))
+    (call $draw_sheet)
+    (return)))
   ;; scroll bar
   (if (global.get $scroll_max) (then
     (local.set $h (i32.sub (global.get $clip_b) (local.get $t)))
@@ -621,8 +629,10 @@
         (call $ui_label (global.get $I_PLUS) (global.get $SB1) (i32.const 61))
         (call $sb (global.get $SB2)) (call $si (global.get $STR_BUY_LAND)) (call $sc (i32.const 32)) (call $sn (local.get $v) (i32.const 1))
         (global.set $b_why (call $err_str (global.get $E_CASH)))
+        (local.set $t (i32.ge_s (i32.load (global.get $S_CASH)) (local.get $v)))
+        ;; disabled: label + reason need the two-line row height
         (call $put (i32.const 0x207) (global.get $SB2) (global.get $I_PLUS) (i32.const 2)
-          (i32.ge_s (i32.load (global.get $S_CASH)) (local.get $v)) (i32.const 1) (local.get $bh)))
+          (local.get $t) (i32.const 1) (select (local.get $bh) (call $rowh) (local.get $t))))
       (else (call $ui_label (global.get $I_LOCK) (call $str (global.get $STR_NEXT_RING)) (i32.const 63))))
     (return)))
   (if (i32.eqz (i32.load8_u (local.get $p))) (then

@@ -241,9 +241,10 @@
   (local.set $w (i32.add (call $tw (global.get $SB3)) (i32.const 6)))
   (call $rrect (i32.sub (local.get $x) (local.get $w)) (local.get $y) (local.get $w) (i32.add (call $lh) (i32.const 5)) (i32.const 3) (call $pal (i32.const 60)))
   (call $rrect (i32.sub (i32.sub (local.get $x) (local.get $w)) (i32.const -1)) (i32.add (local.get $y) (i32.const 1))
-    (i32.sub (local.get $w) (i32.const 2)) (i32.add (call $lh) (i32.const 3)) (i32.const 2) (call $pal (i32.const 26)))
-  (drop (call $txt (i32.sub (i32.add (i32.sub (local.get $x) (local.get $w)) (i32.const 3)) (i32.const 0)) (i32.add (local.get $y) (i32.const 3))
-    (global.get $SB3) (call $pal (i32.const 59)))))
+    (i32.sub (local.get $w) (i32.const 2)) (i32.add (call $lh) (i32.const 3)) (i32.const 2) (call $pi (i32.const 0x935)))
+  (drop (call $txt (i32.add (i32.sub (local.get $x) (local.get $w)) (i32.const 3)) (i32.add (local.get $y) (i32.const 3))
+    (global.get $SB3) (call $pi (i32.const 0x936)))))
+(data (i32.const 0x935) "\19\3b")             ;; count badge face (tomato 1), text (paper 3): 6.3:1
 
 ;; Word-wrapped text in width w; returns the height used. $nodraw = 1 only measures.
 (func $ui_wrap (param $x i32) (param $y i32) (param $w i32) (param $s i32) (param $c i32) (result i32)
@@ -285,6 +286,7 @@
            (param $label i32) (param $icon i32) (param $style i32) (param $en i32)
   (local $st i32) (local $pr i32) (local $tc i32) (local $c2 i32) (local $f i32) (local $e i32)
   (local $two i32) (local $is i32) (local $iw i32) (local $tx i32) (local $ty i32) (local $lw i32) (local $pad i32) (local $s2 i32)
+  (local $rw i32) (local $wide i32) (local $ls i32)
   (if (i32.and (i32.ge_s (local.get $y) (global.get $clip_t))
                (i32.le_s (i32.add (local.get $y) (local.get $h)) (global.get $clip_b)))
     (then (drop (call $hit_add (local.get $x) (local.get $y) (local.get $w) (local.get $h) (local.get $code)))))
@@ -308,7 +310,7 @@
   (call $rrect (local.get $x) (local.get $y) (local.get $w) (local.get $h) (i32.const 3) (call $pal (i32.load8_u (local.get $st))))
   (call $rrect (i32.add (local.get $x) (i32.const 1)) (i32.add (i32.add (local.get $y) (i32.const 1)) (local.get $pr))
     (i32.sub (local.get $w) (i32.const 2)) (i32.sub (local.get $h) (i32.const 4)) (i32.const 2) (call $pal (local.get $f)))
-  (if (i32.and (local.get $style) (i32.eqz (local.get $pr))) (then
+  (if (i32.and (i32.ne (local.get $style) (i32.const 0)) (i32.eqz (local.get $pr))) (then
     (call $hline (i32.add (local.get $x) (i32.const 3)) (i32.add (local.get $y) (i32.const 1)) (i32.sub (local.get $w) (i32.const 6))
       (call $pal (i32.or (local.get $f) (i32.const 3))))))
   (local.set $y (i32.add (local.get $y) (local.get $pr)))
@@ -328,18 +330,26 @@
           (select (local.get $is) (global.get $tscale) (i32.ge_s (local.get $icon) (i32.const 64))))))
       (local.set $tx (i32.add (i32.add (local.get $x) (local.get $pad)) (select (i32.add (local.get $is) (local.get $pad)) (i32.const 0) (i32.ge_s (local.get $icon) (i32.const 0)))))
       (local.set $lw (i32.sub (i32.sub (i32.add (local.get $x) (local.get $w)) (local.get $pad)) (local.get $tx)))
+      ;; line positions at the UI text scale (a string that has to shrink keeps its line)
+      (local.set $ty (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $h) (i32.add (i32.mul (call $lh) (i32.add (local.get $two) (i32.const 1))) (i32.mul (local.get $two) (i32.const 3)))) (i32.const 1))))
+      (local.set $ls (i32.add (call $lh) (i32.const 3)))
       (if (global.get $b_right) (then
         (call $fit (global.get $b_right) (local.get $lw))
+        (local.set $rw (i32.add (call $tw (global.get $b_right)) (local.get $pad)))
+        ;; a second line too long to sit beside the right text gets the full width; the right
+        ;; text then moves up to line 1
+        (global.set $tscale (call $ui_ts))
+        (if (local.get $two) (then (local.set $wide (i32.gt_s (call $tw (local.get $s2)) (i32.sub (local.get $lw) (local.get $rw))))))
+        (call $fit (global.get $b_right) (local.get $lw))
         (drop (call $txt (i32.sub (i32.sub (i32.add (local.get $x) (local.get $w)) (local.get $pad)) (call $tw (global.get $b_right)))
-          (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $h) (call $lh)) (i32.const 1))) (global.get $b_right) (local.get $tc)))
-        (local.set $lw (i32.sub (local.get $lw) (i32.add (call $tw (global.get $b_right)) (local.get $pad))))))
+          (select (local.get $ty) (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $h) (call $lh)) (i32.const 1))) (local.get $wide))
+          (global.get $b_right) (local.get $tc)))
+        (local.set $lw (i32.sub (local.get $lw) (local.get $rw)))))
       (call $fit (local.get $label) (local.get $lw))
-      (local.set $ty (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $h) (i32.add (i32.mul (call $lh) (i32.add (local.get $two) (i32.const 1))) (i32.mul (local.get $two) (i32.const 3)))) (i32.const 1))))
       (drop (call $txt (local.get $tx) (local.get $ty) (local.get $label) (local.get $tc)))
       (if (local.get $two) (then
-        (local.set $ty (i32.add (local.get $ty) (i32.add (call $lh) (i32.const 3))))
-        (call $fit (local.get $s2) (local.get $lw))
-        (drop (call $txt (local.get $tx) (local.get $ty) (local.get $s2) (local.get $c2))))))
+        (call $fit (local.get $s2) (select (i32.add (local.get $lw) (local.get $rw)) (local.get $lw) (local.get $wide)))
+        (drop (call $txt (local.get $tx) (i32.add (local.get $ty) (local.get $ls)) (local.get $s2) (local.get $c2))))))
     (else
       ;; centred: [icon] label, reason (if any) on a second centred line
       (if (local.get $label) (then (call $fit (local.get $label) (i32.sub (i32.sub (local.get $w) (i32.shl (local.get $pad) (i32.const 1)))
@@ -618,7 +628,9 @@
 
 ;; ---------------------------------------------------------------- lifecycle
 
-;; Reset every UI state (new game, load) and refit the farm to the grid (ruling C6).
+;; Reset every UI state (new game, load) and relayout. The farm is fitted to the grid size
+;; by $scene_fit on every draw and hit test, so a grid change (BUY LAND, load) needs no extra
+;; refit call (ruling C6).
 (func $ui_reset
   (global.set $sel_tile (i32.const -1)) (global.set $hover_tile (i32.const -1))
   (global.set $sheet (i32.const 0)) (global.set $pick (i32.const 0)) (global.set $scroll (i32.const 0))
@@ -626,9 +638,6 @@
   (global.set $slide_t (i32.const -2)) (global.set $shake_t (i32.const -2))
   (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
   (call $layout_panel (i32.const 0))
-  (global.set $dirty (i32.const 1)))
-(func $ui_refit
-  (call $layout)
   (global.set $dirty (i32.const 1)))
 (func $ui_new_game (param $seed i32)
   (call $init (local.get $seed))

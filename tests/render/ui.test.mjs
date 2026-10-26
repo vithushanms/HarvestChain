@@ -272,21 +272,34 @@ test('disabled build buttons show their unlock / cash reasons', async () => {
   assert.equal(r(BLD.GREENHOUSE).reason, 'FROM DAY 41');
 });
 
-test('BUY LAND from an unowned next-ring plot refits: all owned tiles inside GRID', async () => {
+test('BUY LAND from an unowned next-ring plot refits: the farm shrinks to 5x5, all owned tiles inside GRID', async () => {
   const g = await uiGame(360, 640, 200, { setup: (ex) => ex.t_set_cash(2000) });
-  g.tapTile(4);                          // (4,0): the 5x5 ring
   g.settle();
+  const rect = (i) => [0, 1, 2, 3].map((k) => g.ex.t_tile_rect(i, k));
+  const G = () => ({ x: g.ex.t_lay_x(6), y: g.ex.t_lay_y(6), w: g.ex.t_lay_w(6), h: g.ex.t_lay_h(6) });
+  const w4 = rect(0)[2];                 // 4x4 fit, nothing selected, sheet closed
+  const G0 = G();
+  g.tapTile(4);                          // (4,0): the 5x5 ring
   assert.ok(g.btn(BTN.BUY_LAND));
   g.tap(BTN.BUY_LAND);
   assert.equal(readState(g.mem()).grid, 5);
   assert.equal(g.cash(), 1400);
   assert.equal(g.ex.need_save(), 1);
+  g.key(KEY.ESC);                        // close: the fit now depends on the grid alone
   g.settle();
-  const G = { x: g.ex.t_lay_x(6), y: g.ex.t_lay_y(6), w: g.ex.t_lay_w(6), h: g.ex.t_lay_h(6) };
+  assert.deepEqual(G(), G0, 'GRID itself does not depend on the grid size');
+  const w5 = rect(0)[2];
+  assert.ok(w5 < w4, `tiles shrink for 5x5 (${w4} -> ${w5})`);
+  const Gr = G();
   for (let i = 0; i < 64; i++) {
     if ((i & 7) >= 5 || (i >> 3) >= 5) continue;
-    const x = g.ex.t_tile_rect(i, 0), y = g.ex.t_tile_rect(i, 1), w = g.ex.t_tile_rect(i, 2), h = g.ex.t_tile_rect(i, 3);
-    assert.ok(x >= G.x && y >= G.y && x + w <= G.x + G.w && y + h <= G.y + G.h, `tile ${i}`);
+    const [x, y, w, h] = rect(i);
+    assert.ok(x >= Gr.x && y >= Gr.y && x + w <= Gr.x + Gr.w && y + h <= Gr.y + Gr.h, `tile ${i} ${[x, y, w, h]} in ${JSON.stringify(Gr)}`);
+  }
+  // the tile under a tile's centre is that tile (hit testing uses the refitted projection)
+  for (const i of [0, 4, 4 * 8 + 4, 36]) {
+    const [x, y, w, h] = rect(i);
+    assert.equal(g.ex.t_tile_at(x + (w >> 1), y + (h >> 1)), i, `tile_at ${i}`);
   }
   g.tapTile(6 * 8 + 6);                   // (6,6): beyond the next ring
   g.settle();

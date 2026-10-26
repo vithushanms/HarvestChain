@@ -14,7 +14,8 @@
 ;;       0 TOPBAR   1 DAYBOX  2 CASHBOX  3 REPBOX  4 HARVALL  5 ENDDAY  6 GRID  7 TABS
 ;;       8..12 TAB0..TAB4 (Farm Process Market Trucks Build)  13 PANEL  14 PANEL_CLOSE  15 TOAST
 ;;     Unused/closed rects are all-zero. DAYBOX..ENDDAY lie in TOPBAR (one row, or two rows when
-;;     they do not fit: DAY/CASH/REP then HARVALL/ENDDAY; one row = [day cash rep] left and
+;;     they do not fit: DAY/CASH/REP (cards only as tall as two text lines / min_touch) then
+;;     HARVALL/ENDDAY; the bottom sheet then takes 2/3 of the content height); one row = [day cash rep] left and
 ;;     [harvest end day] right-aligned, widths stretched <= 1.5x). HARVALL's slot is always reserved (shown
 ;;     only when a crop is ripe). TAB0..4 tile TABS exactly (widths differ by <= 1).
 ;;     GRID is the rect handed to $scene_viewport. TOAST floats over the top of GRID (non-blocking,
@@ -27,9 +28,9 @@
 ;;   0x8200..0x8BFF  hit table: 128 entries x 20 B (x, y, w, h, code : i32)
 ;;   0x8C00..0xFFFF  free (Task 5 UI state, toasts, announce buffer ...)
 ;;
-;; Modes (CSS px): LAPTOP = w >= 1024 or (w > 1.2 h and w >= 600): top bar across the top, GRID left
-;;   (max 640 css), right column = TABS above PANEL (<= 520 css; pair centred); the panel is always
-;;   present. TABLET = 768 <= w < 1024 otherwise. PORTRAIT = the rest. Portrait and tablet: top bar,
+;; Modes (CSS px): LAPTOP = w >= 1024 or (w > 1.2 h and w >= 600): top bar across the top, right
+;;   column = TABS above PANEL (<= 520 css) flush with the right edge, GRID (max 640 css) centred in
+;;   the space left of it; the panel is always present. TABLET = 768 <= w < 1024 otherwise. PORTRAIT = the rest. Portrait and tablet: top bar,
 ;;   GRID full width, tab bar at the bottom; PANEL is a bottom sheet = the lower 45% of the screen
 ;;   (tab bar included) that exists only while open ($layout_panel(1)); then GRID shrinks to end where
 ;;   the sheet begins, so the scene re-fits above it and End Day (top bar) stays reachable.
@@ -217,14 +218,14 @@
           (local.set $colw (call $imin (i32.sub (local.get $W) (local.get $gw))
             (call $imax (call $cu (i32.const 520) (i32.const 2))
                         (i32.add (i32.mul (i32.const 5) (local.get $mt)) (i32.shl (local.get $g) (i32.const 1))))))))
-      (local.set $sw (i32.add (local.get $gw) (local.get $colw)))
-      (local.set $sx (i32.shr_u (i32.sub (local.get $W) (local.get $sw)) (i32.const 1)))))
+      ;; the column is flush with the right edge; GRID is centred in the space left of it
+      (local.set $sx (i32.shr_u (i32.sub (i32.sub (local.get $W) (local.get $colw)) (local.get $gw)) (i32.const 1)))))
+  ;; the top bar spans the whole width (End Day lines up with the right edge in every mode)
   (local.set $ws (local.get $sw))
-  (local.set $xs (i32.add (local.get $sx) (i32.shr_u (i32.sub (local.get $sw) (local.get $ws)) (i32.const 1))))
-  ;; top bar items: preferred widths (chars: day 9, cash 8, rep 4, harvest 9, end day 8)
-  (call $setr (i32.const 1) (i32.const 0) (i32.const 0) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 9) (local.get $chw)) (i32.shl (local.get $g) (i32.const 1)))) (i32.const 0))
+  ;; top bar items: preferred widths (chars: day 7, cash 8, rep 6 ("12 PTS"), harvest 9, end day 8)
+  (call $setr (i32.const 1) (i32.const 0) (i32.const 0) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 7) (local.get $chw)) (i32.shl (local.get $g) (i32.const 1)))) (i32.const 0))
   (call $setr (i32.const 2) (i32.const 0) (i32.const 0) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 8) (local.get $chw)) (i32.shl (local.get $g) (i32.const 1)))) (i32.const 0))
-  (call $setr (i32.const 3) (i32.const 0) (i32.const 0) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 4) (local.get $chw)) (i32.shl (local.get $g) (i32.const 1)))) (i32.const 0))
+  (call $setr (i32.const 3) (i32.const 0) (i32.const 0) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 6) (local.get $chw)) (i32.shl (local.get $g) (i32.const 1)))) (i32.const 0))
   (call $setr (i32.const 4) (i32.const 0) (i32.const 0) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 9) (local.get $chw)) (i32.shl (local.get $g) (i32.const 1)))) (i32.const 0))
   (call $setr (i32.const 5) (i32.const 0) (i32.const 0) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 8) (local.get $chw)) (i32.shl (local.get $g) (i32.const 1)))) (i32.const 0))
   (local.set $i (i32.const 1))
@@ -232,13 +233,18 @@
     (local.set $sum (i32.add (local.get $sum) (call $lay_w (local.get $i))))
     (br_if $sm (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 6))))
   (local.set $two (i32.gt_u (i32.add (local.get $sum) (i32.mul (local.get $g) (i32.const 6))) (local.get $ws)))
-  (local.set $top (i32.add (i32.mul (i32.add (i32.const 1) (local.get $two)) (local.get $rh))
+  ;; two rows (a cramped fallback): the info cards (row 1, $chw) are only as tall as their two
+  ;; text lines (>= min_touch); Harvest / End Day keep the full row height; the space saved goes
+  ;; to the bottom sheet
+  (local.set $chw (select (call $imin (local.get $rh) (call $imax (local.get $mt) (i32.add (i32.mul (i32.const 14) (local.get $ts)) (i32.const 10))))
+                          (local.get $rh) (local.get $two)))
+  (local.set $top (i32.add (i32.add (local.get $chw) (i32.mul (local.get $two) (local.get $rh)))
                            (i32.mul (i32.add (i32.const 2) (local.get $two)) (local.get $g))))
   (call $setr (global.get $LR_TOPBAR) (i32.const 0) (i32.const 0) (local.get $W) (local.get $top))
   (if (local.get $two)
     (then
-      (call $spread (i32.const 1) (i32.const 3) (i32.add (local.get $xs) (local.get $g)) (local.get $g) (local.get $rh) (i32.sub (local.get $ws) (i32.shl (local.get $g) (i32.const 1))))
-      (call $spread (i32.const 4) (i32.const 2) (i32.add (local.get $xs) (local.get $g)) (i32.add (local.get $rh) (i32.shl (local.get $g) (i32.const 1))) (local.get $rh) (i32.sub (local.get $ws) (i32.shl (local.get $g) (i32.const 1)))))
+      (call $spread (i32.const 1) (i32.const 3) (i32.add (local.get $xs) (local.get $g)) (local.get $g) (local.get $chw) (i32.sub (local.get $ws) (i32.shl (local.get $g) (i32.const 1))))
+      (call $spread (i32.const 4) (i32.const 2) (i32.add (local.get $xs) (local.get $g)) (i32.add (local.get $chw) (i32.shl (local.get $g) (i32.const 1))) (local.get $rh) (i32.sub (local.get $ws) (i32.shl (local.get $g) (i32.const 1)))))
     (else
       ;; one row: [day cash rep] left, [harvest end day] right-aligned, widths stretched by <= 1.5x
       (local.set $bs (call $imin (i32.sub (local.get $ws) (i32.mul (local.get $g) (i32.const 6)))
@@ -253,8 +259,8 @@
   (if (i32.eq (local.get $mode) (i32.const 2))
     (then
       (call $setr (global.get $LR_GRID) (local.get $sx) (local.get $top) (local.get $gw) (local.get $ph))
-      (call $setr (global.get $LR_TABS) (i32.add (local.get $sx) (local.get $gw)) (local.get $top) (local.get $colw) (local.get $tabh))
-      (call $setr (global.get $LR_PANEL) (i32.add (local.get $sx) (local.get $gw)) (i32.add (local.get $top) (local.get $tabh))
+      (call $setr (global.get $LR_TABS) (i32.sub (local.get $W) (local.get $colw)) (local.get $top) (local.get $colw) (local.get $tabh))
+      (call $setr (global.get $LR_PANEL) (i32.sub (local.get $W) (local.get $colw)) (i32.add (local.get $top) (local.get $tabh))
                   (local.get $colw) (call $imax (i32.sub (local.get $ph) (local.get $tabh)) (i32.const 0))))
     (else
       (local.set $ty (call $imax (i32.sub (local.get $H) (local.get $tabh)) (local.get $top)))
@@ -262,7 +268,9 @@
       (local.set $ph (i32.sub (local.get $ty) (local.get $top)))                       ;; grid height, panel closed
       (if (call $lget (global.get $L_OPEN))
         (then
-          (local.set $i (call $imax (i32.sub (i32.div_u (i32.mul (local.get $H) (i32.const 45)) (i32.const 100)) (local.get $tabh))
+          ;; (a two-row top bar leaves little room: the sheet then takes 2/3 of the space between the bars)
+          (local.set $i (call $imax (call $imax (i32.sub (i32.div_u (i32.mul (local.get $H) (i32.const 45)) (i32.const 100)) (local.get $tabh))
+                                                (i32.mul (local.get $two) (i32.div_u (i32.shl (local.get $ph) (i32.const 1)) (i32.const 3))))
                                     (i32.add (local.get $mt) (i32.shl (local.get $g) (i32.const 1)))))
           (local.set $i (call $imin (local.get $i) (local.get $ph)))
           (call $setr (global.get $LR_PANEL) (i32.const 0) (i32.sub (local.get $ty) (local.get $i)) (local.get $W) (local.get $i))

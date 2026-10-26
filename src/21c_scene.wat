@@ -8,7 +8,8 @@
 ;; runs up-screen into the hills at the horizon (trucks drive it), a sky with sun and clouds.
 ;;
 ;; Fit ($scene_fit): the viewport rect (Task 4 layout; default = framebuffer minus a top and
-;; bottom margin) must hold the owned grid (n x n tiles, + a quarter tile across, + 2 tiles of
+;; bottom margin) must hold the owned grid, grown to include the selected plot when that lies
+;; outside it (n x n tiles, + a quarter tile across, + 2 tiles of
 ;; height for tall models); hw = largest integer that fits (4..64), centred. The wild ring and
 ;; the rest of the 8x8 slab spill past it. Horizon = 1 tile above the slab's back corner but
 ;; at least fb_h / 5 (when the farm leaves room), so the sky never vanishes in landscape.
@@ -178,6 +179,10 @@
     (local.set $h (i32.sub (i32.sub (global.get $fb_h) (local.get $y)) (i32.div_u (global.get $fb_h) (i32.const 5))))))
   (global.set $sc_g (call $clamp (i32.load8_u (global.get $S_GRID)) (i32.const 4) (i32.const 8)))
   (local.set $n (global.get $sc_g))
+  ;; a selected plot outside the owned square (the next ring, wild land) is fitted in view too
+  (if (i32.ge_s (global.get $sel_tile) (i32.const 0)) (then
+    (local.set $n (call $imax (local.get $n) (i32.add (i32.const 1)
+      (call $imax (i32.and (global.get $sel_tile) (i32.const 7)) (i32.and (i32.shr_u (global.get $sel_tile) (i32.const 3)) (i32.const 7))))))))
   ;; width: n tiles + a quarter tile of margin; height: n + 2 tiles (headroom for tall models)
   (local.set $hw (i32.div_s (i32.shl (local.get $w) (i32.const 2)) (i32.add (i32.shl (local.get $n) (i32.const 3)) (i32.const 1))))
   (local.set $oy (i32.div_s (local.get $h) (i32.add (local.get $n) (i32.const 2))))

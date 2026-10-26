@@ -55,7 +55,7 @@ Key cross-file rules:
 - **Unlocks** are per-building predicates on state; **milestones are observe-only** (pay cash, never unlock/set anything) (§12).
 - **Net worth excludes inventory** (§12).
 - **Rendering** is immediate-mode per dirty frame; 16×16 4bpp sprites indexed into a 16-colour palette; integer nearest-neighbour scaling. Layouts (portrait/tablet/laptop/large-text) are data driving one renderer, not separate renderers.
-- **Input**: one state machine in `22_ui.wat` (idle → pressed → drag|tap, 8 px slop, 300 ms long-press) shared by touch and mouse.
+- **Input**: one state machine in `22_ui.wat` (idle → pressed → drag|tap, 8 px slop, 300 ms long-press on plots only; buttons tap on release inside the button) shared by touch and mouse. Two-step buttons ignore the confirming tap for 400 ms. `key()` filters auto-repeat (held-code bitmask).
 - All text is templated from short string tables, not prose.
 
 ## Phase 2 facts (sim rules)
