@@ -6,12 +6,16 @@
 //           layout[-large][-open] (farm-full scene + coloured outlines and ids of every layout rect,
 //           tile diamonds in grey; -large = large-text mode, -open = bottom sheet open)
 //           farm-* (canned farm scenes from tests/render/scenes.mjs, drawn by $scene_draw)
+//           ui-* (UI states from tests/render/uistates.mjs: scene + top bar, tabs, sheet, toasts via frame();
+//           dpr applies; add --large for large text)
+//        node tools/dump-ppm.mjs ui  (every ui-* state at 360x640@2 and 1280x800@1, + large text at 360x640)
 // Output: build/<scene>-<w>x<h>.png (nearest-neighbour zoomed, default 2x; 1x above 1000 px).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SCENES, drawScene } from '../tests/render/scenes.mjs';
+import { UI_STATES, uiState } from '../tests/render/uistates.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -67,7 +71,13 @@ function drawLayoutDebug(ex) {
   }
 }
 
-export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = false) {
+export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = false, large = false) {
+  if (UI_STATES[scene]) {
+    const g = await uiState(scene, w, h, dpr);
+    if (large) { g.ex.set_flags(1, 1); g.frame(); }
+    const fw = g.ex.fb_w(), fh = g.ex.fb_h();
+    return { w: fw, h: fh, rgba: new Uint8Array(g.ex.memory.buffer.slice(g.ex.fb_ptr(), g.ex.fb_ptr() + fw * fh * 4)) };
+  }
   const { instance } = await WebAssembly.instantiate(readFileSync(join(root, 'build', 'game.wasm')), {});
   const ex = instance.exports;
   ex.init(1);
@@ -87,8 +97,9 @@ export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = fa
   return { w: fw, h: fh, rgba: new Uint8Array(ex.memory.buffer.slice(ex.fb_ptr(), ex.fb_ptr() + fw * fh * 4)) };
 }
 
-async function dump(scene, w, h, dpr, zoom, t, reduced, tag = '', crop = null) {
-  let img = await renderScene(scene, w, h, dpr, t, reduced);
+async function dump(scene, w, h, dpr, zoom, t, reduced, tag = '', crop = null, large = false) {
+  let img = await renderScene(scene, w, h, dpr, t, reduced, large);
+  if (large) tag += '-large';
   if (crop) {   // [x, y, w, h] in logical px
     const [cx, cy, cw, ch] = crop, src32 = new Uint32Array(img.rgba.buffer), o = new Uint32Array(cw * ch);
     for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) o[y * cw + x] = src32[(cy + y) * img.w + cx + x];
@@ -115,8 +126,15 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const reduced = ri >= 0 && Boolean(args.splice(ri, 1));
   const ci = args.indexOf('--crop');
   const crop = ci >= 0 ? args.splice(ci, 2)[1].split(',').map(Number) : null;
+  const li = args.indexOf('--large');
+  const large = li >= 0 && Boolean(args.splice(li, 1));
   const [scene = 'demo', w = '360', h = '640', dpr = '100'] = args;
-  if (scene === 'all') {
+  if (scene === 'ui') {
+    for (const name of Object.keys(UI_STATES)) {
+      for (const [sw, sh, d] of [[360, 640, 200], [1280, 800, 100]]) await dump(name, sw, sh, d, zoom, t, reduced);
+      await dump(name, 360, 640, 200, zoom, t, reduced, '', null, true);
+    }
+  } else if (scene === 'all') {
     for (const name of Object.keys(SCENES)) for (const [sw, sh] of [[360, 640], [1280, 800]]) await dump(name, sw, sh, 100, zoom, t, reduced);
-  } else await dump(scene, Number(w), Number(h), Number(dpr), zoom ?? (scene.startsWith('farm') ? 0 : 2), t, reduced, '', crop);
+  } else await dump(scene, Number(w), Number(h), Number(dpr), zoom ?? (scene.startsWith('farm') || scene.startsWith('ui') ? 0 : 2), t, reduced, '', crop, large);
 }

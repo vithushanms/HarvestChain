@@ -82,7 +82,12 @@ To look at the rendered farm (no browser needed), render the canned scenes in `t
 npm run build
 node tools/dump-ppm.mjs all                       # every farm-* scene at 360x640 and 1280x800 -> build/*.png
 node tools/dump-ppm.mjs farm-mid 360 640 --t 2500 # one scene at an animation time (--reduced, --zoom N, --crop x,y,w,h)
+node tools/dump-ppm.mjs ui                        # every ui-* state (top bar, tabs, tile sheet, toasts) at 360x640@2,
+                                                  # 1280x800 and large text -> build/ui-*.png
+node tools/dump-ppm.mjs ui-build 768 1024 100 --large   # one UI state at any size
 ```
+
+The UI states are scripted in `tests/render/uistates.mjs` through the same `pointer` / `key` / `frame` exports the loader uses.
 
 ## Looking after it
 
@@ -99,6 +104,8 @@ node tools/dump-ppm.mjs farm-mid 360 640 --t 2500 # one scene at an animation ti
 **Adding a source file.** Name it with the right numeric prefix so it concatenates in the right place. Remember that WAT has no includes — everything is one module, so names (`$foo`) must be unique across all files.
 
 **Changing the farm art.** Crop, building, truck and prop models are data: readable primitive lists in `tools/gen-models.mjs` (boxes, prisms, cylinders, spheres, stem tufts, line segments, with ripe / upgraded / season conditions). Edit them there, run `npm run gen` to rewrite the table in `src/21c_scene.wat`, look at the PNGs, then refresh the render goldens (`UPDATE_GOLDEN=1 node --test tests/render/`), review and commit. A test fails if the committed table drifts from the generator.
+
+**Changing UI text or icons.** Every word the UI shows is in the string table in `tools/gen-strings.mjs` (UPPERCASE, short; budget 2.5 KB), next to the 9x9 glyph icons drawn as ASCII art. Edit there, run `npm run gen` (rewrites `src/02b_strings.wat`), look at the PNGs, refresh the render goldens. A test fails if the committed table drifts from the generator. Keyboard codes the loader forwards are in `tools/keycodes.json` (documented in `src/22_ui.wat`).
 
 **Golden hashes.** `tests/golden.json` pins the state after 80 bot days (seeds 1-3) and after 240 bot days (seed 1); the bot plays loans, every building, two trucks, contracts and Wine, and a test asserts which actions it covers. A missing file fails the test; after a deliberate rule change run `UPDATE_GOLDEN=1 npm test`, review why the hashes moved, and commit the file.
 
