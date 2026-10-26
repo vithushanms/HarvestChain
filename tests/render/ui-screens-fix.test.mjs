@@ -183,3 +183,20 @@ test('pointer type 3 cancels a press on a button, a plot and a sheet drag: no ta
   assert.equal(g.ui(UI.SHEET), 1, 'not dismissed');
   assert.equal(g.ui(UI.TAB), 4);
 });
+
+// ---------------------------------------------------------------- M2 Title large text
+
+test('Title in large text on a phone: the pair rows stack one per line (full width); side by side otherwise', async () => {
+  for (const [w, h, d, large, save, stacked] of [[360, 640, 200, true, 1, true], [320, 568, 200, true, 1, true], [360, 640, 200, false, 1, false],
+    [1280, 800, 100, false, 0, false], [1024, 600, 100, true, 1, false]]) {
+    const g = await uiGame(w, h, d, { boot: save, large });
+    g.frame();
+    const full = g.hit(OVL.NEW).w;
+    const rows = [OVL.HOWTO, OVL.JOURNAL, OVL.LARGE, OVL.GAZOFF].map((c) => g.hit(c));
+    for (const r of rows) assert.equal(r.w === full, stacked, `${w}x${h} large=${large}: 0x${r.code.toString(16)} w ${r.w} vs ${full}`);
+    // no two Title buttons overlap
+    const all = g.hits().filter((r) => r.code >= 0x3C0);
+    for (const a of all) for (const b of all) if (a !== b)
+      assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `${w}x${h} overlap 0x${a.code.toString(16)} 0x${b.code.toString(16)}`);
+  }
+});

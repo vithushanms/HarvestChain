@@ -205,6 +205,8 @@
     (call $si (global.get $STR_OF)) (call $sc (i32.const 51))))
   (call $lab_log (global.get $SB1)))
 
+;; Results / Game Over have the large card header.
+(func $big_head (result i32) (i32.lt_u (i32.sub (global.get $scr) (i32.const 4)) (i32.const 2)))
 (func $res_title (result i32)
   (call $str (select (i32.add (global.get $STR_SCR) (i32.const 3)) (global.get $STR_YEAR3)
     (i32.and (i32.load8_u (global.get $S_MILESTONES)) (i32.const 64)))))
@@ -308,7 +310,7 @@
 (func $rule
   (call $hline (global.get $ux) (global.get $uy) (global.get $uw) (call $pal (i32.const 57)))
   (global.set $uy (i32.add (global.get $uy) (i32.add (global.get $lgap) (i32.const 2)))))
-;; On / off toggle: ink face + check icon when on, paper + cross when off (never colour alone).
+;; On / off toggle: dark ink face (style 6) + check icon when on, paper + cross when off (never colour alone).
 ;; " ON" / " OFF" after a toggle's label (LARGE TEXT; AUTO GAZETTE on the Title, DON'T SHOW on the
 ;; Gazette), and the announcement of a tapped toggle.
 (func $s_tog (param $c i32)
@@ -324,7 +326,7 @@
   (call $announce (global.get $SB3)))
 (func $toggle (param $c i32) (param $s i32) (param $on i32) (param $cols i32) (param $h i32)
   (call $put (local.get $c) (call $str (local.get $s)) (select (global.get $I_CHECK) (global.get $I_CLOSE) (local.get $on))
-    (select (i32.const 3) (i32.const 0) (local.get $on)) (i32.const 1) (local.get $cols) (local.get $h)))
+    (select (i32.const 6) (i32.const 0) (local.get $on)) (i32.const 1) (local.get $cols) (local.get $h)))
 
 ;; Ripe plots whose crop rots tonight (End Day step 2 ages ripe crops by 1, a Heatwave more outside
 ;; a Greenhouse; step 5 removes those at spoilDays).
@@ -411,11 +413,11 @@
   (call $lab (global.get $I_TRUCK) (i32.const 61))
   (call $sb (global.get $SB1)) (call $si (global.get $STR_MP)) (call $sn0 (i32.load16_u (global.get $S_WINE_SOLD))) (call $sp) (call $sg (i32.const 12))
   (call $lab (global.get $I_STALL) (i32.const 61))
-  ;; the total, large and centred: SCORE 21,340 (= score())
+  ;; the total, large and centred in wheat gold over an ink shadow: SCORE 21,340 (= score())
   (call $sb (global.get $SB1)) (call $si (global.get $STR_SCORE)) (call $sn (call $score) (i32.const 2))
   (call $lab_log (global.get $SB1))
   (global.set $tscale (i32.shl (call $ui_ts) (i32.const 1)))
-  (call $center (global.get $SB1) (i32.add (global.get $uy) (global.get $lgap)) (i32.const 37))
+  (call $center (global.get $SB1) (i32.add (global.get $uy) (global.get $lgap)) (i32.const 17))
   (global.set $uy (i32.add (global.get $uy) (i32.add (i32.mul (call $ui_ts) (i32.const 14)) (i32.mul (global.get $lgap) (i32.const 3)))))
   ;; shareable summary on a tinted slip: "HARVESTCHAIN DAY 240 . SCORE 21,340 . *4 . 22 CONTRACTS"
   (global.set $sblim (i32.const 120))
@@ -449,10 +451,24 @@
 
 ;; Title: the lit farm under a warm dim, extruded HARVESTCHAIN lettering, tagline, the button stack,
 ;; the zero-asset footer and the load line (Task 7 metrics; "--" until measured).
-;; Top of the Title's button stack: 4 or 5 rows above the 26 px footer (the farm fits above it).
-(func $title_top (result i32)
-  (i32.sub (i32.sub (global.get $fb_h) (i32.add (i32.mul (i32.add (global.get $has_save) (i32.const 4)) (i32.add (call $btnh) (global.get $lgap))) (i32.const 26)))
+;; Top of the Title's button stack (c pair-row columns) above the 26 px footer; the farm fits above.
+;; Rows: CONTINUE (with a save), NEW GAME, DAILY SEED, then HOW TO PLAY | JOURNAL and the two
+;; toggles: 2 rows side by side, or 4 rows one per line.
+(func $stack_top (param $c i32) (result i32)
+  (i32.sub (i32.sub (global.get $fb_h) (i32.add (i32.mul (i32.sub (i32.add (global.get $has_save) (i32.const 8)) (i32.shl (local.get $c) (i32.const 1)))
+    (i32.add (call $btnh) (global.get $lgap))) (i32.const 26)))
     (i32.shl (global.get $lgap) (i32.const 1))))
+;; Pair-row columns: one per line only in large text when the large labels would not fit side by
+;; side (so they keep the large scale) and the taller stack still leaves the top quarter for the
+;; sign; else two (labels shrink to fit).
+(func $tcols (result i32)
+  (i32.sub (i32.const 2) (i32.and (i32.and (global.get $flag_large) (i32.eq (call $pcols) (i32.const 1)))
+    (i32.ge_s (call $stack_top (i32.const 1)) (i32.shr_s (global.get $fb_h) (i32.const 2))))))
+;; The stack's top; also sets its column ($ux, $uw).
+(func $title_top (result i32)
+  (global.set $uw (call $imin (i32.sub (global.get $fb_w) (i32.shl (global.get $lgap) (i32.const 3))) (call $S (i32.const 400))))
+  (global.set $ux (i32.shr_s (i32.sub (global.get $fb_w) (global.get $uw)) (i32.const 1)))
+  (call $stack_top (call $tcols)))
 
 (func $title
   (local $w i32) (local $g i32) (local $k i32) (local $x i32) (local $y i32) (local $d i32) (local $s i32) (local $bh i32) (local $p i32) (local $sw i32)
@@ -487,8 +503,6 @@
   (call $center (call $str (global.get $STR_TAGLINE)) (i32.add (local.get $y) (i32.add (i32.mul (local.get $k) (i32.const 8)) (i32.add (local.get $g) (i32.shl (local.get $g) (i32.const 1))))) (i32.const 59))
   ;; buttons, stacked up from the footer
   (local.set $bh (call $btnh))
-  (global.set $uw (call $imin (i32.sub (local.get $w) (i32.shl (local.get $g) (i32.const 3))) (call $S (i32.const 400))))
-  (global.set $ux (i32.shr_s (i32.sub (local.get $w) (global.get $uw)) (i32.const 1)))
   (global.set $ucol (i32.const 0))
   (global.set $uy (call $title_top))
   (if (global.get $has_save)
@@ -498,14 +512,16 @@
     (else (call $put (i32.const 0x3C1) (call $str (global.get $STR_NEW_GAME)) (global.get $I_PLUS) (i32.const 1) (i32.const 1) (i32.const 1) (local.get $bh))))
   (call $sb (global.get $SB2)) (call $si (global.get $STR_DAILY)) (call $sn0 (call $lget (global.get $L_DSEED)))
   (call $put_two (i32.const 0x3C2) (global.get $SB2) (call $str (global.get $STR_REPLACES)) (global.get $I_SUN) (i32.const 1) (local.get $bh))
-  ;; the two pair rows share one text scale: scale 1 when large labels would not fit side by side
-  (local.set $p (global.get $flag_large))
-  (if (i32.eq (call $pcols) (i32.const 1)) (then (global.set $flag_large (i32.const 0))))
-  (call $put (i32.const 0x3C3) (call $str (i32.add (global.get $STR_SCR) (i32.const 5))) (global.get $I_SPROUT) (i32.const 0) (i32.const 1) (i32.const 2) (local.get $bh))
-  (call $put (i32.const 0x3C6) (call $str (i32.add (global.get $STR_SCR) (i32.const 2))) (global.get $I_BOOK) (i32.const 0) (i32.const 1) (i32.const 2) (local.get $bh))
-  (call $toggle (i32.const 0x3C4) (global.get $STR_LARGE) (local.get $p) (i32.const 2) (local.get $bh))
-  (call $toggle (i32.const 0x3C5) (global.get $STR_AUTO_GAZ) (i32.eqz (global.get $flag_gazoff)) (i32.const 2) (local.get $bh))
-  (global.set $flag_large (local.get $p))
+  ;; the pair rows: one per line in large text on a narrow screen; side by side otherwise, then
+  ;; at one shared scale (1 when the large labels would not fit side by side: never mixed)
+  (local.set $p (call $tcols))
+  (local.set $d (global.get $flag_large))
+  (if (i32.and (i32.eq (local.get $p) (i32.const 2)) (i32.eq (call $pcols) (i32.const 1))) (then (global.set $flag_large (i32.const 0))))
+  (call $put (i32.const 0x3C3) (call $str (i32.add (global.get $STR_SCR) (i32.const 5))) (global.get $I_SPROUT) (i32.const 0) (i32.const 1) (local.get $p) (local.get $bh))
+  (call $put (i32.const 0x3C6) (call $str (i32.add (global.get $STR_SCR) (i32.const 2))) (global.get $I_BOOK) (i32.const 0) (i32.const 1) (local.get $p) (local.get $bh))
+  (call $toggle (i32.const 0x3C4) (global.get $STR_LARGE) (local.get $d) (local.get $p) (local.get $bh))
+  (call $toggle (i32.const 0x3C5) (global.get $STR_AUTO_GAZ) (i32.eqz (global.get $flag_gazoff)) (local.get $p) (local.get $bh))
+  (global.set $flag_large (local.get $d))
   ;; footer: zero asset files, load time and transfer size
   (global.set $tscale (i32.const 1))
   (local.set $y (i32.sub (global.get $fb_h) (i32.add (local.get $g) (i32.const 20))))

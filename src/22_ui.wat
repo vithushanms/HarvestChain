@@ -17,8 +17,8 @@
 ;;   0xA100..0xA8FF  label log: every $ui_label text drawn this frame, NUL-separated (tests; also on
 ;;                   for the frame that announces a newly opened screen)
 ;;   0xAA00..0xAC3F  last End Day summary, screen announce / summary builder (22c_screens.wat)
-;; Static data at 0x0900 (00_memory.wat): button styles (6 x 5 palette indices: border, face,
-;; pressed face, text, second line) and the season -> icon map at 0x0920.
+;; Static data at 0x0900 (00_memory.wat): button styles (7 x 5 palette indices: border, face,
+;; pressed face, text, second line) and the season -> icon map at 0x0923.
 ;;
 ;; Frame loop (ruling C5): frame(now_ms) draws when something is dirty or moving and returns
 ;; 1 while a slide / press / shake / rain or storm particles need the next frame, 2 when only
@@ -96,11 +96,11 @@
 (global $BTNS i32 (i32.const 0x9000))
 
 ;; Button styles: border, face, pressed face, text, second line (palette idx = hue*4+step).
-;;   0 card (paper)  1 primary (barn red)  2 go (green)  3 toggle on (ink)  4 danger  5 disabled
+;;   0 card (paper)  1 primary (barn red)  2 go (green)  3 selected (ink)  4 danger  5 disabled
+;;   6 toggle on (a darker ink: the check icon's green stroke stays >= 3:1)
 (data (i32.const 0x900)
-  "\3d\3b\3a\3d\3f" "\24\26\25\3b\3a" "\08\09\08\3b\3a" "\3c\3e\3d\3b\3a" "\24\19\25\3b\3a" "\2e\39\39\3f\25"
-  "\00\00"
-  "\08\02\09\06")                              ;; 0x920 season -> icon: sprout, sun, leaf, snowflake
+  "\3d\3b\3a\3d\3f" "\24\26\25\3b\3a" "\08\09\08\3b\3a" "\3c\3e\3d\3b\3a" "\24\19\25\3b\3a" "\2e\39\39\3f\25" "\3c\3d\3c\3b\3a"
+  "\08\02\09\06")                              ;; 0x923 season -> icon: sprout, sun, leaf, snowflake
 
 ;; ---------------------------------------------------------------- strings and text building
 

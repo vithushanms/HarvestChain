@@ -334,7 +334,7 @@
         (i32.add (local.get $ty) (i32.sub (local.get $s) (global.get $tscale))) (local.get $s2) (call $pal (i32.const 63)))))))
     (else
       ;; season, today's weather, arrow, forecast: 4 icons of 9s + gaps = 40s
-      (call $ui_icon (i32.load8_u (i32.add (i32.const 0x920) (call $season))) (local.get $tx) (i32.sub (local.get $ty) (local.get $s)) (local.get $s))
+      (call $ui_icon (i32.load8_u (i32.add (i32.const 0x923) (call $season))) (local.get $tx) (i32.sub (local.get $ty) (local.get $s)) (local.get $s))
       (call $ui_icon (i32.add (global.get $I_SUN) (call $wx (i32.const 0))) (i32.add (local.get $tx) (i32.mul (i32.const 11) (local.get $s))) (i32.sub (local.get $ty) (local.get $s)) (local.get $s))
       (call $ui_icon (global.get $I_ARROW_R) (i32.add (local.get $tx) (i32.mul (i32.const 20) (local.get $s))) (i32.sub (local.get $ty) (local.get $s)) (local.get $s))
       (call $ui_icon (i32.add (global.get $I_SUN) (call $wx (i32.const 2))) (i32.add (local.get $tx) (i32.mul (i32.const 31) (local.get $s))) (i32.sub (local.get $ty) (local.get $s)) (local.get $s))))
@@ -484,6 +484,8 @@
   (local.set $y (i32.add (local.get $y0) (local.get $oy)))
   (call $ui_panel (local.get $x) (local.get $y) (local.get $w) (i32.add (local.get $h) (i32.const 3)))
   (local.set $hh (call $imax (call $min_touch) (call $S (i32.const 36))))
+  ;; Results / Game Over: a taller header for the title at twice the text scale
+  (if (call $big_head) (then (local.set $hh (i32.add (local.get $hh) (i32.add (i32.mul (call $ui_ts) (i32.const 7)) (global.get $lgap))))))
   (call $sheet_head (i32.add (local.get $x) (i32.shl (local.get $g) (i32.const 1))) (i32.add (local.get $y) (local.get $g))
     (i32.sub (local.get $w) (i32.add (local.get $hh) (i32.shl (local.get $g) (i32.const 2)))) (local.get $hh))
   ;; close: a selected plot or a tab; screens: Gazette, Journal, How to play
@@ -555,6 +557,12 @@
   (call $fit (local.get $title) (local.get $w))
   (local.set $two (i32.ge_s (local.get $hh) (i32.add (i32.mul (call $lh) (i32.const 2)) (i32.const 3))))
   (local.set $ty (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $hh) (i32.add (i32.mul (call $lh) (i32.add (local.get $two) (i32.const 1))) (i32.mul (local.get $two) (i32.const 3)))) (i32.const 1))))
+  ;; Results / Game Over: the title at twice the UI scale (when it fits) over a UI-scale subtitle
+  (if (call $big_head) (then
+    (global.set $tscale (i32.shl (call $ui_ts) (i32.const 1)))
+    (if (i32.gt_s (call $tw (local.get $title)) (local.get $w)) (then (call $fit (local.get $title) (local.get $w))))
+    (local.set $two (i32.const 1))
+    (local.set $ty (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $hh) (i32.add (call $lh) (i32.add (i32.mul (call $ui_ts) (i32.const 7)) (i32.const 3)))) (i32.const 1))))))
   (drop (call $txt (local.get $x) (local.get $ty) (local.get $title) (call $pal (i32.const 60))))
   (if (local.get $two) (then
     (local.set $ty (i32.add (local.get $ty) (i32.add (call $lh) (i32.const 3))))
