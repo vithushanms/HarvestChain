@@ -1,0 +1,204 @@
+<!doctype html>
+<!-- HarvestChain loader: READABLE SOURCE OF TRUTH. `npm run build` minifies it into ../index.html.
+     Dumb glue only (spec 14.2): no game logic, no hit-testing. Build placeholders: BG, MANIFEST (data-URI
+     manifest incl. icon), KEYS (tools/keycodes.json), the theme colour. No external requests. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>HarvestChain</title>
+<meta name="theme-color" content="%BG%">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href='%MANIFEST%'>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:%BG%;color:#f4ecd8;font:16px monospace}
+canvas{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block;image-rendering:pixelated;touch-action:none;outline:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+#a{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<canvas id="c" role="img" aria-label="HarvestChain farm game; keyboard: E end day, H harvest all, 1 to 5 tabs"></canvas>
+<div id="a" role="status" aria-live="polite"></div>
+<noscript>HarvestChain needs JavaScript. COULD NOT LOAD GAME.</noscript>
+<script>
+'use strict';
+// 1. load timer origin (also exposed for tests / the Task 7 load timer via window.__hc)
+const t0 = performance.now();
+const KEYS = /*KEYS*/{};
+const H = window.__hc = { t0, t1: 0, n: 0 };   // t1 = first blit; n = frame() calls
+const cv = document.getElementById('c');
+const live = document.getElementById('a');
+const ctx = cv.getContext('2d');
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+const fail = () => { document.body.textContent = 'COULD NOT LOAD GAME - RELOAD'; };
+
+let ex;
+let raf = 0, tm = 0, rz = 1, seq = 0, lastPrefs = -1, active = null, swDone = 0;
+const held = new Set();
+
+// ---- scheduling (5): frame() only while the module wants it; idle = zero CPU
+function schedule() {
+  if (!ex || document.hidden || raf) return;
+  clearTimeout(tm); tm = 0;
+  raf = requestAnimationFrame(run);
+}
+function run() {
+  raf = 0;
+  if (rz) resize();
+  H.n++;
+  const r = ex.frame(Math.floor(performance.now()));   // 0 idle | 1 animating | 2 ambient only
+  blit();
+  post();
+  if (r === 1) raf = requestAnimationFrame(run);
+  else if (r === 2) tm = setTimeout(() => { tm = 0; schedule(); }, 83);
+  if (!H.t1) { H.t1 = performance.now(); register(); }
+}
+
+// ---- canvas (3, 6)
+function resize() {
+  rz = 0;
+  const w = innerWidth, h = innerHeight;
+  ex.resize(w, h, Math.round(devicePixelRatio * 100));
+  const fw = ex.fb_w(), fh = ex.fb_h();   // backing store = module's logical size; CSS scales it nearest-neighbour
+  if (cv.width !== fw) cv.width = fw;    // assigning clears the bitmap, so only on a real change
+  if (cv.height !== fh) cv.height = fh;
+  cv.style.width = w + 'px';
+  cv.style.height = h + 'px';
+}
+function blit() {
+  const w = ex.fb_w(), h = ex.fb_h();
+  if (w * h) ctx.putImageData(new ImageData(new Uint8ClampedArray(ex.memory.buffer, ex.fb_ptr(), w * h * 4), w, h), 0, 0);
+}
+const dirty = () => { rz = 1; schedule(); };
+
+// ---- persistence (6), prefs (7), aria-live (9): all after every frame
+function bytesOut(p, n) {
+  const b = new Uint8Array(ex.memory.buffer, p, n);
+  let s = '';
+  for (let i = 0; i < n; i++) s += String.fromCharCode(b[i]);
+  return s;
+}
+function save() {
+  if (!ex.need_save()) return;
+  try { store.set('hc.save', btoa(bytesOut(ex.save_ptr(), ex.save_len()))); } catch (e) {}
+  ex.ack_save();
+}
+function post() {
+  save();
+  const f = ex.get_flags() & 5;               // bit0 large text, bit2 gazette off (bit1 = OS reduced motion, not stored)
+  if (f !== lastPrefs) {
+    lastPrefs = f;
+    store.set('hc.prefs', JSON.stringify({ large: f & 1, noGazette: f >> 2 }));
+  }
+  const s = ex.announce_seq();
+  if (s !== seq) {
+    seq = s;
+    live.textContent = new TextDecoder().decode(new Uint8Array(ex.memory.buffer, ex.announce_ptr(), ex.announce_len()));
+  }
+}
+// bytes -> module io buffer (32 KB region). Returns length or 0 when it does not fit.
+function toIo(bin) {
+  const n = bin.length;
+  if (!n || n > 32768) return 0;
+  const u = new Uint8Array(ex.memory.buffer, ex.io_buf(), n);
+  for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
+  return n;
+}
+function restore() {
+  try {
+    const n = toIo(atob(store.get('hc.save') || ''));
+    return n && ex.load(ex.io_buf(), n) === 0 ? 1 : 0;   // a bad save is left in place until a new save overwrites it
+  } catch (e) { return 0; }
+}
+function prefs() {
+  try { const p = JSON.parse(store.get('hc.prefs')); return p && typeof p === 'object' ? p : {}; } catch (e) { return {}; }
+}
+
+// ---- input (4)
+function pt(e, type) {
+  const r = cv.getBoundingClientRect();
+  ex.pointer(Math.round(e.clientX - r.left), Math.round(e.clientY - r.top), type);
+  schedule();
+}
+function bind() {
+  cv.oncontextmenu = (e) => e.preventDefault();
+  cv.onpointerdown = (e) => {
+    if (!e.isPrimary || e.button > 0 || active !== null) return;   // primary pointer, left button / touch only
+    active = e.pointerId;
+    try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+    e.preventDefault();
+    pt(e, 0);
+  };
+  cv.onpointermove = (e) => { if (e.isPrimary) pt(e, 1); };
+  const up = (e) => {
+    if (e.pointerId !== active) return;
+    active = null;
+    pt(e, 2);
+  };
+  cv.onpointerup = up;
+  cv.onpointercancel = up;
+  // Task 7: cv.onwheel -> ex.wheel(...) once the export exists (feature-detect it).
+  const key = (e, d) => {
+    const c = KEYS[e.code];
+    if (!c || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    if (e.repeat) return;                       // module acts once per press; drop auto-repeat
+    if (d) held.add(c); else held.delete(c);
+    ex.key(c, d);
+    schedule();
+  };
+  onkeydown = (e) => key(e, 1);
+  onkeyup = (e) => key(e, 0);
+  const release = () => { for (const c of held) ex.key(c, 0); held.clear(); schedule(); };
+  onblur = release;
+  addEventListener('resize', dirty);
+  addEventListener('orientationchange', dirty);
+  if (visualViewport) visualViewport.addEventListener('resize', dirty);
+  addEventListener('pagehide', () => { release(); save(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { release(); save(); } else dirty();
+  });
+  const mq = matchMedia('(prefers-reduced-motion: reduce)');
+  const flags = () => { ex.set_flags(mq.matches, ex.get_flags() & 1); schedule(); };
+  if (mq.addEventListener) mq.addEventListener('change', flags);
+}
+
+// ---- service worker (10): after the first frame, never on file://
+function register() {
+  if (swDone++ || !navigator.serviceWorker || location.protocol === 'file:') return;
+  try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {}
+}
+
+async function main() {
+  let r;
+  try { r = await WebAssembly.instantiateStreaming(fetch('game.wasm'), {}); }
+  catch (e) { r = await WebAssembly.instantiate(await (await fetch('game.wasm')).arrayBuffer(), {}); }
+  H.ex = ex = r.instance.exports;
+  const p = prefs();
+  const has = restore();
+  const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+  ex.set_env(seed | 0, Math.floor(Date.now() / 86400000));
+  ex.set_flags(matchMedia('(prefers-reduced-motion: reduce)').matches, p.large ? 1 : 0);
+  ex.set_pref(2, p.noGazette ? 1 : 0);
+  ex.ui_boot(has);
+  // 8. #hash replay (Task 7): decode base64url into the io buffer and hand it to replay_load. Ignored when
+  //    the export is absent or the hash is not valid base64url; never throws.
+  if (location.hash.length > 1 && ex.replay_load) {
+    try {
+      const b = atob(location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/'));
+      const n = toIo(b);
+      if (n) ex.replay_load(ex.io_buf(), n);
+    } catch (e) {}
+  }
+  bind();
+  rz = 1;
+  schedule();
+}
+if (!window.WebAssembly) fail(); else main().catch(fail);
+</script>
+</body>
+</html>
