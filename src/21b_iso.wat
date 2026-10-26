@@ -51,6 +51,7 @@
 (global $dseed (mut i32) (i32.const 0))    ;; pmode 3: speckle seed
 (global $bclip (mut i32) (i32.const 0x3FFFFFFF)) ;; blob rows below this screen y are skipped (domes)
 (global $cy0 (mut i32) (i32.const -0x3FFFFFFF))  ;; rows above this screen y are clipped (horizon)
+(global $cy1 (mut i32) (i32.const 0x3FFFFFFF))   ;; rows at / below this screen y are clipped (clouds)
 (global $xl (mut i32) (i32.const 0))
 (global $xr (mut i32) (i32.const 0))
 ;; shape parameters: p0..p2 position, p3..p5 size, p6 hue, p7 axis
@@ -99,6 +100,7 @@
   (local.set $y (i32.add (local.get $y) (global.get $ody)))
   (if (i32.ge_u (local.get $y) (global.get $fb_h)) (then (return)))
   (if (i32.lt_s (local.get $y) (global.get $cy0)) (then (return)))
+  (if (i32.ge_s (local.get $y) (global.get $cy1)) (then (return)))
   (local.set $e (i32.add (global.get $R_FB) (i32.shl (i32.mul (local.get $y) (global.get $fb_w)) (i32.const 2))))
   (local.set $p (i32.add (local.get $e) (i32.shl
     (call $clamp (i32.add (local.get $x0) (global.get $odx)) (i32.const 0) (global.get $fb_w)) (i32.const 2))))

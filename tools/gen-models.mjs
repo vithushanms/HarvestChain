@@ -35,7 +35,7 @@ const box = (x, y, z, w, d, h, hue, o = {}) => ({ ...rec(0, x, y, z, w, d, h, hu
 const prism = (x, y, z, w, d, h, hue, axis, o = {}) => ({ ...rec(1, x, y, z, w, d, h, hue, { ...o, axis }), top: z + h });
 const cyl = (x, y, z, r, h, hue, o = {}) => ({ ...rec(2, x, y, z, r, 0, h, hue, o), top: z + h });
 const sph = (x, y, z, r, hue, o = {}) => ({ ...rec(3, x, y, z, r, 0, 0, hue, o), top: z + r });
-const shadow = (x, y, w, d, sl) => rec(5, x, y, 0, w, d, sl, 'SOIL');
+const shadow = (x, y, w, d, sl, o = {}) => rec(5, x, y, 0, w, d, sl, 'SOIL', o);
 const fx = (kind, x, y, z, size, o = {}) => ({ ...rec(6, x, y, z, kind, size, 0, 'SOIL', o), top: z });
 const sub = (id, x = 0, y = 0) => ({ ...rec(7, x, y, 0, id, 0, 0, 'SOIL'), top: 12 });
 const rep = (nx, ny, sx, sy, list) => [{ ...rec(4, 0, 0, 0, nx | (ny << 4), sx | (sy << 4), list.length, 'SOIL'), top: 0 }, ...list];
@@ -70,9 +70,10 @@ const tomato = [
 ];
 const apple = [
   [seg(8, 8, 0, 0, 0, 6, 'WOOD'), sph(8, 8, 8, 4, 'GRASS', { if: '!B' })],
-  [shadow(5, 5, 6, 6, 8), cyl(8, 8, 0, 1, 8, 'WOOD'), seg(8, 8, 7, 3, 0, 5, 'WOOD', { if: 'B' }), seg(8, 8, 7, 0, 3, 4, 'WOOD', { if: 'B' }),
+  [shadow(5, 5, 6, 6, 8, { if: '!B' }), shadow(7, 7, 2, 2, 9, { if: 'B' }), cyl(8, 8, 0, 1, 8, 'WOOD'), seg(8, 8, 7, 3, 0, 5, 'WOOD', { if: 'B' }), seg(8, 8, 7, 0, 3, 4, 'WOOD', { if: 'B' }),
     sph(8, 8, 12, 7, 'GRASS', { if: '!B', roof: 1 }), sph(10, 11, 14, 1, 'PAPER', { ...no, if: 'C' })],
-  [shadow(3, 3, 10, 10, 14), cyl(8, 8, 0, 2, 11, 'WOOD', { if: '!B' }), cyl(8, 8, 0, 1, 10, 'WOOD', { if: 'B' }),
+  [shadow(3, 3, 10, 10, 14, { if: '!B' }), shadow(7, 7, 2, 2, 16, { if: 'B' }), shadow(5, 9, 4, 1, 9, { if: 'B' }),
+    cyl(8, 8, 0, 2, 11, 'WOOD', { if: '!B' }), cyl(8, 8, 0, 1, 10, 'WOOD', { if: 'B' }),
     seg(8, 8, 7, -6, 0, 8, 'WOOD', { if: 'B' }), seg(8, 8, 8, 0, -6, 9, 'WOOD', { if: 'B' }), seg(8, 8, 9, 0, 0, 12, 'WOOD', { if: 'B' }),
     seg(2, 8, 15, -2, 1, 4, 'WOOD', { ...no, if: 'B' }), seg(8, 2, 17, 1, -2, 4, 'WOOD', { ...no, if: 'B' }), seg(8, 8, 21, -2, -1, 3, 'WOOD', { ...no, if: 'B' }),
     seg(8, 8, 8, 6, 0, 8, 'WOOD', { if: 'B' }), seg(8, 8, 8, 0, 6, 8, 'WOOD', { if: 'B' }),
@@ -163,15 +164,25 @@ const truck = (back) => {
     ...(back ? [...cargo, cab, cabF, win] : [cab, cabF, win, ...cargo]),
     sph(3, 7, 1, 2, 'INK'), sph(10, 7, 1, 2, 'INK')];
 };
-const pond = [cyl(8, 8, 0, 13, 0, 'WATER'), cyl(6, 7, 0, 6, 0, 'SKY', no), tuft(14, 3, 5, 'GRASS2'), tuft(2, 14, 4, 'GRASS2'), tuft(15, 9, 4, 'GRASS')];
+const pond = [cyl(8, 8, 0, 13, 0, 'WATER', { if: '!B' }), cyl(6, 7, 0, 6, 0, 'SKY', { ...no, if: '!B' }),
+  cyl(8, 8, 0, 13, 0, 'SKY', { if: 'B' }), cyl(6, 7, 0, 7, 0, 'PAPER', { ...no, if: 'B' }),
+  seg(3, 6, 0, 5, 2, 0, 'STONE', { ...no, if: 'B' }), seg(8, 8, 0, 4, 5, 0, 'STONE', { ...no, if: 'B' }), seg(8, 8, 0, 2, -5, 0, 'STONE', { ...no, if: 'B' }),
+  tuft(14, 3, 5, 'GRASS2', { if: '!B' }), tuft(2, 14, 4, 'GRASS2', { if: '!B' }), tuft(15, 9, 4, 'GRASS', { if: '!B' }),
+  tuft(14, 3, 4, 'WOOD', { if: 'B' }), tuft(2, 14, 3, 'WOOD', { if: 'B' }), tuft(15, 9, 3, 'WHEAT', { if: 'B' })];
 const rock = [shadow(5, 5, 6, 6, 3), sph(8, 8, 0, 5, 'STONE', { dome: 1 }), sph(11, 10, 0, 3, 'STONE', { dome: 1 })];
 const sign = [shadow(7, 8, 2, 2, 6), box(8, 8, 0, 1, 1, 8, 'WOOD'), box(5, 9, 5, 7, 1, 4, 'WHEAT')];
 const bush = [shadow(5, 5, 6, 6, 4), sph(8, 8, 3, 5, 'GRASS2', { roof: 1 })];
+// rotting crop: limp vines arching off a stake and flopping to the ground (brown, olive dying
+// leaves), squashed dark fruit
+const droop = (dx, dy, hue = 'WOOD') => [seg(3, 3, 9, dx >> 1, dy >> 1, 1, hue, no), seg(3 + (dx >> 1), 3 + (dy >> 1), 10, dx, dy, -8, hue)];
+const mush = (x, y) => sph(x, y, 0, 1, 'BARN', { dome: 1 });
+const wilt = [rep(2, 2, 8, 8, [mush(6, 6), ...droop(-4, 2), ...droop(2, -4), seg(3, 3, 0, 0, 0, 9, 'WOOD', no),
+  ...droop(4, 1, 'GRASS2'), ...droop(1, 4, 'GRASS2'), mush(1, 7), mush(7, 2)])];
 
 export const MODELS = [
   ...wheat, ...corn, ...tomato, ...apple, ...grape,                    // 0..14 crop*3 + stage
   mill, cannery, press, bakery, cellar, warehouse, coldstore, greenhouse, well, garage, // 15..24
-  truck(false), truck(true), sign, bush, pond, rock,                   // 25..30
+  truck(false), truck(true), sign, bush, pond, rock, wilt,             // 25..31
 ].map((m) => m.flat());
 
 export function generate() {

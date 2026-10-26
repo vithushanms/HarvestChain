@@ -4,11 +4,11 @@
 ;;
 ;; World: tile (tx, ty) covers x in [16tx, 16tx+16), y in [16ty, 16ty+16), ground z = 0; the
 ;; 8x8 board sits on a raised slab (front side faces visible); the owned grid is the top-left
-;; grid x grid square. Behind the slab: a meadow backdrop, a dirt road along y = -14..-4 that
+;; grid x grid square. Behind the slab: a meadow backdrop, a two-lane dirt road along y = -17..-2 that
 ;; runs up-screen into the hills at the horizon (trucks drive it), a sky with sun and clouds.
 ;;
 ;; Fit ($scene_fit): the viewport rect (Task 4 layout; default = framebuffer minus a top and
-;; bottom margin) must hold the owned grid (n x n tiles, + half a tile across, + 2 tiles of
+;; bottom margin) must hold the owned grid (n x n tiles, + a quarter tile across, + 2 tiles of
 ;; height for tall models); hw = largest integer that fits (4..64), centred. The wild ring and
 ;; the rest of the 8x8 slab spill past it. Horizon = 1 tile above the slab's back corner but
 ;; at least fb_h / 5 (when the farm leaves room), so the sky never vanishes in landscape.
@@ -62,52 +62,53 @@
 ;;   outline pass row offsets
 (data (i32.const 0x7600)
   "\00\18\2d\3b\40\3b\2d\18\00\e8\d3\c5\c0\c5\d3\e8"
-  "\00\01\00\00\0a\0a\09\09\01\09\0a\0b\0c\0d\0e\0f"
+  "\00\01\02\03\0a\0a\09\01\01\09\0a\0b\0c\0d\0e\0f"
   "\31\32\33" "\31\33\3a" "\2e\33\3b" "\2d\2e\2f" "\3d\3e\2d" "\3f\23\3a" "\32\33\13" "\32\3a\13"
-  "\0e\09" "\0e\0d" "\3a\2f" "\09\08" "\09\08" "\2f\09" "\0e\0d" "\03\0e"
+  "\0e\09" "\0e\0d" "\3b\3b" "\09\08" "\09\08" "\0b\0a" "\0e\0d" "\03\0e"
   "\09\2a\3a\08\3e\2e\0d\02"
-  "\00\00" "\11\02" "\33\04" "\2d\03" "\3d\05" "\37\04" "\13\03" "\03\03"
+  "\00\00" "\11\02" "\33\04" "\2d\03" "\3d\05" "\37\04" "\16\05" "\03\03"
   "\f6\01\05" "\fc\fe\06" "\03\fd\07" "\09\00\05" "\00\02\06" "\00"
   "\14\de\0b" "\ec\0c\0b" "\e6\2c\1c" "\38\e2\1c" "\5c\dc\0b" "\ee\4c\0b" "\e2\64\1c" "\7c\e4\0b"
   "\0a\0e\0b\0f" "\0a\09\0a\0b" "\0e\12\0e\0f" "\3b\33\3b\3a" "\0e\03\0f\03"
-  "\0a\3b\0b\3b"
+  "\0b\33\0b\33"
   "\ff\03\07\04\05\06" "\00\00\01\02"
   "\a0\8c\1d" "\d2\6e\0b" "\6e\d2\0b" "\96\c8\1c" "\c8\aa\1e" "\82\f0\1c" "\e6\96\1c" "\fa\aa\0b"
   "\02\00\01\01\00")
 
 ;; >>> GENERATED models: do not hand-edit (npm run gen)
 (data (i32.const 0x6800)
-  "\7c\68\02\04" ;; 0
-  "\8c\68\02\07" ;; 1
-  "\9c\68\03\0a" ;; 2
-  "\b4\68\02\05" ;; 3
-  "\c4\68\06\0a" ;; 4
-  "\f4\68\0c\11" ;; 5
-  "\54\69\02\03" ;; 6
-  "\64\69\03\09" ;; 7
-  "\7c\69\09\0c" ;; 8
-  "\c4\69\02\0c" ;; 9
-  "\d4\69\06\13" ;; 10
-  "\04\6a\19\1b" ;; 11
-  "\cc\6a\05\0a" ;; 12
-  "\f4\6a\07\0a" ;; 13
-  "\2c\6b\14\0d" ;; 14
-  "\cc\6b\0a\1c" ;; 15
-  "\1c\6c\0c\13" ;; 16
-  "\7c\6c\0e\0f" ;; 17
-  "\ec\6c\0b\14" ;; 18
-  "\44\6d\0a\0d" ;; 19
-  "\94\6d\0a\14" ;; 20
-  "\e4\6d\09\0e" ;; 21
-  "\2c\6e\0b\10" ;; 22
-  "\84\6e\0a\12" ;; 23
-  "\d4\6e\09\10" ;; 24
-  "\1c\6f\0b\09" ;; 25
-  "\74\6f\0b\09" ;; 26
-  "\cc\6f\03\09" ;; 27
-  "\e4\6f\02\08" ;; 28
-  "\f4\6f\05\06" ;; 29
-  "\1c\70\03\05" ;; 30
+  "\80\68\02\04" ;; 0
+  "\90\68\02\07" ;; 1
+  "\a0\68\03\0a" ;; 2
+  "\b8\68\02\05" ;; 3
+  "\c8\68\06\0a" ;; 4
+  "\f8\68\0c\11" ;; 5
+  "\58\69\02\03" ;; 6
+  "\68\69\03\09" ;; 7
+  "\80\69\09\0c" ;; 8
+  "\c8\69\02\0c" ;; 9
+  "\d8\69\07\13" ;; 10
+  "\10\6a\1b\1b" ;; 11
+  "\e8\6a\05\0a" ;; 12
+  "\10\6b\07\0a" ;; 13
+  "\48\6b\14\0d" ;; 14
+  "\e8\6b\0a\1c" ;; 15
+  "\38\6c\0c\13" ;; 16
+  "\98\6c\0e\0f" ;; 17
+  "\08\6d\0b\14" ;; 18
+  "\60\6d\0a\0d" ;; 19
+  "\b0\6d\0a\14" ;; 20
+  "\00\6e\09\0e" ;; 21
+  "\48\6e\0b\10" ;; 22
+  "\a0\6e\0a\12" ;; 23
+  "\f0\6e\09\10" ;; 24
+  "\38\6f\0b\09" ;; 25
+  "\90\6f\0b\09" ;; 26
+  "\e8\6f\03\09" ;; 27
+  "\00\70\02\08" ;; 28
+  "\10\70\0d\06" ;; 29
+  "\78\70\03\05" ;; 30
+  "\90\70\0d\0a" ;; 31
   "\04\00\00\00\44\44\01\00\06\01\01\00\03\03\00\02\04\00\00\00\44\44\01\00\06\01\01\00\03\06\00\13\04\00\00\00\44\44\02\00\06\01\01\00\03\09\00\34"
   "\06\01\01\00\03\09\00\53\04\00\00\00\22\88\01\00\06\03\03\00\03\04\00\02\04\00\00\00\22\88\05\00\0e\04\04\05\05\fe\0d\02\0e\04\04\07\05\fe\d0\02"
   "\06\04\04\00\05\0a\00\02\0e\04\04\04\05\fe\03\02\0e\04\04\06\05\fe\30\02\04\00\00\00\22\88\0b\00\0e\04\04\06\05\fd\0c\02\0e\04\04\0a\05\fe\c0\02"
@@ -115,42 +116,46 @@
   "\0e\04\04\0e\05\ff\03\03\8e\04\04\0f\05\02\01\04\8e\04\04\0f\05\02\0f\04\04\00\00\00\22\88\01\00\03\04\04\01\02\00\00\02\04\00\00\00\22\88\02\00"
   "\0e\03\03\00\05\09\00\0a\03\04\04\04\04\00\00\02\04\00\00\00\22\88\08\00\0e\03\03\00\05\0c\00\0a\03\04\04\05\05\00\00\02\23\07\05\06\01\00\00\26"
   "\23\05\07\04\01\00\00\26\23\06\07\08\01\00\00\26\23\07\07\03\01\00\00\26\23\07\05\06\01\00\00\43\23\05\07\04\01\00\00\43\06\08\08\00\05\06\00\0a"
-  "\03\08\08\08\04\00\00\82\05\05\05\00\06\06\08\00\02\08\08\00\01\00\08\0a\06\08\08\07\05\05\03\6a\06\08\08\07\05\04\30\6a\13\08\08\0c\07\00\00\82"
-  "\0b\0a\0b\0e\01\00\00\ae\05\03\03\00\0a\0a\0e\00\02\08\08\00\02\00\0b\8a\02\08\08\00\01\00\0a\6a\06\08\08\07\05\08\0a\6a\06\08\08\08\05\09\a0\6a"
-  "\06\08\08\09\05\0c\00\6a\0e\02\08\0f\05\04\1e\6a\0e\08\02\11\05\04\e1\6a\0e\08\08\15\05\03\fe\6a\06\08\08\08\05\08\06\6a\06\08\08\08\05\08\60\6a"
-  "\0e\0e\08\10\05\04\f1\6a\0e\08\0e\10\05\04\1f\6a\13\08\08\11\0a\00\00\82\0b\09\0d\12\01\00\00\ae\0b\0d\09\14\01\00\00\a7\0b\0c\0c\10\01\00\00\ae"
-  "\0b\06\0b\16\01\00\00\a7\0b\0b\06\17\01\00\00\ae\23\0a\0d\0f\01\00\00\27\23\0d\0a\12\01\00\00\27\23\0c\0d\15\01\00\00\27\23\07\0c\14\01\00\00\27"
-  "\23\0e\0d\0f\01\00\00\27\23\09\09\19\01\00\00\27\04\00\00\00\21\70\04\00\00\02\04\00\01\01\0a\0a\06\06\03\00\03\02\00\02\06\0a\03\00\03\02\00\02"
-  "\00\0d\04\00\01\01\0a\0a\04\00\00\00\21\70\06\00\00\02\04\00\01\01\0a\0a\0e\02\04\09\05\00\07\0b\0e\09\04\09\05\00\04\0b\03\05\04\07\03\00\00\02"
-  "\03\0a\04\07\03\00\00\02\00\0d\04\00\01\01\0a\0a\04\00\00\00\21\70\13\00\00\02\04\00\01\01\0a\0a\0e\02\04\09\05\00\07\0b\0e\09\04\09\05\00\04\0b"
-  "\03\04\04\08\04\00\00\02\03\08\04\09\04\00\00\02\03\0c\04\08\04\00\00\02\23\05\05\06\01\00\00\28\23\06\05\06\01\00\00\28\23\05\06\04\01\00\00\28"
-  "\23\0a\05\06\01\00\00\28\23\0b\05\06\01\00\00\28\23\0a\06\04\01\00\00\28\23\05\05\06\01\00\00\43\23\06\05\06\01\00\00\43\23\05\06\04\01\00\00\43"
-  "\23\0a\05\06\01\00\00\43\23\0b\05\06\01\00\00\43\23\0a\06\04\01\00\00\43\00\0d\04\00\01\01\0a\0a\05\02\02\00\0c\0c\12\00\05\01\01\00\0e\0e\00\00"
-  "\02\08\08\00\06\00\09\0b\00\06\0d\00\03\01\06\0a\02\08\08\09\05\00\0c\0a\02\08\08\0c\06\00\01\29\0a\08\08\11\05\00\01\24\13\08\08\15\07\00\00\19"
-  "\03\08\0d\11\02\00\00\0a\06\08\0d\11\00\0d\00\00\05\02\02\00\0c\0c\0e\00\05\01\01\00\0e\0e\00\00\02\05\05\00\04\00\0f\0b\02\05\05\09\04\00\02\29"
-  "\03\05\05\0f\04\00\00\1b\06\07\07\0c\05\00\03\0b\00\08\03\00\06\0b\09\0e\00\0c\06\09\01\01\06\0b\11\07\02\09\08\0d\04\0d\00\0a\0e\00\03\01\05\0a"
-  "\02\03\0c\00\02\00\04\26\06\0c\06\10\01\00\00\60\05\02\02\00\0c\0c\0a\00\05\01\01\00\0e\0e\00\00\00\02\03\00\0c\0a\01\0a\00\03\04\01\02\02\0c\0a"
-  "\00\0b\04\01\02\02\0c\0a\00\03\04\0d\0a\02\02\0a\02\08\06\01\04\00\04\0a\0a\08\06\02\04\00\01\0b\03\08\06\05\03\00\00\68\02\08\05\06\01\00\07\0b"
-  "\02\0c\0c\01\03\00\06\2a\0a\0c\0c\03\03\00\01\2b\02\05\0c\01\03\00\06\0a\0a\05\0c\03\03\00\01\0b\05\03\03\00\0a\0a\0e\00\05\02\02\00\0c\0c\00\00"
-  "\00\03\03\00\0a\0a\0a\09\08\03\03\08\0a\0a\01\2e\00\06\0d\00\03\01\06\0a\00\0d\06\03\01\04\03\04\11\05\0d\06\06\02\02\2e\11\02\02\0a\0c\0c\06\1a"
-  "\00\05\04\0b\02\02\09\0b\00\09\0a\0c\02\02\05\2b\06\06\05\14\01\00\00\60\05\02\02\00\0d\0d\04\00\03\08\07\00\0d\00\00\12\00\0b\03\00\03\03\06\22"
-  "\00\04\0c\00\07\03\07\0b\01\04\0c\07\07\03\03\1b\00\06\0f\00\03\01\05\0a\0e\07\10\00\05\05\00\0f\20\09\0f\05\01\01\02\64\02\0d\0e\00\02\00\04\2a"
-  "\02\02\0f\00\02\00\04\2a\05\01\02\00\0e\0c\0c\00\05\00\01\00\10\0e\00\00\00\01\03\00\0e\0a\09\09\08\01\03\08\0e\0a\01\0e\00\05\0d\00\05\01\07\0a"
-  "\0e\05\0e\00\05\07\05\0e\0e\05\0e\07\05\f9\05\0e\11\00\02\09\10\0c\07\0b\00\07\07\0e\03\03\03\2e\11\06\06\11\05\05\03\29\05\02\02\00\0c\0c\0a\00"
-  "\05\01\01\00\0e\0e\00\00\00\02\02\00\0c\0c\0a\0e\08\02\02\07\0c\0c\01\0d\08\02\02\02\0c\0c\01\2d\00\01\01\0a\0e\0e\01\0b\00\0a\0e\00\03\01\06\0b"
-  "\00\04\04\0b\05\05\03\2b\06\06\0e\04\02\03\00\00\05\01\01\00\0e\0e\06\00\00\01\01\00\0e\0e\01\0b\07\00\00\00\ff\00\00\00\48\01\01\01\0e\0e\09\0d"
-  "\59\01\01\0a\0e\0e\05\0d\08\0e\0e\01\01\01\09\0e\08\01\0e\01\01\01\09\0e\08\0e\01\01\01\01\09\0e\08\01\0f\0a\0e\00\01\0e\08\0f\01\0a\00\0e\01\0e"
-  "\00\0b\03\0d\02\02\03\2b\05\03\03\00\0a\0a\08\00\05\02\02\00\0c\0c\00\00\02\08\08\00\05\00\05\0b\0a\08\08\05\04\00\00\0d\00\03\08\00\01\01\0e\0a"
-  "\08\03\08\0b\0a\01\01\0a\00\0c\08\00\01\01\0e\0a\11\02\06\0e\0c\05\04\09\02\0c\0d\00\02\00\03\2a\00\02\0c\00\04\03\02\2d\05\01\01\00\0e\0e\0c\00"
-  "\05\00\00\00\10\10\00\00\08\01\01\00\0e\0e\01\0b\00\01\01\01\0e\01\0a\0e\00\01\02\01\01\0d\0a\0e\07\01\07\00\19\00\00\00\00\0e\02\01\01\0d\0a\0e"
-  "\11\00\00\0b\10\0e\05\09\00\04\0f\09\08\01\02\24\05\01\01\00\0c\06\04\00\00\01\01\01\0c\06\02\0f\00\01\01\03\04\06\05\89\00\01\01\03\04\06\05\66"
-  "\08\02\07\05\02\01\02\0d\00\05\01\03\08\06\06\4a\00\05\01\03\08\06\06\2e\08\05\01\06\08\06\01\2d\08\05\01\04\08\06\01\65\03\03\07\01\02\00\00\0f"
-  "\03\0a\07\01\02\00\00\0f\05\01\01\00\0c\06\04\00\00\01\01\01\0c\06\02\0f\00\01\01\03\08\06\06\4a\00\01\01\03\08\06\06\2e\08\01\01\06\08\06\01\2d"
-  "\08\01\01\04\08\06\01\65\00\09\01\03\04\06\05\89\00\09\01\03\04\06\05\66\08\0a\07\05\02\01\02\0d\03\03\07\01\02\00\00\0f\03\0a\07\01\02\00\00\0f"
-  "\05\07\08\00\02\02\06\00\00\08\08\00\01\01\08\0a\00\05\09\05\07\01\04\04\05\05\05\00\06\06\04\00\13\08\08\03\05\00\00\03\02\08\08\00\0d\00\00\0d"
-  "\0a\06\07\00\06\00\00\0c\06\0e\03\00\03\05\00\03\06\02\0e\00\03\04\00\03\06\0f\09\00\03\04\00\02\05\05\05\00\06\06\03\00\03\08\08\00\05\00\00\1b"
-  "\03\0b\0a\00\03\00\00\1b")
-;; 31 models, 247 records, 2100 bytes (ends 0x7034)
+  "\03\08\08\08\04\00\00\82\05\05\05\00\06\06\08\80\05\07\07\00\02\02\09\60\02\08\08\00\01\00\08\0a\06\08\08\07\05\05\03\6a\06\08\08\07\05\04\30\6a"
+  "\13\08\08\0c\07\00\00\82\0b\0a\0b\0e\01\00\00\ae\05\03\03\00\0a\0a\0e\80\05\07\07\00\02\02\10\60\05\05\09\00\04\01\09\60\02\08\08\00\02\00\0b\8a"
+  "\02\08\08\00\01\00\0a\6a\06\08\08\07\05\08\0a\6a\06\08\08\08\05\09\a0\6a\06\08\08\09\05\0c\00\6a\0e\02\08\0f\05\04\1e\6a\0e\08\02\11\05\04\e1\6a"
+  "\0e\08\08\15\05\03\fe\6a\06\08\08\08\05\08\06\6a\06\08\08\08\05\08\60\6a\0e\0e\08\10\05\04\f1\6a\0e\08\0e\10\05\04\1f\6a\13\08\08\11\0a\00\00\82"
+  "\0b\09\0d\12\01\00\00\ae\0b\0d\09\14\01\00\00\a7\0b\0c\0c\10\01\00\00\ae\0b\06\0b\16\01\00\00\a7\0b\0b\06\17\01\00\00\ae\23\0a\0d\0f\01\00\00\27"
+  "\23\0d\0a\12\01\00\00\27\23\0c\0d\15\01\00\00\27\23\07\0c\14\01\00\00\27\23\0e\0d\0f\01\00\00\27\23\09\09\19\01\00\00\27\04\00\00\00\21\70\04\00"
+  "\00\02\04\00\01\01\0a\0a\06\06\03\00\03\02\00\02\06\0a\03\00\03\02\00\02\00\0d\04\00\01\01\0a\0a\04\00\00\00\21\70\06\00\00\02\04\00\01\01\0a\0a"
+  "\0e\02\04\09\05\00\07\0b\0e\09\04\09\05\00\04\0b\03\05\04\07\03\00\00\02\03\0a\04\07\03\00\00\02\00\0d\04\00\01\01\0a\0a\04\00\00\00\21\70\13\00"
+  "\00\02\04\00\01\01\0a\0a\0e\02\04\09\05\00\07\0b\0e\09\04\09\05\00\04\0b\03\04\04\08\04\00\00\02\03\08\04\09\04\00\00\02\03\0c\04\08\04\00\00\02"
+  "\23\05\05\06\01\00\00\28\23\06\05\06\01\00\00\28\23\05\06\04\01\00\00\28\23\0a\05\06\01\00\00\28\23\0b\05\06\01\00\00\28\23\0a\06\04\01\00\00\28"
+  "\23\05\05\06\01\00\00\43\23\06\05\06\01\00\00\43\23\05\06\04\01\00\00\43\23\0a\05\06\01\00\00\43\23\0b\05\06\01\00\00\43\23\0a\06\04\01\00\00\43"
+  "\00\0d\04\00\01\01\0a\0a\05\02\02\00\0c\0c\12\00\05\01\01\00\0e\0e\00\00\02\08\08\00\06\00\09\0b\00\06\0d\00\03\01\06\0a\02\08\08\09\05\00\0c\0a"
+  "\02\08\08\0c\06\00\01\29\0a\08\08\11\05\00\01\24\13\08\08\15\07\00\00\19\03\08\0d\11\02\00\00\0a\06\08\0d\11\00\0d\00\00\05\02\02\00\0c\0c\0e\00"
+  "\05\01\01\00\0e\0e\00\00\02\05\05\00\04\00\0f\0b\02\05\05\09\04\00\02\29\03\05\05\0f\04\00\00\1b\06\07\07\0c\05\00\03\0b\00\08\03\00\06\0b\09\0e"
+  "\00\0c\06\09\01\01\06\0b\11\07\02\09\08\0d\04\0d\00\0a\0e\00\03\01\05\0a\02\03\0c\00\02\00\04\26\06\0c\06\10\01\00\00\60\05\02\02\00\0c\0c\0a\00"
+  "\05\01\01\00\0e\0e\00\00\00\02\03\00\0c\0a\01\0a\00\03\04\01\02\02\0c\0a\00\0b\04\01\02\02\0c\0a\00\03\04\0d\0a\02\02\0a\02\08\06\01\04\00\04\0a"
+  "\0a\08\06\02\04\00\01\0b\03\08\06\05\03\00\00\68\02\08\05\06\01\00\07\0b\02\0c\0c\01\03\00\06\2a\0a\0c\0c\03\03\00\01\2b\02\05\0c\01\03\00\06\0a"
+  "\0a\05\0c\03\03\00\01\0b\05\03\03\00\0a\0a\0e\00\05\02\02\00\0c\0c\00\00\00\03\03\00\0a\0a\0a\09\08\03\03\08\0a\0a\01\2e\00\06\0d\00\03\01\06\0a"
+  "\00\0d\06\03\01\04\03\04\11\05\0d\06\06\02\02\2e\11\02\02\0a\0c\0c\06\1a\00\05\04\0b\02\02\09\0b\00\09\0a\0c\02\02\05\2b\06\06\05\14\01\00\00\60"
+  "\05\02\02\00\0d\0d\04\00\03\08\07\00\0d\00\00\12\00\0b\03\00\03\03\06\22\00\04\0c\00\07\03\07\0b\01\04\0c\07\07\03\03\1b\00\06\0f\00\03\01\05\0a"
+  "\0e\07\10\00\05\05\00\0f\20\09\0f\05\01\01\02\64\02\0d\0e\00\02\00\04\2a\02\02\0f\00\02\00\04\2a\05\01\02\00\0e\0c\0c\00\05\00\01\00\10\0e\00\00"
+  "\00\01\03\00\0e\0a\09\09\08\01\03\08\0e\0a\01\0e\00\05\0d\00\05\01\07\0a\0e\05\0e\00\05\07\05\0e\0e\05\0e\07\05\f9\05\0e\11\00\02\09\10\0c\07\0b"
+  "\00\07\07\0e\03\03\03\2e\11\06\06\11\05\05\03\29\05\02\02\00\0c\0c\0a\00\05\01\01\00\0e\0e\00\00\00\02\02\00\0c\0c\0a\0e\08\02\02\07\0c\0c\01\0d"
+  "\08\02\02\02\0c\0c\01\2d\00\01\01\0a\0e\0e\01\0b\00\0a\0e\00\03\01\06\0b\00\04\04\0b\05\05\03\2b\06\06\0e\04\02\03\00\00\05\01\01\00\0e\0e\06\00"
+  "\00\01\01\00\0e\0e\01\0b\07\00\00\00\ff\00\00\00\48\01\01\01\0e\0e\09\0d\59\01\01\0a\0e\0e\05\0d\08\0e\0e\01\01\01\09\0e\08\01\0e\01\01\01\09\0e"
+  "\08\0e\01\01\01\01\09\0e\08\01\0f\0a\0e\00\01\0e\08\0f\01\0a\00\0e\01\0e\00\0b\03\0d\02\02\03\2b\05\03\03\00\0a\0a\08\00\05\02\02\00\0c\0c\00\00"
+  "\02\08\08\00\05\00\05\0b\0a\08\08\05\04\00\00\0d\00\03\08\00\01\01\0e\0a\08\03\08\0b\0a\01\01\0a\00\0c\08\00\01\01\0e\0a\11\02\06\0e\0c\05\04\09"
+  "\02\0c\0d\00\02\00\03\2a\00\02\0c\00\04\03\02\2d\05\01\01\00\0e\0e\0c\00\05\00\00\00\10\10\00\00\08\01\01\00\0e\0e\01\0b\00\01\01\01\0e\01\0a\0e"
+  "\00\01\02\01\01\0d\0a\0e\07\01\07\00\19\00\00\00\00\0e\02\01\01\0d\0a\0e\11\00\00\0b\10\0e\05\09\00\04\0f\09\08\01\02\24\05\01\01\00\0c\06\04\00"
+  "\00\01\01\01\0c\06\02\0f\00\01\01\03\04\06\05\89\00\01\01\03\04\06\05\66\08\02\07\05\02\01\02\0d\00\05\01\03\08\06\06\4a\00\05\01\03\08\06\06\2e"
+  "\08\05\01\06\08\06\01\2d\08\05\01\04\08\06\01\65\03\03\07\01\02\00\00\0f\03\0a\07\01\02\00\00\0f\05\01\01\00\0c\06\04\00\00\01\01\01\0c\06\02\0f"
+  "\00\01\01\03\08\06\06\4a\00\01\01\03\08\06\06\2e\08\01\01\06\08\06\01\2d\08\01\01\04\08\06\01\65\00\09\01\03\04\06\05\89\00\09\01\03\04\06\05\66"
+  "\08\0a\07\05\02\01\02\0d\03\03\07\01\02\00\00\0f\03\0a\07\01\02\00\00\0f\05\07\08\00\02\02\06\00\00\08\08\00\01\01\08\0a\00\05\09\05\07\01\04\04"
+  "\05\05\05\00\06\06\04\00\13\08\08\03\05\00\00\03\02\08\08\00\0d\00\00\8d\0a\06\07\00\06\00\00\8c\02\08\08\00\0d\00\00\6c\0a\06\07\00\07\00\00\6e"
+  "\0e\03\06\00\05\00\25\6b\0e\08\08\00\05\00\54\6b\0e\08\08\00\05\00\b2\6b\06\0e\03\00\03\05\00\83\06\02\0e\00\03\04\00\83\06\0f\09\00\03\04\00\82"
+  "\06\0e\03\00\03\04\00\6a\06\02\0e\00\03\03\00\6a\06\0f\09\00\03\03\00\64\05\05\05\00\06\06\03\00\03\08\08\00\05\00\00\1b\03\0b\0a\00\03\00\00\1b"
+  "\04\00\00\00\22\88\0c\00\03\06\06\00\01\00\00\19\0e\03\03\09\05\01\1e\0a\06\01\04\0a\05\f8\2c\0a\0e\03\03\09\05\01\e1\0a\06\04\01\0a\05\f8\c2\0a"
+  "\0e\03\03\00\05\09\00\0a\0e\03\03\09\05\01\02\03\06\05\03\0a\05\f8\14\03\0e\03\03\09\05\01\20\03\06\03\05\0a\05\f8\41\03\03\01\07\00\01\00\00\19"
+  "\03\07\02\00\01\00\00\19")
+;; 32 models, 271 records, 2296 bytes (ends 0x70f8)
 ;; <<< END GENERATED models
 
 ;; ---------------------------------------------------------------- viewport / fit
@@ -173,8 +178,8 @@
     (local.set $h (i32.sub (i32.sub (global.get $fb_h) (local.get $y)) (i32.div_u (global.get $fb_h) (i32.const 5))))))
   (global.set $sc_g (call $clamp (i32.load8_u (global.get $S_GRID)) (i32.const 4) (i32.const 8)))
   (local.set $n (global.get $sc_g))
-  ;; width: n tiles + half a tile of margin; height: n + 2 tiles (headroom for tall models)
-  (local.set $hw (i32.div_s (local.get $w) (i32.add (i32.shl (local.get $n) (i32.const 1)) (i32.const 1))))
+  ;; width: n tiles + a quarter tile of margin; height: n + 2 tiles (headroom for tall models)
+  (local.set $hw (i32.div_s (i32.shl (local.get $w) (i32.const 2)) (i32.add (i32.shl (local.get $n) (i32.const 3)) (i32.const 1))))
   (local.set $oy (i32.div_s (local.get $h) (i32.add (local.get $n) (i32.const 2))))
   (local.set $hw (call $clamp (select (local.get $oy) (local.get $hw) (i32.lt_s (local.get $oy) (local.get $hw))) (i32.const 4) (i32.const 64)))
   (local.set $oy (i32.add (i32.add (local.get $y) (i32.shr_s (local.get $h) (i32.const 1)))
@@ -368,15 +373,18 @@
 ;; Sub-model: 255 = the crop growing in the current (greenhouse) tile, else a model id drawn
 ;; with every condition false (e.g. the truck parked in the Garage).
 (func $msub (param $a i32) (param $x i32) (param $y i32) (param $pass i32)
-  (local $mc i32) (local $rt i32) (local $g i32)
+  (local $mc i32) (local $rt i32) (local $g i32) (local $se i32)
   (local.set $mc (global.get $mcond))
   (local.set $rt (global.get $rot))
   (if (i32.eq (local.get $a) (i32.const 255))
-    (then
+    (then ;; the greenhouse crop grows in an eternal summer (no snow, autumn tint or bare tree)
       (local.set $g (i32.load8_u offset=6 (global.get $cur_p)))
+      (local.set $se (global.get $sc_sea))
+      (global.set $sc_sea (i32.const 1))
       (if (local.get $g) (then
         (call $model (call $crop_model (global.get $cur_p) (i32.sub (local.get $g) (i32.const 1)))
-          (local.get $x) (local.get $y) (local.get $pass)))))
+          (local.get $x) (local.get $y) (local.get $pass))))
+      (global.set $sc_sea (local.get $se)))
     (else
       (call $mc (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0))
       (call $model (local.get $a) (local.get $x) (local.get $y) (local.get $pass))))
@@ -395,6 +403,8 @@
   (call $mc (i32.ge_u (local.get $pr) (local.get $tg)) (i32.eq (global.get $sc_sea) (i32.const 3))
     (i32.eqz (global.get $sc_sea)) (i32.const 0))
   (global.set $rot (i32.ne (i32.load8_u offset=4 (local.get $p)) (i32.const 0)))
+  (if (i32.and (global.get $rot) (i32.ne (local.get $c) (global.get $CROP_APPLE)))
+    (then (global.set $rot (i32.const 0)) (return (i32.const 31))))
   (i32.add (i32.mul (local.get $c) (i32.const 3)) (select (i32.const 2) (local.get $st) (i32.gt_u (local.get $st) (i32.const 2)))))
 
 ;; Model id for tile i (or -1), with its conditions, rot flag, current tile and sway set.
@@ -525,11 +535,18 @@
   (call $grad (i32.const 0) (local.get $y) (call $pi (local.get $a)) (call $pi (i32.add (local.get $a) (i32.const 1))))
   (call $grad (local.get $y) (local.get $hz) (call $pi (i32.add (local.get $a) (i32.const 1))) (local.get $c))
   (local.set $a (i32.add (global.get $SCD) (i32.add (i32.const 56) (i32.shl (local.get $L) (i32.const 1)))))
-  (call $grad (local.get $hz) (i32.add (local.get $hz) (i32.mul (local.get $hw) (i32.const 3))) (call $pi (local.get $a)) (call $pi (i32.add (local.get $a) (i32.const 1))))
-  (call $grad (i32.add (local.get $hz) (i32.mul (local.get $hw) (i32.const 3))) (global.get $fb_h) (call $pi (i32.add (local.get $a) (i32.const 1)))
-    (call $mix (call $pi (i32.add (local.get $a) (i32.const 1))) (call $hc (global.get $H_INK) (i32.const 1)) (i32.const 2)))
-  ;; meadow texture: sparse grass strokes, denser toward the viewer
-  (local.set $b (call $mix (call $pi (i32.add (local.get $a) (i32.const 1))) (call $hc (global.get $H_INK) (i32.const 1)) (i32.const 4)))
+  (local.set $far (call $pi (local.get $a)))
+  (local.set $near (call $pi (i32.add (local.get $a) (i32.const 1))))
+  (if (i32.eq (local.get $L) (i32.const 5)) (then   ;; frost: hoarfrost on the meadow
+    (local.set $far (call $mix (local.get $far) (call $hc (global.get $H_SKY) (i32.const 3)) (i32.const 8)))
+    (local.set $near (call $mix (local.get $near) (call $hc (global.get $H_SKY) (i32.const 3)) (i32.const 6)))))
+  (call $grad (local.get $hz) (i32.add (local.get $hz) (i32.mul (local.get $hw) (i32.const 3))) (local.get $far) (local.get $near))
+  (call $grad (i32.add (local.get $hz) (i32.mul (local.get $hw) (i32.const 3))) (global.get $fb_h) (local.get $near)
+    (call $mix (local.get $near) (call $hc (global.get $H_INK) (i32.const 1)) (i32.const 2)))
+  ;; meadow texture: sparse grass strokes, denser toward the viewer (winter: soft drift lines)
+  (local.set $b (call $mix (local.get $near) (call $hc (global.get $H_INK) (i32.const 1)) (i32.const 4)))
+  (if (i32.eq (local.get $L) (i32.const 5)) (then (local.set $b (call $hc (global.get $H_PAPER) (i32.const 3)))))
+  (if (i32.eq (local.get $L) (i32.const 2)) (then (local.set $b (call $hc (global.get $H_SKY) (i32.const 2))) (global.set $pmode (i32.const 1))))
   (local.set $n (i32.div_u (i32.mul (global.get $fb_w) (i32.sub (global.get $fb_h) (local.get $hz))) (i32.const 220)))
   (local.set $i (i32.const 0))
   (block $td (loop $tl
@@ -537,22 +554,32 @@
     (local.set $k (call $noise (local.get $i) (i32.xor (global.get $sc_seed) (i32.const 0x3c))))
     (local.set $x (call $mod (local.get $k) (global.get $fb_w)))
     (local.set $y (i32.add (local.get $hz) (i32.add (i32.const 2) (call $mod (i32.shr_u (local.get $k) (i32.const 12)) (i32.sub (global.get $fb_h) (local.get $hz))))))
-    (call $px (local.get $x) (local.get $y) (local.get $b))
-    (call $px (i32.add (local.get $x) (i32.const 1)) (i32.sub (local.get $y) (i32.const 1)) (local.get $b))
+    (if (global.get $pmode)
+      (then (call $span (local.get $x) (i32.add (local.get $x) (i32.add (i32.const 3) (i32.and (local.get $k) (i32.const 7)))) (local.get $y) (local.get $b)))
+      (else
+        (call $px (local.get $x) (local.get $y) (local.get $b))
+        (call $px (i32.add (local.get $x) (i32.const 1)) (i32.sub (local.get $y) (i32.const 1)) (local.get $b))))
     (local.set $i (i32.add (local.get $i) (i32.const 1)))
     (br $tl)))
+  (global.set $pmode (i32.const 0))
   ;; sun (hidden by rain and storm), upper left: soft blended halo, bright core
   (if (i32.eqz (i32.and (i32.ge_u (local.get $L) (i32.const 3)) (i32.le_u (local.get $L) (i32.const 4)))) (then
     (local.set $r (i32.add (i32.const 5) (i32.div_u (local.get $hw) (i32.const 3))))
     (local.set $x (i32.div_u (global.get $fb_w) (i32.const 5)))
     (local.set $y (i32.div_u (i32.mul (local.get $hz) (i32.const 2)) (i32.const 5)))
     (global.set $pmode (i32.const 1))
+    (if (i32.eq (local.get $L) (i32.const 6)) (then   ;; heatwave: a wide glare
+      (local.set $r (i32.add (local.get $r) (i32.shr_u (local.get $r) (i32.const 1))))
+      (call $disc (local.get $x) (local.get $y) (i32.mul (local.get $r) (i32.const 3)) (call $hc (global.get $H_CORN) (i32.const 3)))))
     (call $disc (local.get $x) (local.get $y) (i32.shl (local.get $r) (i32.const 1)) (call $hc (global.get $H_PAPER) (i32.const 3)))
     (call $disc (local.get $x) (local.get $y) (i32.div_u (i32.mul (local.get $r) (i32.const 3)) (i32.const 2)) (call $hc (global.get $H_WHEAT) (i32.const 3)))
     (global.set $pmode (i32.const 0))
     (call $disc (local.get $x) (local.get $y) (local.get $r) (call $hc (global.get $H_WHEAT) (i32.const 3)))
-    (call $disc (local.get $x) (local.get $y) (i32.sub (local.get $r) (i32.const 2)) (call $hc (global.get $H_PAPER) (i32.const 3)))))
-  ;; clouds: puffs drawn twice, shaded underside first, drifting with time
+    (call $disc (local.get $x) (local.get $y) (i32.sub (local.get $r) (select (i32.const 1) (i32.const 2) (i32.eq (local.get $L) (i32.const 6))))
+      (call $hc (global.get $H_PAPER) (i32.const 3)))))
+  ;; clouds: puffs drawn twice, shaded underside first, drifting with time; clipped above the
+  ;; lowest possible far-hill top so no puff ever shows below the hill line
+  (global.set $cy1 (i32.sub (local.get $hz) (i32.shr_u (local.get $hw) (i32.const 2))))
   (local.set $n (i32.add (i32.add (i32.const 2) (i32.div_u (global.get $fb_w) (i32.const 160)))
     (select (i32.const 3) (i32.const 0) (i32.and (i32.ge_u (local.get $L) (i32.const 3)) (i32.le_u (local.get $L) (i32.const 4))))))
   (local.set $a (call $hc (select (global.get $H_STONE) (global.get $H_SKY) (i32.and (i32.ge_u (local.get $L) (i32.const 3)) (i32.le_u (local.get $L) (i32.const 4)))) (i32.const 2)))
@@ -578,6 +605,7 @@
       (br_if $pk (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 10))))
     (local.set $i (i32.add (local.get $i) (i32.const 1)))
     (br $cl)))
+  (global.set $cy1 (i32.const 0x3FFFFFFF))
   ;; hills: far (blended toward the horizon sky) then near, per column
   (local.set $near (call $pi (i32.add (global.get $SCD) (i32.add (i32.const 72) (local.get $L)))))
   (local.set $far (call $blend50 (local.get $near) (call $pi (i32.add (global.get $SCD) (i32.add (i32.const 34) (i32.mul (local.get $L) (i32.const 3)))))))
@@ -592,14 +620,28 @@
     (call $rect (local.get $x) (local.get $y) (i32.const 1) (i32.sub (local.get $hz) (local.get $y)) (local.get $near))
     (call $px (local.get $x) (local.get $y) (local.get $far))
     (local.set $x (i32.add (local.get $x) (i32.const 1)))
-    (br $hl))))
+    (br $hl)))
+  (if (i32.eq (local.get $L) (i32.const 6)) (then
+    ;; heatwave: orange-yellow haze over the horizon, solid core, streaky fringes
+    (global.set $pmode (i32.const 1))
+    (local.set $y (i32.sub (local.get $hz) (local.get $hw)))
+    (local.set $c (call $hc (global.get $H_WHEAT) (i32.const 2)))
+    (block $zd (loop $zl
+      (br_if $zd (i32.ge_s (local.get $y) (i32.add (local.get $hz) (i32.shr_u (local.get $hw) (i32.const 1)))))
+      (if (i32.or (i32.lt_u (i32.add (i32.sub (local.get $y) (local.get $hz)) (i32.shr_u (local.get $hw) (i32.const 2))) (i32.shr_u (local.get $hw) (i32.const 1)))
+                  (i32.eqz (i32.and (call $noise (local.get $y) (i32.const 71)) (i32.const 1))))
+        (then (call $span (i32.const 0) (global.get $fb_w) (local.get $y) (local.get $c))))
+      (local.set $y (i32.add (local.get $y) (i32.const 1)))
+      (br $zl)))
+    (global.set $pmode (i32.const 0)))))
 
 ;; Meadow trees and bushes (front = 0: those behind the road; 1: those left of the slab).
 (func $props (param $front i32)
   (local $k i32) (local $e i32)
   (loop $l
     (local.set $e (i32.add (global.get $SCD) (i32.add (i32.const 112) (i32.mul (local.get $k) (i32.const 3)))))
-    (if (i32.eq (i32.ge_s (i32.load8_s offset=1 (local.get $e)) (i32.const 0)) (local.get $front)) (then
+    (if (i32.and (i32.eq (i32.ge_s (i32.load8_s offset=1 (local.get $e)) (i32.const 0)) (local.get $front))
+                 (call $onscreen (i32.load8_s (local.get $e)) (i32.load8_s offset=1 (local.get $e)))) (then
       (call $mc (i32.const 0) (i32.eq (global.get $sc_sea) (i32.const 3)) (i32.eqz (global.get $sc_sea)) (i32.const 0))
       (global.set $rot (i32.const 0))
       (global.set $sway (i32.const 0))
@@ -619,12 +661,23 @@
   (global.set $sway (i32.const 0))
   (loop $l
     (local.set $e (i32.add (global.get $SCD) (i32.add (i32.const 170) (i32.mul (local.get $k) (i32.const 3)))))
-    (call $model (i32.load8_u offset=2 (local.get $e)) (i32.sub (i32.load8_u (local.get $e)) (i32.const 8))
-      (i32.sub (i32.load8_u offset=1 (local.get $e)) (i32.const 8)) (i32.const 0))
-    (call $model (i32.load8_u offset=2 (local.get $e)) (i32.sub (i32.load8_u (local.get $e)) (i32.const 8))
-      (i32.sub (i32.load8_u offset=1 (local.get $e)) (i32.const 8)) (i32.const 1))
+    (if (call $onscreen (i32.load8_u (local.get $e)) (i32.load8_u offset=1 (local.get $e))) (then
+      (call $model (i32.load8_u offset=2 (local.get $e)) (i32.sub (i32.load8_u (local.get $e)) (i32.const 8))
+        (i32.sub (i32.load8_u offset=1 (local.get $e)) (i32.const 8)) (i32.const 0))
+      (call $model (i32.load8_u offset=2 (local.get $e)) (i32.sub (i32.load8_u (local.get $e)) (i32.const 8))
+        (i32.sub (i32.load8_u offset=1 (local.get $e)) (i32.const 8)) (i32.const 1))))
     (br_if $l (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 8))))
   (call $iso_set (global.get $iso_ox) (local.get $oy) (global.get $iso_hw)))
+
+;; 1 when a meadow prop centred on ground point (x, y) fits on screen: a box of +-hw
+;; around it (crown, shadow, pond rim) inside the framebuffer, bottom with hw/2 to spare.
+(func $onscreen (param $x i32) (param $y i32) (result i32)
+  (local $hw i32)
+  (local.set $hw (global.get $iso_hw))
+  (call $iso_proj (local.get $x) (local.get $y) (i32.const 0))
+  (i32.and (i32.and (i32.ge_s (global.get $sx) (local.get $hw))
+                    (i32.le_s (i32.add (global.get $sx) (local.get $hw)) (global.get $fb_w)))
+           (i32.le_s (i32.add (global.get $sy) (i32.shr_u (local.get $hw) (i32.const 1))) (global.get $fb_h))))
 
 ;; Road x where its centre line meets the horizon.
 (func $road_end (result i32)
@@ -635,9 +688,11 @@
   (local.set $x (i32.sub (call $road_end) (i32.const 24)))
   (local.set $w (i32.sub (i32.const 220) (local.get $x)))
   (local.set $c (select (global.get $H_PAPER) (global.get $H_SOIL) (i32.eq (global.get $sc_sea) (i32.const 3))))
-  (call $iso_quad (local.get $x) (i32.const -15) (i32.const 0) (local.get $w) (i32.const 12) (call $hc (global.get $H_GRASS) (i32.const 0)))
-  (call $iso_quad (local.get $x) (i32.const -14) (i32.const 0) (local.get $w) (i32.const 10) (call $hc (local.get $c) (i32.const 2)))
-  (call $iso_quad (local.get $x) (i32.const -12) (i32.const 0) (local.get $w) (i32.const 1) (call $hc (local.get $c) (i32.const 1)))
+  ;; verge (dark grass; snow in winter), surface y = -17..-2 (two lanes), wheel ruts
+  (call $iso_quad (local.get $x) (i32.const -18) (i32.const 0) (local.get $w) (i32.const 17)
+    (select (call $hc (global.get $H_PAPER) (i32.const 3)) (call $hc (global.get $H_GRASS) (i32.const 0)) (i32.eq (global.get $sc_sea) (i32.const 3))))
+  (call $iso_quad (local.get $x) (i32.const -17) (i32.const 0) (local.get $w) (i32.const 15) (call $hc (local.get $c) (i32.const 2)))
+  (call $iso_quad (local.get $x) (i32.const -13) (i32.const 0) (local.get $w) (i32.const 1) (call $hc (local.get $c) (i32.const 1)))
   (call $iso_quad (local.get $x) (i32.const -7) (i32.const 0) (local.get $w) (i32.const 1) (call $hc (local.get $c) (i32.const 1))))
 
 ;; Trucks: parked at the farm gate when home, else on the road toward the horizon, shrinking
@@ -649,7 +704,11 @@
   (if (i32.ge_u (local.get $i) (call $clamp (i32.load8_u (global.get $S_TRUCK_COUNT)) (i32.const 0) (i32.const 3))) (then (return (i32.const -1))))
   (local.set $p (i32.add (global.get $S_TRUCKS) (i32.mul (local.get $i) (global.get $TRUCK_STRIDE))))
   (if (i32.eqz (i32.load8_u (local.get $p))) (then (return (i32.const -1))))
+  ;; bay 0 at the gate, pulled in so the parked truck's right end stays on screen
   (local.set $x0 (i32.sub (i32.shl (global.get $sc_g) (i32.const 4)) (i32.const 10)))
+  (local.set $u (i32.sub (i32.div_s (i32.shl (i32.sub (i32.sub (global.get $fb_w) (i32.const 4)) (global.get $iso_ox)) (i32.const 4))
+    (global.get $iso_hw)) (i32.const 19)))
+  (if (i32.lt_s (local.get $u) (local.get $x0)) (then (local.set $x0 (local.get $u))))
   (local.set $ph (i32.load8_u offset=2 (local.get $p)))
   (if (i32.eqz (local.get $ph)) (then (return (i32.add (i32.sub (local.get $x0) (i32.shl (local.get $i) (i32.const 4))) (i32.const 55)))))
   ;; daysLeft >= 1 (0 never occurs in play; crafted / corrupt states must not wrap)
@@ -662,12 +721,13 @@
   (local.set $u (i32.div_u (select (i32.shl (i32.add (i32.sub (local.get $tot) (local.get $dl)) (i32.const 1)) (i32.const 8))
     (i32.sub (i32.shl (local.get $dl) (i32.const 8)) (i32.const 128))
     (i32.eq (local.get $ph) (i32.const 1))) (i32.add (local.get $tot) (i32.const 1))))
-  ;; travel starts past the three parking bays; outbound trucks use the far lane (y = -11),
-  ;; returning ones the near lane (y = -6)
+  ;; travel starts past the three parking bays; outbound trucks use the near lane (y = -5),
+  ;; returning ones the far lane (y = -14): a returning truck is nearer home (+x) and on the
+  ;; far lane (-y), so on screen it sits to the right of an outbound one instead of on it
   (local.set $x0 (i32.sub (local.get $x0) (i32.const 36)))
   (i32.or (i32.shl (local.get $u) (i32.const 16))
     (i32.add (i32.sub (local.get $x0) (i32.shr_s (i32.mul (i32.sub (local.get $x0) (call $road_end)) (local.get $u)) (i32.const 8)))
-      (select (i32.const 53) (i32.const 58) (i32.eq (local.get $ph) (i32.const 1))))))
+      (select (i32.const 59) (i32.const 50) (i32.eq (local.get $ph) (i32.const 1))))))
 
 (func $trucks
   (local $i i32) (local $k i32) (local $v i32) (local $best i32) (local $bi i32) (local $last i32) (local $p i32) (local $u i32)
@@ -695,7 +755,7 @@
         (i32.const 0) (i32.const 0))
       (global.set $rot (i32.const 0))
       (global.set $sway (i32.const 0))
-      (local.set $k (select (i32.const -11) (select (i32.const -6) (i32.const -9) (i32.eq (i32.load8_u offset=2 (local.get $p)) (i32.const 2)))
+      (local.set $k (select (i32.const -5) (select (i32.const -14) (i32.const -9) (i32.eq (i32.load8_u offset=2 (local.get $p)) (i32.const 2)))
         (i32.eq (i32.load8_u offset=2 (local.get $p)) (i32.const 1))))
       (call $iso_proj (i32.sub (i32.sub (i32.and (local.get $v) (i32.const 0xFFFF)) (i32.const 64)) (local.get $k)) (local.get $k) (i32.const 0))
       (call $iso_set (global.get $sx) (global.get $sy) (i32.shr_u (i32.mul (local.get $hw) (i32.sub (i32.const 512) (local.get $u))) (i32.const 9)))
@@ -746,11 +806,12 @@
       (local.set $c (call $pi (i32.add (local.get $row) (i32.sub (i32.const 3) (local.get $k)))))
       (global.set $c2 (call $pi (i32.add (local.get $row) (i32.add (i32.const 2) (local.get $k)))))
       (global.set $dlev (i32.const 2)))
-    (else ;; rough wild grass, per-tile tone from the seed
-      (local.set $k (i32.and (local.get $n) (i32.const 1)))
+    (else ;; rough wild grass, per-tile tone from the seed (one tone under frost)
+      (local.set $k (i32.and (i32.and (local.get $n) (i32.const 1)) (i32.ne (global.get $sc_wx) (i32.const 4))))
       (local.set $c (call $pi (i32.add (local.get $row) (local.get $k))))
       (global.set $c2 (call $pi (i32.add (local.get $row) (i32.sub (i32.const 1) (local.get $k)))))
-      (global.set $dlev (i32.add (i32.const 3) (i32.and (i32.shr_u (local.get $n) (i32.const 4)) (i32.const 3))))))
+      (global.set $dlev (i32.add (i32.const 3) (i32.and (i32.shr_u (local.get $n) (i32.const 4)) (i32.const 3))))
+      (if (i32.eq (global.get $sc_wx) (i32.const 4)) (then (global.set $dlev (i32.const 2))))))   ;; frost: sparse rime
   (call $iso_quad (local.get $wx) (local.get $wy) (i32.const 0) (i32.const 16) (i32.const 16) (local.get $c))
   (local.set $glow (i32.or (i32.eq (local.get $i) (global.get $sel_tile)) (i32.eq (local.get $i) (global.get $hover_tile))))
   (if (local.get $bed) (then
@@ -762,8 +823,8 @@
       (call $hc (local.get $k) (i32.const 2)))
     (global.set $pmode (i32.const 0))
     (local.set $lt (call $hc (local.get $k) (i32.const 3)))
-    (if (i32.or (i32.eq (global.get $sc_sea) (i32.const 3)) (i32.eq (global.get $sc_wx) (i32.const 4)))
-      (then (local.set $lt (call $hc (global.get $H_PAPER) (i32.const 3)))))
+    (if (i32.eq (global.get $sc_sea) (i32.const 3)) (then (local.set $lt (call $hc (global.get $H_PAPER) (i32.const 3)))))
+    (if (i32.eq (global.get $sc_wx) (i32.const 4)) (then (local.set $lt (call $hc (global.get $H_STONE) (i32.const 2)))))
     (local.set $dk (call $hc (local.get $k) (i32.const 0)))
     (local.set $q (i32.const 3))
     (loop $r
@@ -913,7 +974,24 @@
       (if (i32.eq (local.get $ph) (i32.const 1)) (then (memory.copy (i32.add (local.get $p) (i32.const 4)) (local.get $p) (i32.shl (i32.sub (local.get $w) (i32.const 1)) (i32.const 2)))))
       (if (i32.eq (local.get $ph) (i32.const 3)) (then (memory.copy (local.get $p) (i32.add (local.get $p) (i32.const 4)) (i32.shl (i32.sub (local.get $w) (i32.const 1)) (i32.const 2)))))
       (local.set $y (i32.add (local.get $y) (i32.const 1)))
-      (br $hl)))))
+      (br $hl)))
+    ;; wavy pale streaks rising off the soil, two per owned tile
+    (global.set $pmode (i32.const 1))
+    (local.set $i (i32.const 0))
+    (loop $wl
+      (if (call $in_grid (i32.shr_u (local.get $i) (i32.const 1))) (then
+        (local.set $q (call $noise (local.get $i) (i32.const 77)))
+        (call $iso_proj (i32.add (i32.shl (i32.and (i32.shr_u (local.get $i) (i32.const 1)) (i32.const 7)) (i32.const 4)) (i32.add (i32.const 3) (call $mod (local.get $q) (i32.const 10))))
+                        (i32.add (i32.shl (i32.shr_u (local.get $i) (i32.const 4)) (i32.const 4)) (i32.add (i32.const 3) (call $mod (i32.shr_u (local.get $q) (i32.const 8)) (i32.const 10))))
+                        (i32.const 3))
+        (local.set $ph (i32.add (i32.shr_u (local.get $q) (i32.const 16)) (i32.div_u (local.get $t) (i32.const 70))))
+        (local.set $n (i32.const 0))
+        (loop $sq
+          (local.set $x (i32.add (global.get $sx) (i32.shr_s (call $sin (i32.add (local.get $ph) (local.get $n))) (i32.const 5))))
+          (call $span (local.get $x) (i32.add (local.get $x) (i32.const 1)) (i32.sub (global.get $sy) (local.get $n)) (call $hc (global.get $H_PAPER) (i32.const 3)))
+          (br_if $sq (i32.lt_u (local.tee $n (i32.add (local.get $n) (i32.const 1))) (i32.shr_u (global.get $iso_hw) (i32.const 2)))))))
+      (br_if $wl (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 128))))
+    (global.set $pmode (i32.const 0))))
   ;; drought dust, autumn leaves, winter snow: drifting motes
   (local.set $c (i32.const -1))
   (if (i32.eq (local.get $rw) (i32.const 2)) (then (local.set $c (i32.const 0)) (local.set $n (i32.const 2600))))
@@ -1033,7 +1111,11 @@
     (br_if $l (i32.lt_u (local.tee $n (i32.add (local.get $n) (i32.const 1))) (i32.const 15)))))
 
 ;; Ripe crops: twinkling sparkle (motion only) and a badge; "!" when storage cannot take the
-;; harvest (same units rule as $harvest_tile, with one storage count per frame).
+;; harvest (same units rule as $harvest_tile, with one storage count per frame). The "!" is
+;; always drawn; the green check only on farms up to 6x6 with tiles big enough (hw >= 24) or on
+;; the selected / hovered tile, so a crowded 7x7 / 8x8 farm is not buried in badges (Task 4
+;; shows a ripe count in the UI).
+;; Rotting crops get four flies buzzing over them (static under reduced motion).
 (func $badges
   (local $i i32) (local $p i32) (local $c i32) (local $m i32) (local $u i32) (local $free i32) (local $k i32)
   (local $q i32) (local $wx i32) (local $wy i32) (local $ph i32) (local $col i32)
@@ -1041,6 +1123,20 @@
   (loop $l
     (local.set $p (call $tile_ptr (local.get $i)))
     (local.set $c (call $tile_crop (local.get $p)))
+    (if (i32.and (i32.and (i32.ge_s (local.get $c) (i32.const 0)) (call $in_grid (local.get $i))) (i32.load8_u offset=4 (local.get $p))) (then
+      ;; flies: four dark specks with a pale wing circling above the wilted plant
+      (local.set $k (i32.const 0))
+      (loop $fl
+        (local.set $q (call $noise (i32.add (i32.shl (local.get $i) (i32.const 2)) (local.get $k)) (i32.const 67)))
+        (local.set $ph (i32.add (i32.shr_u (local.get $q) (i32.const 12)) (i32.div_u (global.get $sc_t) (i32.const 60))))
+        (call $iso_proj (i32.add (i32.shl (i32.and (local.get $i) (i32.const 7)) (i32.const 4)) (i32.add (i32.const 2) (call $mod (local.get $q) (i32.const 12))))
+          (i32.add (i32.shl (i32.shr_u (local.get $i) (i32.const 3)) (i32.const 4)) (i32.add (i32.const 2) (call $mod (i32.shr_u (local.get $q) (i32.const 4)) (i32.const 12))))
+          (i32.add (i32.const 5) (i32.mul (local.get $k) (i32.const 2))))
+        (local.set $wx (i32.add (global.get $sx) (i32.shr_s (call $sin (local.get $ph)) (i32.const 4))))
+        (local.set $wy (i32.add (global.get $sy) (i32.shr_s (call $sin (i32.add (local.get $ph) (i32.const 4))) (i32.const 5))))
+        (call $rect (local.get $wx) (local.get $wy) (i32.const 2) (i32.const 1) (call $hc (global.get $H_INK) (i32.const 0)))
+        (call $px (local.get $wx) (i32.sub (local.get $wy) (i32.const 1)) (call $hc (global.get $H_STONE) (i32.const 3)))
+        (br_if $fl (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 4))))))
     (if (i32.and (i32.and (i32.ge_s (local.get $c) (i32.const 0)) (call $in_grid (local.get $i))) (call $tile_ripe (local.get $p))) (then
       (local.set $m (call $tile_model (local.get $i)))
       (local.set $wx (i32.add (i32.shl (i32.and (local.get $i) (i32.const 7)) (i32.const 4)) (i32.const 8)))
@@ -1065,7 +1161,10 @@
       (if (call $event_active (global.get $EV_BUMPER))
         (then (local.set $u (i32.div_u (i32.mul (local.get $u) (call $k (global.get $K_BUMPER_BP))) (i32.const 10000)))))
       (call $iso_proj (local.get $wx) (local.get $wy) (i32.add (call $mheight (local.get $m)) (i32.const 3)))
-      (call $badge (global.get $sx) (global.get $sy) (i32.gt_s (local.get $u) (local.get $free)))))
+      (if (i32.or (i32.or (i32.gt_s (local.get $u) (local.get $free))
+                          (i32.and (i32.ge_u (global.get $iso_hw) (i32.const 24)) (i32.lt_u (global.get $sc_g) (i32.const 7))))
+                  (i32.or (i32.eq (local.get $i) (global.get $sel_tile)) (i32.eq (local.get $i) (global.get $hover_tile))))
+        (then (call $badge (global.get $sx) (global.get $sy) (i32.gt_s (local.get $u) (local.get $free)))))))
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64)))))
 
 ;; ---------------------------------------------------------------- entry points
