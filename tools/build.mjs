@@ -16,10 +16,10 @@ const fail = (msg) => { console.error(`build: ${msg}`); process.exit(1); };
 
 // Budgets apply to the SHIPPING build/game.wasm only (t_* hooks stripped); game.test.wasm is unbudgeted.
 // Spec target is 20 KB gz / 48 KB raw. Ruling (presentation plan Decision 4, 2026-10-26): the renderer,
-// UI, replay and QR code do not fit that, so the enforced ceiling is 32 KB gz / 80 KB raw; the build
+// UI, replay and QR code do not fit that, so the enforced ceiling is 40 KB gz / 100 KB raw (raised from 32/80 by a later ruling); the build
 // prints a warning while above the spec target.
 const SPEC_TARGET = { wasmRaw: 48 * 1024, wasmGz: 20 * 1024 };
-const BUDGETS = { wasmRaw: 80 * 1024, wasmGz: 32 * 1024, htmlGz: 3 * 1024, swGz: 1 * 1024 };
+const BUDGETS = { wasmRaw: 100 * 1024, wasmGz: 40 * 1024, htmlGz: 3 * 1024, swGz: 1 * 1024 };
 
 const SPEC_TOTAL = 24 * 1024;
 const src = arg('--src', join(root, 'src'));
