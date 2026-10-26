@@ -26,7 +26,8 @@
 ;;       +18 seed  +1C daily_seed (set_env; Task 5 consumes)  +20 cols (panel columns: 2 tablet else 1)
 ;;       +24 hit_n  +28 hit_static_n   (0x8130..0x817F free for Task 5 UI scalars)
 ;;   0x8200..0x8BFF  hit table: 128 entries x 20 B (x, y, w, h, code : i32)
-;;   0x8C00..0xFFFF  free (Task 5 UI state, toasts, announce buffer ...)
+;;   0x8C00..0xBFFF  UI state, toasts, announce buffer ... (map in 22_ui.wat / 00_memory.wat)
+;;   0xC000..0xEDC0  QR encoder scratch + matrix (25_qr.wat); 0xEDC1..0xFFFF free
 ;;
 ;; Modes (CSS px): LAPTOP = w >= 1024 or (w > 1.2 h and w >= 600): top bar across the top, right
 ;;   column = TABS above PANEL (<= 520 css) flush with the right edge, GRID (max 640 css) centred in

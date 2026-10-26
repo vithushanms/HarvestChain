@@ -89,6 +89,7 @@ node tools/dump-ppm.mjs ui                        # every ui-* state (top bar, t
                                                   # 1280x800 and large text -> build/ui-*.png
 node tools/dump-ppm.mjs ui ui-dispatch            # only the matching states, + large text at 320x568
 node tools/dump-ppm.mjs ui-build 768 1024 100 --large   # one UI state at any size
+node tools/dump-ppm.mjs qr                        # QR encoder showcase (v5, v12, v20 at 360x640)
 ```
 
 The UI states are scripted in `tests/render/uistates.mjs` through the same `pointer` / `key` / `frame` exports the loader uses.

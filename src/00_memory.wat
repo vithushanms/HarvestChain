@@ -20,6 +20,7 @@
 ;;                   replay: viewer log 0xB000..0xBFFF, pre-viewer state 0xC000..0xC5AF, share URL / code
 ;;                   0xC800..0xDFFF, base64 decode 0xE000..0xEFFF, pre-action state 0xF000..0xF5AF (24_replay.wat);
 ;;                   0xA900..0xA9FF, 0xAC40..0xAFFF, 0xC5B0..0xC7FF, 0xF5B0..0xFFFF free)
+;;                   QR encoder 0xC000..0xEDC0 (25_qr.wat; OVERLAPS replay, relocated in the next commit)
 ;;            (0x10000 upper 32 KB: IO staging for save / replay bytes from the loader)
 ;;   0x18000  ...    framebuffer w*h*4 bytes + canary word 0xCAFEF00D (memory.grow in $resize)
 

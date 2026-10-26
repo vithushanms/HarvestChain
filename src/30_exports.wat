@@ -163,3 +163,9 @@
 (export "t_log_st"       (func $t_log_st))
 (export "t_rp"           (func $t_rp))
 (export "t_rp_seek"      (func $rp_seek))
+;; QR encoder (25_qr.wat): shipping functions.
+(export "qr_encode" (func $qr_encode))
+(export "qr_size"   (func $qr_size))
+(export "qr_module" (func $qr_module))
+(export "qr_draw"   (func $qr_draw))
+(export "qr_pixels" (func $qr_pixels))

@@ -6,6 +6,8 @@
 //           layout[-large][-open] (farm-full scene + coloured outlines and ids of every layout rect,
 //           tile diamonds in grey; -large = large-text mode, -open = bottom sheet open)
 //           farm-* (canned farm scenes from tests/render/scenes.mjs, drawn by $scene_draw)
+//           qr (QR encoder, 25_qr.wat: v5 short text, v12 mid, v20 near-max at scale 3 on a 360x640 buffer;
+//           size args ignored)
 //           ui-* (UI states from tests/render/uistates.mjs: scene + top bar, tabs, sheet, toasts via frame();
 //           dpr applies; add --large for large text)
 //        node tools/dump-ppm.mjs ui [prefix]  (every ui-* state at 360x640@2 and 1280x800@1, + large text at
@@ -72,6 +74,21 @@ function drawLayoutDebug(ex) {
   }
 }
 
+// QR showcase: three codes stacked on a sky-blue background (v5, v12, v20 near capacity), scale 3 for v20.
+function drawQr(ex) {
+  const mem = new Uint8Array(ex.memory.buffer);
+  const b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const put = (s) => { mem.set(Buffer.from(s), 0x10000); return ex.qr_encode(0x10000, s.length); };
+  ex.t_fill(ex.t_pal(0x32));
+  let s = 'HARVESTCHAIN QR - BYTE MODE, ECC L, VERSION 5 SHORT TEXT FOR THE SHOWCASE SCENE!!';
+  put(s); ex.qr_draw(8, 8, 3);
+  const x2 = 8 + ex.qr_pixels(3) + 12;
+  s = 'https://example.org/hc/#'; for (let i = 0; s.length < 360; i++) s += b64[(i * 37 + 11) & 63];
+  put(s); ex.qr_draw(x2, 8, 2);
+  s = 'https://example.org/hc/#'; for (let i = 0; s.length < 850; i++) s += b64[(i * 53 + 7) & 63];
+  put(s); ex.qr_draw(22, 640 - 4 - ex.qr_pixels(3), 3);
+}
+
 export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = false, large = false) {
   if (UI_STATES[scene]) {
     const g = await uiState(scene, w, h, dpr);
@@ -83,9 +100,11 @@ export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = fa
   const ex = instance.exports;
   ex.init(1);
   if (scene === 'iso-small') ex.resize(180, 320, 100);
+  else if (scene === 'qr') ex.resize(360, 640, 100);
   else ex.resize(w, h, dpr);
   if (scene === 'demo') ex.t_demo(0);
   else if (scene === 'iso' || scene === 'iso-small') ex.t_iso_demo(0);
+  else if (scene === 'qr') drawQr(ex);
   else if (scene.startsWith('layout')) {
     SCENES['farm-full'](ex);
     ex.set_flags(0, scene.includes('large') ? 1 : 0);
