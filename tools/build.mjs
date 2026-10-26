@@ -21,6 +21,7 @@ const fail = (msg) => { console.error(`build: ${msg}`); process.exit(1); };
 const SPEC_TARGET = { wasmRaw: 48 * 1024, wasmGz: 20 * 1024 };
 const BUDGETS = { wasmRaw: 80 * 1024, wasmGz: 32 * 1024, htmlGz: 3 * 1024, swGz: 1 * 1024 };
 
+const SPEC_TOTAL = 24 * 1024;
 const src = arg('--src', join(root, 'src'));
 const out = arg('--out', join(root, 'build'));
 mkdirSync(out, { recursive: true });
@@ -102,10 +103,25 @@ if (raw > SPEC_TARGET.wasmRaw || gzipped > SPEC_TARGET.wasmGz) {
 if (raw > BUDGETS.wasmRaw) fail(`game.wasm raw ${raw} B > ${BUDGETS.wasmRaw} B`);
 if (gzipped > BUDGETS.wasmGz) fail(`game.wasm gz ${gzipped} B > ${BUDGETS.wasmGz} B`);
 
-for (const [file, budget] of [['index.html', BUDGETS.htmlGz], ['sw.js', BUDGETS.swGz]]) {
-  const p = join(root, file);
-  if (!existsSync(p)) continue;
-  const n = gz(readFileSync(p));
-  console.log(`${file}  ${n} B gz`);
-  if (n > budget) fail(`${file} gz ${n} B > ${budget} B`);
+// ---- shell: loader -> index.html, service worker -> sw.js (repo root; default source tree only) ----
+// Readable sources: tools/loader.src.html, tools/sw.src.js (source of truth); the minified outputs are committed.
+let htmlGz = 0, swGz = 0;
+if (src === join(root, 'src')) {
+  const { buildShell } = await import('./shell.mjs');
+  const { html, sw, version } = await buildShell({
+    loader: readFileSync(join(root, 'tools', 'loader.src.html'), 'utf8'),
+    swSrc: readFileSync(join(root, 'tools', 'sw.src.js'), 'utf8'),
+    keys: JSON.parse(readFileSync(join(root, 'tools', 'keycodes.json'), 'utf8')),
+    wasm: buf,
+  });
+  writeFileSync(join(root, 'index.html'), html);
+  writeFileSync(join(root, 'sw.js'), sw);
+  htmlGz = gz(Buffer.from(html)); swGz = gz(Buffer.from(sw));
+  console.log(`index.html  ${Buffer.byteLength(html)} B raw  ${htmlGz} B gz  (budget ${BUDGETS.htmlGz}, headroom ${BUDGETS.htmlGz - htmlGz})`);
+  console.log(`sw.js  ${Buffer.byteLength(sw)} B raw  ${swGz} B gz  (budget ${BUDGETS.swGz})  cache hc-${version}`);
+  const total = gzipped + htmlGz + swGz;
+  console.log(`total transfer  ${total} B gz  (spec target ${SPEC_TOTAL} B)`);
+  if (total > SPEC_TOTAL) console.log(`warning: total transfer ${total} B gz is over the spec target ${SPEC_TOTAL} B (wasm ceiling ruling in place)`);
+  if (htmlGz > BUDGETS.htmlGz) fail(`index.html gz ${htmlGz} B > ${BUDGETS.htmlGz} B`);
+  if (swGz > BUDGETS.swGz) fail(`sw.js gz ${swGz} B > ${BUDGETS.swGz} B`);
 }

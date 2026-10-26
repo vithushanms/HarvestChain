@@ -41,6 +41,8 @@ node --test --test-name-pattern="round-trip" tests/state.test.mjs
 
 A healthy build prints two size lines: `game.wasm  <raw> B raw  <gz> B gz` (the shipping binary, with every `t_*` test-hook export stripped; the budgets below apply to it) and `game.test.wasm  <raw> B raw  <gz> B gz` (all exports; used by tests and dev tools; no budget).
 
+Browser smoke tests (Playwright, chromium; dev-only): `npx playwright install chromium` once, then `npm run test:e2e` (builds, serves the repo root on a random port, runs phone 360x640@2 and desktop 1280x800; screenshots go to `build/shots/`). `npm test` does not need a browser. `npm run check:dist` rebuilds and fails if the committed `index.html` / `sw.js` differ from the build output (CI hint). `npm run build` also writes the shipped `index.html` (minified from `tools/loader.src.html`, the readable source of truth, with an inline data-URI manifest and a build-generated pixel-art icon) and `sw.js` (from `tools/sw.src.js`, cache name stamped with a hash of `game.wasm` + `index.html`) at the repo root and enforces `index.html` <= 3 KB gz, `sw.js` <= 1 KB gz; it prints the total transfer and warns above the spec's 24 KB.
+
 To play the sim in a browser (no graphics yet), serve the repo root and open the dev harness:
 
 ```sh
@@ -130,3 +132,7 @@ These are recorded in the phase 1 plan and get decided in later phases:
 - Spec §14.3 gives the framebuffer as "≤ 2.6 MB", but 1280 × 720 × 4 is 3.69 MB (phase 3).
 - The starting Wheat ripens after the first End Day, but onboarding expects a harvest on day 1 (phase 6).
 - Weather odds, event frequency and the other numbers the spec left open are fixed in the phase 2 plan's Decisions (`docs/superpowers/plans/`).
+
+## Offline and updates
+
+`sw.js` is cache-first (`./`, `index.html`, `game.wasm`), so a new deploy shows up one load late: the first load after a deploy still serves the old cached files while the new worker installs; the next load gets the new version. The cache name is `hc-<first 8 hex of sha256(game.wasm + index.html)>` (a deliberate deviation from the brief's wasm byte-length versioning, so a loader-only change also bumps it); old `hc-*` caches are deleted on activate and other caches on the origin are left alone. e2e specs that need tap targets serve `build/game.test.wasm` (`t_hit`, `t_tile_rect`, `t_ui_btn`) through a Playwright route; the shipping page still uses `game.wasm`.
