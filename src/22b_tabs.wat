@@ -758,12 +758,12 @@
   (if (local.get $t) (then (global.set $tab (local.get $t)) (call $open_sheet)) (else (call $close)))
   (call $announce (call $str (i32.add (global.get $STR_TAB) (local.get $t)))))
 
-;; Esc / back: an open screen returns where it came from (Gazette, Journal, How to play; the others
+;; Esc / back: an open screen returns where it came from ($pop) (Gazette, Journal, How to play; the others
 ;; stay); else leave placement, then step the dispatch flow back (leaving it at step 1), then close.
 (func $back
   (global.set $dirty (i32.const 1))
   (if (global.get $scr) (then
-    (if (i32.and (i32.const 0x4C) (i32.shl (i32.const 1) (global.get $scr))) (then (call $go (global.get $scr_ret))))
+    (if (i32.and (i32.const 0x4C) (i32.shl (i32.const 1) (global.get $scr))) (then (call $pop)))
     (return)))
   (if (global.get $place) (then (global.set $place (i32.const 0)) (call $open_sheet) (return)))
   (if (i32.ge_s (global.get $dsp) (i32.const 0)) (then
@@ -895,7 +895,7 @@
         (local.set $n (i32.add (local.get $n) (local.get $a)))))
       (br_if $l (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13)))))
     (if (local.get $n) (then
-      (call $sb (global.get $SB3)) (call $si (global.get $STR_SOLD)) (call $sn0 (local.get $n)) (call $si (global.get $STR_UNITS)) (call $sp)
+      (call $sb (global.get $SB3)) (call $si (global.get $STR_MP)) (call $sn0 (local.get $n)) (call $si (global.get $STR_UNITS)) (call $sp)
       (call $sc (i32.const 43)) (call $sn (i32.sub (i32.load (global.get $S_CASH)) (local.get $c0)) (i32.const 1))
       (call $toast (i32.const 3) (global.get $SB3))))))
   (if (i32.eq (local.get $c) (i32.const 0x209)) (then (call $fill_best)))

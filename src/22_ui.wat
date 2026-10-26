@@ -16,7 +16,7 @@
 ;;   0xA000..0xA03F  $ui_wrap line buffer   0xA040..0xA0BF tab amounts / plan (22b_tabs.wat)
 ;;   0xA100..0xA8FF  label log: every $ui_label text drawn this frame, NUL-separated (tests; also on
 ;;                   for the frame that announces a newly opened screen)
-;;   0xA900..0xAA3F  screen announce / summary builder, last End Day summary (22c_screens.wat)
+;;   0xAA00..0xAC3F  last End Day summary, screen announce / summary builder (22c_screens.wat)
 ;; Static data at 0x0900 (00_memory.wat): button styles (6 x 5 palette indices: border, face,
 ;; pressed face, text, second line) and the season -> icon map at 0x0920.
 ;;
@@ -306,6 +306,8 @@
     (if (i32.and (i32.ge_s (local.get $y) (global.get $clip_t))
                  (i32.le_s (i32.add (local.get $y) (local.get $h)) (global.get $clip_b)))
       (then (drop (call $hit_add (local.get $x) (local.get $y) (local.get $w) (local.get $h) (local.get $code)))))
+    ;; (a row with extra lines logs its label first: announcements read "NAME, LINE, RIGHT")
+    (if (i32.or (global.get $b_sub) (global.get $b_right)) (then (call $lab_log (local.get $label))))
     (call $lab_log (global.get $b_sub)) (call $lab_log (global.get $b_right))
     (local.set $e (i32.add (global.get $BTNS) (i32.shl (global.get $btn_n) (i32.const 6))))
     (i32.store (local.get $e) (local.get $code))
@@ -404,7 +406,7 @@
 
 (func $announce (param $s i32)
   (local $n i32) (local $d i32)
-  (local.set $n (call $imin (call $strlen (local.get $s)) (i32.const 200)))
+  (local.set $n (call $imin (call $strlen (local.get $s)) (i32.const 480)))
   (local.set $d (i32.add (global.get $ann_p) (global.get $ann_len)))
   (if (i32.gt_u (i32.add (local.get $d) (local.get $n)) (i32.const 0x9000)) (then (local.set $d (i32.const 0x8E00))))
   (memory.copy (local.get $d) (local.get $s) (local.get $n))
@@ -691,7 +693,7 @@
   (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
   (global.set $tab (i32.const 0)) (global.set $msub (i32.const 0)) (global.set $place (i32.const 0)) (global.set $dsp (i32.const -1))
   (call $qreset)
-  (global.set $scr (i32.const 0)) (i32.store8 (global.get $SUMMARY) (i32.const 0))
+  (global.set $scr (i32.const 0)) (global.set $scr_ret (i32.const 0)) (i32.store8 (global.get $SUMMARY) (i32.const 0))
   (call $layout_panel (i32.const 0))
   (global.set $dirty (i32.const 1)))
 (func $ui_new_game (param $seed i32)

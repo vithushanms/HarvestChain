@@ -4,8 +4,8 @@
 ;;                   UI icons 0x640 (29 x 24 B, generated, 02b_strings.wat), UI tables 0x900-0x936
 ;;                   (button styles, season icons, toast colours, tab icons, badge colours: 22_ui.wat / 22a_farm.wat),
 ;;                   0x937-0x939 truck upgrade cost columns, 0x93A-0x93C route stop models, 0x948-0x954 good -> icon (22b_tabs.wat);
-;;                   0x955-0x96B screen header icons, Enter buttons, How-to models, confetti colours (22c_screens.wat);
-;;                   0x96C-0xFFF free
+;;                   0x955-0x972 screen header icons, Enter buttons, How-to models, confetti colours,
+;;                   milestone progress map (22c_screens.wat); 0x973-0xFFF free
 ;;            0x6800-0x70F7 scene model table (generated, 21c_scene.wat; size in its footer),
 ;;            0x7100-0x71C7 scene look / prop tables (21c_scene.wat), 0x7200.. UI string table
 ;;            (generated, 02b_strings.wat, <= 0x7FFF); the rest of 0x6800-0x7FFF free
@@ -15,8 +15,8 @@
 ;;   0x08000  64 KB  layout, hit regions, draw lists, announce buffer (rect table 0x8000, UI block 0x8100,
 ;;                   hit table 0x8200..0x8BFF: map in 20_layout.wat; text builders, toasts, announce
 ;;                   ring, button draw list (64), wrap buffer, tab amounts, label log 0x8C00..0xA8FF: map in
-;;                   22_ui.wat; screen announce builder + End Day summary 0xA900..0xAA3F (22c_screens.wat);
-;;                   0xAA40.. free)
+;;                   22_ui.wat; End Day summary + screen announce builder 0xAA00..0xAC3F (22c_screens.wat);
+;;                   0xA900..0xA9FF, 0xAC40.. free)
 ;;            (0x10000 upper 32 KB: IO staging for save / replay bytes from the loader)
 ;;   0x18000  ...    framebuffer w*h*4 bytes + canary word 0xCAFEF00D (memory.grow in $resize)
 

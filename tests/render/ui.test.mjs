@@ -22,6 +22,9 @@ test('string table: committed data matches tools/gen-strings.mjs; size cap', () 
   // ~2.85 KB (flagged in task-5c-report.md for a ledger ruling). This cap keeps further growth visible.
   assert.ok(s.size <= 2900, `string table ${s.size} B`);
   for (const e of s.out) assert.ok(e.text.length <= 40, `"${e.text}" longer than 40 chars (spec 13)`);
+  // no text stored twice (empty group placeholders excepted)
+  const dup = s.out.filter((e, i) => e.text && s.out.findIndex((f) => f.text === e.text) !== i).map((e) => e.text);
+  assert.deepEqual(dup, [], 'duplicate strings');
 });
 
 test('error map covers every error code in tools/balance.json', async () => {

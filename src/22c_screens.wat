@@ -7,8 +7,10 @@
 ;; content ($box_need from the previous pass; a change re-renders once). Pure presentation: the sim
 ;; changes only through $init / $act (CONTINUE = act 19); render-only frames leave it untouched.
 ;;
-;; Navigation: $open(s) remembers the screen it came from ($scr_ret); Esc, the close button,
-;; START DAY and the How-to BACK / DONE return there (Gazette, Journal, How to play only). Results /
+;; Navigation: $open(s) pushes the screen it came from on a back stack ($scr_ret, 4 bits a screen,
+;; top in the low nibble; the farm also keeps its tab scroll); Esc, the close button, START DAY and
+;; the How-to BACK / DONE pop it (Gazette, Journal, How to play only), so Gazette -> Journal -> Esc
+;; -> Esc reaches the farm and How to play -> Journal -> Esc -> Esc the Title. Results /
 ;; Game Over / Title are left only through their buttons. End Day: Results / Game Over when the
 ;; status says so, else the Gazette unless its auto-open pref (get_flags bit 2) is off.
 ;; Two-step NEW GAME / DAILY SEED (over a save) share $armed with DEMOLISH (400 ms, 3 s).
@@ -19,10 +21,14 @@
 ;;   0x3C4 LARGE TEXT 0x3C5 AUTO GAZETTE / DON'T SHOW 0x3C6 JOURNAL 0x3C7 START DAY (back)
 ;;   0x3C8 share code / QR (reserved for Task 7) 0x3C9 CONTINUE IN ENDLESS 0x3CA TRY AGAIN
 ;;   0x3CB BACK (page) 0x3CC NEXT / DONE 0x3CD RESULTS (from the Journal); 0x2FF inert milestone rows.
-;; R_LAYOUT: 0xA900..0xA9FF announce / summary text builder, 0xAA00..0xAA3F last End Day summary.
+;; R_LAYOUT: 0xAA00..0xAA3F last End Day summary, 0xAA40..0xAC3F announce / summary text builder (512 B).
+;; Announcements: "TITLE. <label lines>, <button labels>", toggles with " ON" / " OFF", the font's
+;; star / arrow glyphs as words and the '^' middle dot as a comma; the Journal says "n OF 7 DONE"
+;; first and each milestone row's name before its progress line.
 
 (global $scr (mut i32) (i32.const 0))
-(global $scr_ret (mut i32) (i32.const 0))
+(global $scr_ret (mut i32) (i32.const 0))      ;; back stack (see Navigation)
+(global $ret_scroll (mut i32) (i32.const 0))   ;; farm tab scroll when a screen opened over it
 (global $scr_t (mut i32) (i32.const -2))       ;; when the screen opened (confetti), -1 = next frame
 (global $has_save (mut i32) (i32.const 0))     ;; ui_boot(has_save); any new game makes one
 (global $page (mut i32) (i32.const 0))         ;; How to play page 0..2
@@ -34,7 +40,7 @@
 ;; Task 7 load metrics for the Title footer (0 = not measured yet: shown as "--")
 (global $met_ms (mut i32) (i32.const 0))
 (global $met_bytes (mut i32) (i32.const 0))
-(global $ANNBUF i32 (i32.const 0xA900))
+(global $ANNBUF i32 (i32.const 0xAA40))
 (global $SUMMARY i32 (i32.const 0xAA00))
 ;; per screen: header icon (0x955; Gazette = today's weather) and
 ;; the Enter key's button (0x95C, low byte of 0x3Cx; Title: CONTINUE or NEW GAME)
@@ -42,6 +48,7 @@
 (data (i32.const 0x95C) "\00\c0\c7\c7\c9\ca\cc")
 (data (i32.const 0x963) "\40\50\59")               ;; How to play page models: Wheat, Mill, Garage
 (data (i32.const 0x966) "\1a\16\0a\32\22\26")      ;; confetti colours (tomato, corn, grass, sky, grape, barn)
+(data (i32.const 0x96C) "\00\01\02\01\03\04\01")  ;; milestone -> progress prefix (STR_MP + n)
 
 (func $go (param $s i32)
   (global.set $scr (local.get $s))
@@ -49,12 +56,25 @@
   (global.set $hover_tile (i32.const -1)) (global.set $scr_t (i32.const -1))
   (global.set $ann_pend (i32.ne (local.get $s) (i32.const 0)))
   (global.set $dirty (i32.const 1)))
-(func $open (param $s i32) (global.set $scr_ret (global.get $scr)) (call $go (local.get $s)))
-;; Results (status 1) / Game Over (3) when the run has ended.
+(func $open (param $s i32)
+  (if (i32.eqz (global.get $scr)) (then (global.set $ret_scroll (global.get $scroll))))
+  (global.set $scr_ret (i32.or (i32.shl (global.get $scr_ret) (i32.const 4)) (global.get $scr)))
+  (call $go (local.get $s)))
+;; Back from a Gazette / Journal / How to play: pop the screen it was opened from.
+(func $pop
+  (local $s i32)
+  (local.set $s (i32.and (global.get $scr_ret) (i32.const 15)))
+  (global.set $scr_ret (i32.shr_u (global.get $scr_ret) (i32.const 4)))
+  (call $go (local.get $s))
+  (if (i32.eqz (local.get $s)) (then (global.set $scroll (global.get $ret_scroll)))))
+;; Results (status 1) / Game Over (3) when the run has ended (the End Day toasts are cleared:
+;; the screen says it all).
 (func $after_state
   (local $s i32)
   (local.set $s (i32.load8_u (global.get $S_STATUS)))
-  (if (i32.and (local.get $s) (i32.const 1)) (then (call $go (i32.add (i32.const 4) (i32.shr_u (local.get $s) (i32.const 1)))))))
+  (if (i32.and (local.get $s) (i32.const 1)) (then
+    (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
+    (call $go (i32.add (i32.const 4) (i32.shr_u (local.get $s) (i32.const 1)))))))
 ;; After a successful End Day: the run's end takes precedence over the morning Gazette.
 (func $after_end
   (call $after_state)
@@ -90,8 +110,8 @@
       (else (call $fresh (call $next_seed))))
     (br $x))
     (call $open (i32.const 6)) (br $x))
-    (call $set_pref (i32.const 0) (i32.eqz (global.get $flag_large))) (br $x))
-    (global.set $flag_gazoff (i32.eqz (global.get $flag_gazoff))) (br $x))
+    (call $set_pref (i32.const 0) (i32.eqz (global.get $flag_large))) (call $say_tog (local.get $c)) (br $x))
+    (global.set $flag_gazoff (i32.eqz (global.get $flag_gazoff))) (call $say_tog (local.get $c)) (br $x))
     (call $open (i32.const 3)) (br $x))
     (call $back) (br $x))
     ;; CONTINUE IN ENDLESS (act CONTINUE; $do toasts an error, requests the save)
@@ -289,6 +309,19 @@
   (call $hline (global.get $ux) (global.get $uy) (global.get $uw) (call $pal (i32.const 57)))
   (global.set $uy (i32.add (global.get $uy) (i32.add (global.get $lgap) (i32.const 2)))))
 ;; On / off toggle: ink face + check icon when on, paper + cross when off (never colour alone).
+;; " ON" / " OFF" after a toggle's label (LARGE TEXT; AUTO GAZETTE on the Title, DON'T SHOW on the
+;; Gazette), and the announcement of a tapped toggle.
+(func $s_tog (param $c i32)
+  (call $sp)
+  (call $si (select (global.get $STR_ON) (global.get $STR_OFF)
+    (select (global.get $flag_large) (i32.xor (global.get $flag_gazoff) (i32.eq (global.get $scr) (i32.const 1)))
+      (i32.eq (local.get $c) (i32.const 0x3C4))))))
+(func $say_tog (param $c i32)
+  (call $sb (global.get $SB3))
+  (call $si (select (global.get $STR_LARGE) (select (global.get $STR_AUTO_GAZ) (global.get $STR_DONT_SHOW) (i32.eq (global.get $scr) (i32.const 1)))
+    (i32.eq (local.get $c) (i32.const 0x3C4))))
+  (call $s_tog (local.get $c))
+  (call $announce (global.get $SB3)))
 (func $toggle (param $c i32) (param $s i32) (param $on i32) (param $cols i32) (param $h i32)
   (call $put (local.get $c) (call $str (local.get $s)) (select (global.get $I_CHECK) (global.get $I_CLOSE) (local.get $on))
     (select (i32.const 3) (i32.const 0) (local.get $on)) (i32.const 1) (local.get $cols) (local.get $h)))
@@ -330,14 +363,14 @@
     (local.set $f (i32.and (i32.shr_u (local.get $m) (local.get $i)) (i32.const 1)))
     (block $p
       (if (local.get $f) (then (call $si (global.get $STR_ERR)) (br $p)))
-      ;; year 1 is checked only on day 81; the run target only while playing
+      ;; year 1 is settled by the End Day into day 81; the run target only while playing
       (if (i32.and (i32.eq (local.get $i) (i32.const 3))
-            (i32.gt_u (i32.load16_u (global.get $S_DAY)) (i32.add (i32.shl (call $k (global.get $K_DAYS_PER_SEASON)) (i32.const 2)) (i32.const 1))))
+            (i32.ge_u (i32.load16_u (global.get $S_DAY)) (i32.add (i32.shl (call $k (global.get $K_DAYS_PER_SEASON)) (i32.const 2)) (i32.const 1))))
         (then (call $si (i32.add (global.get $STR_ERR) (i32.const 17))) (br $p)))
       (if (i32.and (i32.eq (local.get $i) (i32.const 6)) (i32.ne (i32.load8_u (global.get $S_STATUS)) (i32.const 0)))
         (then (call $si (i32.add (global.get $STR_ERR) (global.get $E_STATUS))) (br $p)))
       ;; "WINE 4 / 10", "NET WORTH $1,430 / $2,000 BY DAY 81", "REP *2 / *3"
-      (call $si (i32.add (global.get $STR_MP) (local.get $i)))
+      (call $si (i32.add (global.get $STR_MP) (i32.load8_u (i32.add (i32.const 0x96C) (local.get $i)))))
       (local.set $v (call $net_worth))
       (if (i32.eqz (local.get $i)) (then (local.set $v (i32.load16_u (global.get $S_PROC_SOLD)))))
       (if (i32.eq (local.get $i) (i32.const 2)) (then (local.set $v (i32.load16_u (global.get $S_CONTRACTS_DONE)))))
@@ -376,7 +409,7 @@
   (local.set $n (i32.load16_u (global.get $S_CONTRACTS_DONE)))
   (call $sb (global.get $SB1)) (call $si (i32.add (global.get $STR_MSUB) (i32.const 2))) (call $sp) (call $s_times (local.get $n) (call $k (global.get $K_CONTRACT_SCORE)))
   (call $lab (global.get $I_TRUCK) (i32.const 61))
-  (call $sb (global.get $SB1)) (call $si (global.get $STR_SOLD)) (call $sn0 (i32.load16_u (global.get $S_WINE_SOLD))) (call $sp) (call $sg (i32.const 12))
+  (call $sb (global.get $SB1)) (call $si (global.get $STR_MP)) (call $sn0 (i32.load16_u (global.get $S_WINE_SOLD))) (call $sp) (call $sg (i32.const 12))
   (call $lab (global.get $I_STALL) (i32.const 61))
   ;; the total, large and centred: SCORE 21,340 (= score())
   (call $sb (global.get $SB1)) (call $si (global.get $STR_SCORE)) (call $sn (call $score) (i32.const 2))
@@ -497,25 +530,49 @@
   (local.set $v (i32.div_u (i32.mul (local.get $v) (i32.const 10)) (local.get $u)))
   (call $sn0 (i32.div_u (local.get $v) (i32.const 10))) (call $sc (i32.const 46)) (call $sn0 (i32.rem_u (local.get $v) (i32.const 10))))
 
-;; Announcement for a screen just drawn: "TITLE. <label lines>, <button labels>" (aria-live).
+;; Announcement for a screen just drawn (see the header): built in ANNBUF, at most 480 chars.
 (func $ovl_say
-  (local $p i32) (local $i i32) (local $n i32)
-  (global.set $sblim (i32.const 230))
+  (local $p i32) (local $i i32) (local $n i32) (local $c i32)
+  (global.set $sblim (i32.const 480))
   (call $sb (global.get $ANNBUF))
-  (call $ss (select (global.get $oh_title) (call $str (global.get $STR_SCR)) (i32.ne (global.get $scr) (i32.const 1))))
+  (call $say_s (select (global.get $oh_title) (call $str (global.get $STR_SCR)) (i32.ne (global.get $scr) (i32.const 1))))
   (local.set $n (call $strlen (global.get $ANNBUF)))
+  ;; the Journal's summary first: "2 OF 7 DONE"
+  (if (i32.eq (global.get $scr) (i32.const 3)) (then
+    (call $sep) (call $sn0 (i32.popcnt (i32.and (i32.load8_u (global.get $S_MILESTONES)) (i32.const 0x7F))))
+    (call $si (global.get $STR_OF)) (call $sc (i32.const 55)) (call $sp) (call $si (global.get $STR_ERR))))
   (local.set $p (i32.const 0xA100))
   (block $d (loop $l
     (br_if $d (i32.ge_u (local.get $p) (global.get $lab_p)))
-    (call $sep) (call $ss (local.get $p))
+    (call $sep) (call $say_s (local.get $p))
     (local.set $p (i32.add (i32.add (local.get $p) (call $strlen (local.get $p))) (i32.const 1)))
     (br $l)))
+  ;; the screen's own buttons (list rows were logged with their lines above)
   (block $e (loop $b
     (br_if $e (i32.ge_u (local.get $i) (global.get $btn_n)))
-    (local.set $p (i32.add (i32.add (global.get $BTNS) (i32.shl (local.get $i) (i32.const 6))) (i32.const 8)))
-    (if (i32.load8_u (local.get $p)) (then (call $sep) (call $ss (local.get $p))))
+    (local.set $p (i32.add (global.get $BTNS) (i32.shl (local.get $i) (i32.const 6))))
+    (local.set $c (i32.load (local.get $p)))
+    (if (i32.and (i32.ge_u (local.get $c) (i32.const 0x3C0)) (i32.ne (i32.load8_u offset=8 (local.get $p)) (i32.const 0))) (then
+      (call $sep) (call $say_s (i32.add (local.get $p) (i32.const 8)))
+      (if (i32.lt_u (i32.sub (local.get $c) (i32.const 0x3C4)) (i32.const 2)) (then (call $s_tog (local.get $c))))))
     (local.set $i (i32.add (local.get $i) (i32.const 1)))
     (br $b)))
   (global.set $sblim (i32.const 55))
   (i32.store8 (i32.add (global.get $ANNBUF) (local.get $n)) (i32.const 46))
   (call $announce (global.get $ANNBUF)))
+;; Text into the builder as words: the star / up / down glyphs (1..3) spelled out, " ^ " -> ", ".
+(func $say_s (param $p i32)
+  (local $c i32)
+  (block $d (loop $l
+    (local.set $c (i32.load8_u (local.get $p)))
+    (br_if $d (i32.eqz (local.get $c)))
+    (if (i32.lt_u (local.get $c) (i32.const 4))
+      (then (call $si (i32.add (global.get $STR_GLYPH) (i32.sub (local.get $c) (i32.const 1)))))
+      (else (if (i32.eq (local.get $c) (i32.const 94))
+        (then
+          (if (i32.eq (i32.load8_u (i32.sub (global.get $sbp) (i32.const 1))) (i32.const 32))
+            (then (global.set $sbp (i32.sub (global.get $sbp) (i32.const 1)))))
+          (call $sc (i32.const 44)))
+        (else (call $sc (local.get $c))))))
+    (local.set $p (i32.add (local.get $p) (i32.const 1)))
+    (br $l))))

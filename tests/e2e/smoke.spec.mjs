@@ -47,7 +47,7 @@ test('Title on every boot: NEW GAME without a save, CONTINUE after one; Gazette 
   expect((await game.save()).day).toBe(2);           // End Day is blocked under the Gazette
   await game.press('Escape');
   await game.press('KeyJ');
-  expect(await game.announce()).toMatch(/^JOURNAL\. DAY 2 OF 240, PLAYING/);
+  expect(await game.announce()).toMatch(/^JOURNAL\. 0 OF 7 DONE, DAY 2 OF 240, PLAYING/);
   await game.press('KeyJ');
   await game.press('KeyE');
   expect((await game.save()).day).toBe(3);

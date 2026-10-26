@@ -111,7 +111,6 @@ export const STRINGS = [
   ['FOR', 'FOR '],
   ['DROP', 'NEXT UNITS DROP PRICE'],
   ['SET_QTY', 'SET A QUANTITY'],
-  ['SOLD', 'SOLD '],
   ['OFFERS', 'OFFERS'],
   ['ACCEPT', 'ACCEPT '],
   ['DECLINE', 'DECLINE'],
@@ -172,7 +171,9 @@ export const STRINGS = [
     'SELL AT THE STAND, TRUCK TO TOWN', 'AND CITY. GROW YOUR NET WORTH!']],
   ['@MNAME', ['FIRST PROCESSED SALE', 'GROWING CONCERN', 'TRUSTED SUPPLIER', 'A GOOD FIRST YEAR',
     'LOCAL FAVOURITE', 'VINTNER', 'HARVEST TYCOON']],
-  ['@MP', ['SOLD ', 'NET WORTH ', 'CONTRACTS ', 'NET WORTH ', 'REP ' + STAR, 'WINE ', 'NET WORTH ']],
+  // milestone progress prefixes, indexed through the byte map at 0x96C (22c_screens.wat); MP+0 is
+  // also "SOLD " for the Market and Results
+  ['@MP', ['SOLD ', 'NET WORTH ', 'CONTRACTS ', 'REP ' + STAR, 'WINE ']],
   ['YEAR3', 'YEAR 3 COMPLETE'],
   ['TAGLINE', 'GROW. PROCESS. SELL. DELIVER.'],
   ['CONTINUE', 'CONTINUE'],
@@ -200,6 +201,9 @@ export const STRINGS = [
   ['CAUSE', 'LOAN UNPAID, GRACE OVER'],
   ['TRY', 'TRY AGAIN'],
   ['IN', ' IN '],
+  // fix round: toggle state, announcement words for the star / up / down glyphs
+  ['ON', 'ON'],
+  ['@GLYPH', ['STAR ', 'UP', 'DOWN']],
 ];
 
 // Icons: name, [c1, c2, c3] palette indices (hue*4 + step), 9 rows of 9 chars ('.' = clear).
