@@ -3,6 +3,7 @@
 // loader drives the module; t_ui / t_ui_btn / t_ui_toast only observe.
 import { loadGame, STATE } from '../helpers.mjs';
 import { farm, CROP, BLD } from './scenes.mjs';
+import { runBot } from '../sim/bot.mjs';
 
 export const HIT = { ENDDAY: 1, HARVALL: 2, DAY: 3, CLOSE: 4, PANEL: 5, GRID: 6, TOPBAR: 7, TAB0: 10 };
 // Dynamic panel button codes (src/22a_farm.wat header).
@@ -19,6 +20,10 @@ export const SCR = { FARM: 0, TITLE: 1, GAZETTE: 2, JOURNAL: 3, RESULTS: 4, GAME
 export const OVL = { CONTINUE: 0x3C0, NEW: 0x3C1, DAILY: 0x3C2, HOWTO: 0x3C3, LARGE: 0x3C4, GAZOFF: 0x3C5, JOURNAL: 0x3C6,
   START: 0x3C7, SHARE: 0x3C8, ENDLESS: 0x3C9, TRY: 0x3CA, PREV: 0x3CB, NEXT: 0x3CC, RESULTS: 0x3CD, MILE: 0x2FF };
 // t_ui(k) fields.
+// Task 7a replay viewer / share codes (src/24_replay.wat header); t_rp(k) fields.
+export const RP = { COPY: 0x3C8, RESTART: 0x3D0, PREV: 0x3D1, PLAY: 0x3D2, NEXT: 0x3D3, SPEED: 0x3D4, TAKE: 0x3D5, EXIT: 0x3D6,
+  SCRUB: 0x3D7, WATCH: 0x3D8, OWN: 0x3D9, SCR: 7 };
+export const RPF = { DAY: 0, N: 1, PLAY: 2, SPD: 3, BAD: 4, PEND: 5, COPY: 6 };
 export const UI = { SEL: 0, SHEET: 1, PICK: 2, SCROLL: 3, SCROLL_MAX: 4, HOVER: 5, BTN_N: 6, TOASTS: 7, ARM: 8, DIRTY: 9, SLIDE: 10, IN_ST: 11,
   TAB: 12, MSUB: 13, PLACE: 14, DSP: 15, DSTEP: 16, DM: 17, DC: 18, LABELS: 19, SCR: 20, PAGE: 21, RET: 22 };
 const LABELS = 0xA100;   // text of every $ui_label drawn last frame, NUL-separated (22_ui.wat)
@@ -86,6 +91,9 @@ export async function uiGame(w = 360, h = 640, dpr = 200, o = {}) {
     return g.hit(code);
   };
   g.tapR = (code) => { if (!g.reach(code)) throw new Error(`cannot reach 0x${code.toString(16)}`); g.tap(code); };
+  // share code text (share_build) and replay_load of a text through the io buffer
+  g.code = () => { const n = ex.share_build(); return Buffer.from(g.mem().slice(ex.share_ptr(), ex.share_ptr() + n)).toString('latin1'); };
+  g.load = (s) => { const io = ex.io_buf(); g.mem().set(Buffer.from(s, 'latin1'), io); const e = ex.replay_load(io, s.length); g.frame(); return e; };
   g.cash = () => new DataView(ex.memory.buffer).getInt32(STATE.base + STATE.fields.cash.off, true);
   g.tile = (i) => g.mem()[STATE.base + STATE.fields.tiles.off + i * 8];
   return g;
@@ -153,6 +161,15 @@ const broke = (ex) => {
   farm(ex).day(57); poke(ex, 'cash', -420); poke(ex, 'loanPrincipal', 1500); poke(ex, 'grace', 3); poke(ex, 'rep', 4); poke(ex, 'contractsDone', 1);
 };
 
+// Share codes for the replay states: a 40-day bot run (seed 1), and a log whose PLANT on day 4 fails
+// (tile 63 is outside the 4x4 farm): 'R' 1 seed 5, 2 records: 1E 03, 01 3F 00.
+const BOT40 = await (async () => {
+  const g = await loadGame(); g.ex.init(1); runBot(g.ex, g.mem, 40);
+  const n = g.ex.share_build(); return Buffer.from(g.mem().slice(g.ex.share_ptr(), g.ex.share_ptr() + n)).toString('latin1');
+})();
+const BAD_LOG = Buffer.from([0x52, 1, 5, 0, 0, 0, 2, 0, 0x1E, 3, 1, 63, 0]).toString('base64url');
+export const CODES = { BOT40, BAD_LOG };
+
 // Canned UI states: [w, h, dpr, options, script]. Rendered at a fixed time so hashes are stable.
 const poor = (ex) => farm(ex).day(3);
 // [name, state] in order; names must be unique (asserted in tests/render/ui.test.mjs).
@@ -195,6 +212,12 @@ export const UI_STATE_LIST = [
   ['ui-journal-large', { o: { setup: midRun, large: true }, run: (g) => g.key(KEY.J) }],
   ['ui-results', { o: { gazette: true, setup: lastDay }, run: (g) => g.tap(HIT.ENDDAY) }],
   ['ui-gameover', { o: { gazette: true, setup: broke }, run: (g) => g.tap(HIT.ENDDAY) }],
+  // Task 7a: replay viewer (a shared 40-day bot run), Results share slot
+  ['ui-title-watch', { o: { boot: 1, setup: midRun }, run: (g) => g.load(BOT40) }],
+  ['ui-replay-start', { o: { boot: 0 }, run: (g) => { g.load(BOT40); g.tap(RP.WATCH); } }],
+  ['ui-replay-mid', { o: { boot: 0 }, run: (g) => { g.load(BOT40); g.tap(RP.WATCH); g.ex.t_rp_seek(23); for (let i = 0; i < 2; i++) g.tap(RP.SPEED); } }],
+  ['ui-replay-invalid', { o: { boot: 0 }, run: (g) => { g.load(BAD_LOG); g.tap(RP.WATCH); g.tap(RP.NEXT); g.tap(RP.NEXT); g.tap(RP.NEXT); } }],
+  ['ui-results-share', { o: { gazette: true, setup: (ex) => { lastDay(ex); for (let i = 0; i < 6; i++) ex.act(17 + (i & 1), 100, 0, 0); } }, run: (g) => g.tap(HIT.ENDDAY) }],
 ];
 export const UI_STATES = {};
 for (const [name, s] of UI_STATE_LIST) {

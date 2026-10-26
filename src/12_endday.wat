@@ -411,7 +411,8 @@
     (then (call $board_refresh)))
   (call $check_run))
 
-(func $end_day (result i32)
+;; ($end_day, the entry point, wraps this and logs the End Day: 24_replay.wat.)
+(func $end_day_do (result i32)
   (local $st i32)
   (local.set $st (i32.load8_u (global.get $S_STATUS)))
   (if (i32.and (i32.ne (local.get $st) (i32.const 0)) (i32.ne (local.get $st) (global.get $ST_ENDLESS)))

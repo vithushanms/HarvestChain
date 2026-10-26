@@ -1,6 +1,6 @@
 ;; Screens over the farm (plan Task 5c): Title, morning Gazette, Journal, Results / Game Over and
 ;; How to play. One $scr state: 0 farm (+ tabs, 22a/22b) 1 Title 2 Gazette 3 Journal 4 Results
-;; 5 Game Over 6 How to play. An overlay is drawn over the dimmed full-screen farm scene (no top bar,
+;; 5 Game Over 6 How to play 7 replay viewer (24_replay.wat: its body, keys and taps). An overlay is drawn over the dimmed full-screen farm scene (no top bar,
 ;; tabs or sheet); a full-screen HIT_PANEL region under its buttons absorbs every other tap, and
 ;; $key handles only Esc / Enter / J while one is open. The cards reuse the sheet machinery
 ;; ($draw_box: header, close button, clipped scrolling body, $put rows) and size themselves to their
@@ -19,7 +19,7 @@
 ;;
 ;; Hit codes (panel range): 0x3C0 CONTINUE 0x3C1 NEW GAME 0x3C2 DAILY SEED 0x3C3 HOW TO PLAY
 ;;   0x3C4 LARGE TEXT 0x3C5 AUTO GAZETTE / DON'T SHOW 0x3C6 JOURNAL 0x3C7 START DAY (back)
-;;   0x3C8 share code / QR (reserved for Task 7) 0x3C9 CONTINUE IN ENDLESS 0x3CA TRY AGAIN
+;;   0x3C8 COPY CODE (share slot, 24_replay.wat; 0x3D0.. replay codes there) 0x3C9 CONTINUE IN ENDLESS 0x3CA TRY AGAIN
 ;;   0x3CB BACK (page) 0x3CC NEXT / DONE 0x3CD RESULTS (from the Journal); 0x2FF inert milestone rows.
 ;; R_LAYOUT: 0xAA00..0xAA3F last End Day summary, 0xAA40..0xAC3F announce / summary text builder (512 B).
 ;; Announcements: "TITLE. <label lines>, <button labels>", toggles with " ON" / " OFF", the font's
@@ -37,6 +37,7 @@
 (global $nest (mut i32) (i32.const 0))
 (global $oh_icon (mut i32) (i32.const 0))      ;; card header icon / title ($ovl_head)
 (global $oh_title (mut i32) (i32.const 0))
+(global $rp_top (mut i32) (i32.const 0))       ;; replay viewer card top (the farm fits above it)
 ;; Task 7 load metrics for the Title footer (0 = not measured yet: shown as "--")
 (global $met_ms (mut i32) (i32.const 0))
 (global $met_bytes (mut i32) (i32.const 0))
@@ -95,6 +96,8 @@
 ;; Overlay buttons (and the Build tab's JOURNAL). Only Gazette / Journal / How to play close.
 (func $ovl_tap (param $c i32)
   (if (i32.eq (local.get $c) (global.get $HIT_CLOSE)) (then (call $back) (return)))
+  ;; share / replay codes (24_replay.wat)
+  (if (i32.or (i32.eq (local.get $c) (i32.const 0x3C8)) (i32.ge_u (local.get $c) (i32.const 0x3D0))) (then (call $rp_tap (local.get $c)) (return)))
   (global.set $dirty (i32.const 1))
   (block $x (block $k_res (block $k_next (block $k_prev (block $k_try (block $k_end (block $k_start
   (block $k_jour (block $k_gaz (block $k_large (block $k_how (block $k_new (block $k_cont
@@ -149,13 +152,16 @@
 (func $draw_ovl
   (local $w i32) (local $h i32) (local $bw i32) (local $bh i32) (local $mh i32)
   (local.set $w (global.get $fb_w)) (local.set $h (global.get $fb_h))
-  (call $dim (i32.eq (global.get $scr) (i32.const 5)))
+  ;; (the replay viewer: the farm undimmed above a card at the bottom)
+  (if (i32.ne (global.get $scr) (i32.const 7)) (then (call $dim (i32.eq (global.get $scr) (i32.const 5)))))
   (drop (call $hit_add (i32.const 0) (i32.const 0) (local.get $w) (local.get $h) (global.get $HIT_PANEL)))
   (if (i32.eq (global.get $scr) (i32.const 1)) (then (call $title) (return)))
   (local.set $bw (call $imin (i32.sub (local.get $w) (i32.shl (global.get $lgap) (i32.const 1))) (call $S (i32.const 440))))
   (local.set $mh (i32.sub (local.get $h) (i32.shl (global.get $lgap) (i32.const 2))))
   (local.set $bh (call $imin (local.get $mh) (global.get $box_need)))
-  (call $draw_box (i32.shr_s (i32.sub (local.get $w) (local.get $bw)) (i32.const 1)) (i32.shr_s (i32.sub (local.get $h) (local.get $bh)) (i32.const 1))
+  (global.set $rp_top (i32.sub (local.get $h) (i32.add (local.get $bh) (i32.add (i32.shl (global.get $lgap) (i32.const 1)) (i32.const 3)))))
+  (call $draw_box (i32.shr_s (i32.sub (local.get $w) (local.get $bw)) (i32.const 1))
+    (select (global.get $rp_top) (i32.shr_s (i32.sub (local.get $h) (local.get $bh)) (i32.const 1)) (i32.eq (global.get $scr) (i32.const 7)))
     (local.get $bw) (local.get $bh))
   ;; the content height is known now: draw once more when the card should be another size
   (if (i32.and (i32.ne (call $imin (local.get $mh) (global.get $box_need)) (local.get $bh)) (i32.eqz (global.get $nest))) (then
@@ -203,6 +209,11 @@
   (if (i32.eq (local.get $s) (i32.const 6)) (then
     (call $sb (global.get $SB1)) (call $si (global.get $STR_PAGE)) (call $sn0 (i32.add (global.get $page) (i32.const 1)))
     (call $si (global.get $STR_OF)) (call $sc (i32.const 51))))
+  (if (i32.eq (local.get $s) (i32.const 7)) (then
+    ;; REPLAY / DAY 12 OF 240 (days played at the viewer's position)
+    (global.set $oh_icon (global.get $I_CLOCK))
+    (call $sb (global.get $SB1)) (call $si (global.get $STR_DAY)) (call $sn0 (global.get $rp_day))
+    (call $si (global.get $STR_OF)) (call $sn0 (global.get $rp_N))))
   (call $lab_log (global.get $SB1)))
 
 ;; Results / Game Over have the large card header.
@@ -221,6 +232,7 @@
   (local $j i32)
   (if (i32.eq (global.get $scr) (i32.const 2)) (then (call $gazette) (return)))
   (if (i32.eq (global.get $scr) (i32.const 3)) (then (call $journal) (return)))
+  (if (i32.eq (global.get $scr) (i32.const 7)) (then (call $rp_body) (return)))
   (if (i32.eq (global.get $scr) (i32.const 6)) (then
     ;; the page's lit 3D model, then its two lines
     (local.set $j (i32.shl (call $btnh) (i32.const 1)))
@@ -440,7 +452,7 @@
   (global.set $ux (i32.sub (global.get $ux) (i32.shl (global.get $lgap) (i32.const 1))))
   (global.set $uw (i32.add (global.get $uw) (i32.shl (global.get $lgap) (i32.const 2))))
   (global.set $uy (i32.add (global.get $uy) (i32.shl (global.get $lgap) (i32.const 1))))
-  ;; Task 7: share code + QR (HIT 0x3C8) go here
+  (call $share_ui)
   (if (local.get $go)
     (then (call $put (i32.const 0x3CA) (call $str (global.get $STR_TRY)) (global.get $I_ARROW_R) (i32.const 1) (i32.const 1) (call $pcols) (call $btnh)))
     (else
@@ -455,7 +467,7 @@
 ;; Rows: CONTINUE (with a save), NEW GAME, DAILY SEED, then HOW TO PLAY | JOURNAL and the two
 ;; toggles: 2 rows side by side, or 4 rows one per line.
 (func $stack_top (param $c i32) (result i32)
-  (i32.sub (i32.sub (global.get $fb_h) (i32.add (i32.mul (i32.sub (i32.add (global.get $has_save) (i32.const 8)) (i32.shl (local.get $c) (i32.const 1)))
+  (i32.sub (i32.sub (global.get $fb_h) (i32.add (i32.mul (i32.sub (i32.add (i32.add (global.get $has_save) (global.get $rp_pend)) (i32.const 8)) (i32.shl (local.get $c) (i32.const 1)))
     (i32.add (call $btnh) (global.get $lgap))) (i32.const 26)))
     (i32.shl (global.get $lgap) (i32.const 1))))
 ;; Pair-row columns: one per line only in large text when the large labels would not fit side by
@@ -505,6 +517,10 @@
   (local.set $bh (call $btnh))
   (global.set $ucol (i32.const 0))
   (global.set $uy (call $title_top))
+  ;; a shared run from the link / a paste waits (24_replay.wat)
+  (if (global.get $rp_pend) (then
+    (call $sb (global.get $SB2)) (call $si (global.get $STR_WATCH)) (call $si (global.get $STR_SHARED))
+    (call $put (i32.const 0x3D8) (global.get $SB2) (global.get $I_CLOCK) (i32.const 2) (i32.const 1) (i32.const 1) (local.get $bh))))
   (if (global.get $has_save)
     (then
       (call $put (i32.const 0x3C0) (call $str (global.get $STR_CONTINUE)) (global.get $I_ARROW_R) (i32.const 1) (i32.const 1) (i32.const 1) (local.get $bh))

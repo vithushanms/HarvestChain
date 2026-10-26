@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 274 strings, 2766 B at 0x7200 (spec budget 2560 B)
+;; string table: 290 strings, 2946 B at 0x7200 (spec budget 2560 B)
 (data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -235,60 +235,76 @@
   "RUN COMPLETE!\00" ;; 220
   "BANKRUPT\00" ;; 221
   "HOW TO PLAY\00" ;; 222
-  "PLAYING\00" ;; 223
-  "ENDLESS\00" ;; 224
-  "PLANT ON A PLOT. END DAY GROWS IT.\00" ;; 225
-  "HARVEST WHEN RIPE.\00" ;; 226
-  "A MILL TURNS WHEAT INTO FLOUR:\00" ;; 227
-  "GOODS SELL FOR MORE.\00" ;; 228
-  "SELL AT THE STAND, TRUCK TO TOWN\00" ;; 229
-  "AND CITY. GROW YOUR NET WORTH!\00" ;; 230
-  "FIRST PROCESSED SALE\00" ;; 231
-  "GROWING CONCERN\00" ;; 232
-  "TRUSTED SUPPLIER\00" ;; 233
-  "A GOOD FIRST YEAR\00" ;; 234
-  "LOCAL FAVOURITE\00" ;; 235
-  "VINTNER\00" ;; 236
-  "HARVEST TYCOON\00" ;; 237
-  "SOLD \00" ;; 238
-  "NET WORTH \00" ;; 239
-  "CONTRACTS \00" ;; 240
-  "REP \01\00" ;; 241
-  "WINE \00" ;; 242
-  "YEAR 3 COMPLETE\00" ;; 243
-  "GROW. PROCESS. SELL. DELIVER.\00" ;; 244
-  "CONTINUE\00" ;; 245
-  "NEW GAME\00" ;; 246
-  "TAP AGAIN: REPLACES SAVE\00" ;; 247
-  "DAILY SEED #\00" ;; 248
-  "LARGE TEXT\00" ;; 249
-  "AUTO GAZETTE\00" ;; 250
-  "0 IMAGE FILES ^ 0 FONT FILES ^ 1 WASM\00" ;; 251
-  "LOADED IN \00" ;; 252
-  " MS\00" ;; 253
-  " KB\00" ;; 254
-  " ^ \00" ;; 255
-  "PAGE \00" ;; 256
-  ", YEAR \00" ;; 257
-  "% SURE\00" ;; 258
-  " TOMORROW\00" ;; 259
-  " STEADY\00" ;; 260
-  "NEARLY FULL\00" ;; 261
-  "START DAY\00" ;; 262
-  "DON'T SHOW\00" ;; 263
-  "SCORE \00" ;; 264
-  " TO \00" ;; 265
-  "REPUTATION \00" ;; 266
-  "LOAN UNPAID, GRACE OVER\00" ;; 267
-  "TRY AGAIN\00" ;; 268
-  " IN \00" ;; 269
-  "ON\00" ;; 270
-  "STAR \00" ;; 271
-  "UP\00" ;; 272
-  "DOWN\00" ;; 273
+  "REPLAY\00" ;; 223
+  "PLAYING\00" ;; 224
+  "ENDLESS\00" ;; 225
+  "PLANT ON A PLOT. END DAY GROWS IT.\00" ;; 226
+  "HARVEST WHEN RIPE.\00" ;; 227
+  "A MILL TURNS WHEAT INTO FLOUR:\00" ;; 228
+  "GOODS SELL FOR MORE.\00" ;; 229
+  "SELL AT THE STAND, TRUCK TO TOWN\00" ;; 230
+  "AND CITY. GROW YOUR NET WORTH!\00" ;; 231
+  "FIRST PROCESSED SALE\00" ;; 232
+  "GROWING CONCERN\00" ;; 233
+  "TRUSTED SUPPLIER\00" ;; 234
+  "A GOOD FIRST YEAR\00" ;; 235
+  "LOCAL FAVOURITE\00" ;; 236
+  "VINTNER\00" ;; 237
+  "HARVEST TYCOON\00" ;; 238
+  "SOLD \00" ;; 239
+  "NET WORTH \00" ;; 240
+  "CONTRACTS \00" ;; 241
+  "REP \01\00" ;; 242
+  "WINE \00" ;; 243
+  "YEAR 3 COMPLETE\00" ;; 244
+  "GROW. PROCESS. SELL. DELIVER.\00" ;; 245
+  "CONTINUE\00" ;; 246
+  "NEW GAME\00" ;; 247
+  "TAP AGAIN: REPLACES SAVE\00" ;; 248
+  "DAILY SEED #\00" ;; 249
+  "LARGE TEXT\00" ;; 250
+  "AUTO GAZETTE\00" ;; 251
+  "0 IMAGE FILES ^ 0 FONT FILES ^ 1 WASM\00" ;; 252
+  "LOADED IN \00" ;; 253
+  " MS\00" ;; 254
+  " KB\00" ;; 255
+  " ^ \00" ;; 256
+  "PAGE \00" ;; 257
+  ", YEAR \00" ;; 258
+  "% SURE\00" ;; 259
+  " TOMORROW\00" ;; 260
+  " STEADY\00" ;; 261
+  "NEARLY FULL\00" ;; 262
+  "START DAY\00" ;; 263
+  "DON'T SHOW\00" ;; 264
+  "SCORE \00" ;; 265
+  " TO \00" ;; 266
+  "REPUTATION \00" ;; 267
+  "LOAN UNPAID, GRACE OVER\00" ;; 268
+  "TRY AGAIN\00" ;; 269
+  " IN \00" ;; 270
+  "ON\00" ;; 271
+  "STAR \00" ;; 272
+  "UP\00" ;; 273
+  "DOWN\00" ;; 274
+  "RESTART\00" ;; 275
+  "PLAY\00" ;; 276
+  "PAUSE\00" ;; 277
+  "SPEED \00" ;; 278
+  "TAKE OVER\00" ;; 279
+  "EXIT\00" ;; 280
+  " INVALID AT DAY \00" ;; 281
+  "WATCH \00" ;; 282
+  "SHARED RUN\00" ;; 283
+  "COPY CODE\00" ;; 284
+  "COPIED!\00" ;; 285
+  "SHARE CODE \00" ;; 286
+  "...\00" ;; 287
+  "RUN TOO LONG TO SHARE\00" ;; 288
+  "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 289
 )
 (global $STR_BASE i32 (i32.const 0x7200))
-(global $STR_COUNT i32 (i32.const 274))
+(global $STR_COUNT i32 (i32.const 290))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -304,11 +320,11 @@
 (global $STR_STP i32 (i32.const 145))
 (global $STR_TST i32 (i32.const 148))
 (global $STR_SCR i32 (i32.const 217))
-(global $STR_ST i32 (i32.const 223))
-(global $STR_HOW i32 (i32.const 225))
-(global $STR_MNAME i32 (i32.const 231))
-(global $STR_MP i32 (i32.const 238))
-(global $STR_GLYPH i32 (i32.const 271))
+(global $STR_ST i32 (i32.const 224))
+(global $STR_HOW i32 (i32.const 226))
+(global $STR_MNAME i32 (i32.const 232))
+(global $STR_MP i32 (i32.const 239))
+(global $STR_GLYPH i32 (i32.const 272))
 (global $STR_DAY i32 (i32.const 68))
 (global $STR_END_DAY i32 (i32.const 69))
 (global $STR_HARVEST i32 (i32.const 70))
@@ -432,34 +448,49 @@
 (global $STR_KINDS i32 (i32.const 214))
 (global $STR_ANOTHER i32 (i32.const 215))
 (global $STR_LEGEND i32 (i32.const 216))
-(global $STR_YEAR3 i32 (i32.const 243))
-(global $STR_TAGLINE i32 (i32.const 244))
-(global $STR_CONTINUE i32 (i32.const 245))
-(global $STR_NEW_GAME i32 (i32.const 246))
-(global $STR_REPLACES i32 (i32.const 247))
-(global $STR_DAILY i32 (i32.const 248))
-(global $STR_LARGE i32 (i32.const 249))
-(global $STR_AUTO_GAZ i32 (i32.const 250))
-(global $STR_FILES i32 (i32.const 251))
-(global $STR_LOADED i32 (i32.const 252))
-(global $STR_MS i32 (i32.const 253))
-(global $STR_KB i32 (i32.const 254))
-(global $STR_DOTS i32 (i32.const 255))
-(global $STR_PAGE i32 (i32.const 256))
-(global $STR_YEAR i32 (i32.const 257))
-(global $STR_SURE i32 (i32.const 258))
-(global $STR_TOMORROW i32 (i32.const 259))
-(global $STR_STEADY i32 (i32.const 260))
-(global $STR_NEARLY i32 (i32.const 261))
-(global $STR_START_DAY i32 (i32.const 262))
-(global $STR_DONT_SHOW i32 (i32.const 263))
-(global $STR_SCORE i32 (i32.const 264))
-(global $STR_TO i32 (i32.const 265))
-(global $STR_REPUTATION i32 (i32.const 266))
-(global $STR_CAUSE i32 (i32.const 267))
-(global $STR_TRY i32 (i32.const 268))
-(global $STR_IN i32 (i32.const 269))
-(global $STR_ON i32 (i32.const 270))
+(global $STR_YEAR3 i32 (i32.const 244))
+(global $STR_TAGLINE i32 (i32.const 245))
+(global $STR_CONTINUE i32 (i32.const 246))
+(global $STR_NEW_GAME i32 (i32.const 247))
+(global $STR_REPLACES i32 (i32.const 248))
+(global $STR_DAILY i32 (i32.const 249))
+(global $STR_LARGE i32 (i32.const 250))
+(global $STR_AUTO_GAZ i32 (i32.const 251))
+(global $STR_FILES i32 (i32.const 252))
+(global $STR_LOADED i32 (i32.const 253))
+(global $STR_MS i32 (i32.const 254))
+(global $STR_KB i32 (i32.const 255))
+(global $STR_DOTS i32 (i32.const 256))
+(global $STR_PAGE i32 (i32.const 257))
+(global $STR_YEAR i32 (i32.const 258))
+(global $STR_SURE i32 (i32.const 259))
+(global $STR_TOMORROW i32 (i32.const 260))
+(global $STR_STEADY i32 (i32.const 261))
+(global $STR_NEARLY i32 (i32.const 262))
+(global $STR_START_DAY i32 (i32.const 263))
+(global $STR_DONT_SHOW i32 (i32.const 264))
+(global $STR_SCORE i32 (i32.const 265))
+(global $STR_TO i32 (i32.const 266))
+(global $STR_REPUTATION i32 (i32.const 267))
+(global $STR_CAUSE i32 (i32.const 268))
+(global $STR_TRY i32 (i32.const 269))
+(global $STR_IN i32 (i32.const 270))
+(global $STR_ON i32 (i32.const 271))
+(global $STR_RESTART i32 (i32.const 275))
+(global $STR_PLAY i32 (i32.const 276))
+(global $STR_PAUSE i32 (i32.const 277))
+(global $STR_SPEED i32 (i32.const 278))
+(global $STR_TAKE_OVER i32 (i32.const 279))
+(global $STR_EXIT i32 (i32.const 280))
+(global $STR_INVALID i32 (i32.const 281))
+(global $STR_WATCH i32 (i32.const 282))
+(global $STR_SHARED i32 (i32.const 283))
+(global $STR_COPY i32 (i32.const 284))
+(global $STR_COPIED i32 (i32.const 285))
+(global $STR_SHARE i32 (i32.const 286))
+(global $STR_ELLIPSIS i32 (i32.const 287))
+(global $STR_TOO_LONG i32 (i32.const 288))
+(global $STR_NO_SHARE i32 (i32.const 289))
 ;; icons: 29 x 24 B at 0x640
 (data (i32.const 0x640)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN

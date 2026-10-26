@@ -490,6 +490,7 @@
     (global.set $in_code (call $hit_test (local.get $lx) (local.get $ly)))
     (global.set $press (global.get $in_code))
     (global.set $dirty (i32.const 1))
+    (if (i32.eq (global.get $in_code) (i32.const 0x3D7)) (then (call $rp_scrub (local.get $lx))))   ;; replay scrubber
     (return)))
   (local.set $dx (i32.sub (local.get $x) (global.get $in_x)))
   (local.set $dy (i32.sub (local.get $y) (global.get $in_y)))
@@ -503,6 +504,7 @@
       (if (i32.ne (local.get $t) (global.get $hover_tile)) (then
         (global.set $hover_tile (local.get $t)) (global.set $dirty (i32.const 1))))
       (return)))
+    (if (i32.eq (global.get $in_code) (i32.const 0x3D7)) (then (call $rp_scrub (local.get $lx)) (return)))
     (if (i32.and (i32.eq (global.get $in_st) (i32.const 1))
           (i32.or (i32.gt_u (i32.add (local.get $dx) (i32.const 8)) (i32.const 16)) (i32.gt_u (i32.add (local.get $dy) (i32.const 8)) (i32.const 16))))
       (then (global.set $in_st (i32.const 2)) (global.set $press (i32.const 0)) (global.set $dirty (i32.const 1))))
@@ -540,12 +542,16 @@
     (return)))
   (if (i32.and (global.get $keys) (local.get $m)) (then (return)))
   (global.set $keys (i32.or (global.get $keys) (local.get $m)))
+  ;; the replay viewer takes only its own keys (24_replay.wat)
+  (if (i32.eq (global.get $scr) (i32.const 7)) (then (call $rp_key (local.get $code)) (return)))
   ;; J toggles the Journal anywhere; an open screen (22c_screens.wat) takes only Esc and Enter / Space
   (if (i32.eq (local.get $code) (i32.const 17)) (then
     (if (i32.eq (global.get $scr) (i32.const 3)) (then (call $back)) (else (call $open (i32.const 3))))
     (return)))
   (if (global.get $scr) (then
     (if (i32.eq (local.get $code) (i32.const 8)) (then (call $back)))
+    ;; R on Results / Game Over: watch the run just played
+    (if (i32.and (i32.eq (local.get $code) (i32.const 15)) (i32.lt_u (i32.sub (global.get $scr) (i32.const 4)) (i32.const 2))) (then (call $rp_own)))
     (if (i32.or (i32.eq (local.get $code) (i32.const 13)) (i32.eq (local.get $code) (i32.const 16))) (then (call $ovl_tap (call $primary))))
     (return)))
   (if (i32.eq (local.get $code) (i32.const 1)) (then (call $do_endday)))
@@ -629,6 +635,7 @@
       (local.set $low (i32.const 1))))
     (br_if $tl (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
   (if (global.get $in_st) (then (local.set $anim (i32.const 1))))
+  (if (call $rp_frame) (then (local.set $anim (i32.const 1))))
   ;; rain and storm particles move every frame (none behind Game Over); Results confetti for 6 s
   (local.set $w (i32.load8_u (global.get $S_WEATHER)))
   (if (i32.and (i32.and (i32.eqz (global.get $flag_reduced)) (i32.ne (global.get $scr) (i32.const 5)))
@@ -663,7 +670,8 @@
       ;; screens: the farm fills the framebuffer under them (the Title: above its buttons), then the
       ;; viewport is put back
       (call $scene_viewport (i32.const 0) (i32.const 0) (global.get $fb_w)
-        (select (call $title_top) (global.get $fb_h) (i32.eq (global.get $scr) (i32.const 1))))
+        (select (call $title_top) (select (global.get $rp_top) (global.get $fb_h) (i32.eq (global.get $scr) (i32.const 7)))
+          (i32.eq (global.get $scr) (i32.const 1))))
       (call $scene_draw)
       (call $scene_viewport (call $lay_x (global.get $LR_GRID)) (call $lay_y (global.get $LR_GRID)) (call $lay_w (global.get $LR_GRID)) (call $lay_h (global.get $LR_GRID)))
       (global.set $tscale (call $ui_ts))
@@ -701,7 +709,8 @@
   (call $ui_reset)
   (global.set $want_save (i32.const 1)))
 (func $ui_loaded (call $ui_reset))
-(func $need_save (result i32) (global.get $want_save))
+;; (never while the replay viewer shows a replayed state)
+(func $need_save (result i32) (i32.and (global.get $want_save) (i32.ne (global.get $scr) (i32.const 7))))
 (func $ack_save (global.set $want_save (i32.const 0)))
 (func $announce_ptr (result i32) (global.get $ann_p))
 (func $announce_len (result i32) (global.get $ann_len))

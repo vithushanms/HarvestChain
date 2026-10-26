@@ -247,7 +247,8 @@
   (i32.store (global.get $S_LOAN_P) (i32.sub (i32.load (global.get $S_LOAN_P)) (i32.sub (local.get $pay) (local.get $i))))
   (i32.const 0))
 
-(func $act (param $id i32) (param $a i32) (param $b i32) (param $c i32) (result i32)
+;; ($act, the entry point, wraps this and appends successful actions to the input log: 24_replay.wat.)
+(func $act_do (param $id i32) (param $a i32) (param $b i32) (param $c i32) (result i32)
   (local $st i32)
   (local.set $st (i32.load8_u (global.get $S_STATUS)))
   (if (i32.eq (local.get $id) (i32.const 19)) (then (return (call $a_continue))))

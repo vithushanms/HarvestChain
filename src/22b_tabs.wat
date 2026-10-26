@@ -763,6 +763,7 @@
 (func $back
   (global.set $dirty (i32.const 1))
   (if (global.get $scr) (then
+    (if (i32.eq (global.get $scr) (i32.const 7)) (then (call $rp_exit) (return)))
     (if (i32.and (i32.const 0x4C) (i32.shl (i32.const 1) (global.get $scr))) (then (call $pop)))
     (return)))
   (if (global.get $place) (then (global.set $place (i32.const 0)) (call $open_sheet) (return)))

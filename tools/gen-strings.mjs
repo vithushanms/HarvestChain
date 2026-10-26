@@ -164,7 +164,7 @@ export const STRINGS = [
   ['ANOTHER', 'NEEDS ANOTHER GARAGE'],
   ['LEGEND', '-% = PRICE DROP FROM SELLING'],
   // Task 5c: Title, Gazette, Journal, Results / Game Over, How to play (22c_screens.wat). '^' = middle dot.
-  ['@SCR', ['HARVESTCHAIN', 'MORNING GAZETTE', 'JOURNAL', 'RUN COMPLETE!', 'BANKRUPT', 'HOW TO PLAY']],
+  ['@SCR', ['HARVESTCHAIN', 'MORNING GAZETTE', 'JOURNAL', 'RUN COMPLETE!', 'BANKRUPT', 'HOW TO PLAY', 'REPLAY']],
   ['@ST', ['PLAYING', 'ENDLESS']],
   ['@HOW', ['PLANT ON A PLOT. END DAY GROWS IT.', 'HARVEST WHEN RIPE.',
     'A MILL TURNS WHEAT INTO FLOUR:', 'GOODS SELL FOR MORE.',
@@ -204,6 +204,22 @@ export const STRINGS = [
   // fix round: toggle state, announcement words for the star / up / down glyphs
   ['ON', 'ON'],
   ['@GLYPH', ['STAR ', 'UP', 'DOWN']],
+  // Task 7a: replay viewer, share code (24_replay.wat); the viewer's title is @SCR + 6
+  ['RESTART', 'RESTART'],
+  ['PLAY', 'PLAY'],
+  ['PAUSE', 'PAUSE'],
+  ['SPEED', 'SPEED '],
+  ['TAKE_OVER', 'TAKE OVER'],
+  ['EXIT', 'EXIT'],
+  ['INVALID', ' INVALID AT DAY '],
+  ['WATCH', 'WATCH '],
+  ['SHARED', 'SHARED RUN'],
+  ['COPY', 'COPY CODE'],
+  ['COPIED', 'COPIED!'],
+  ['SHARE', 'SHARE CODE '],
+  ['ELLIPSIS', '...'],
+  ['TOO_LONG', 'RUN TOO LONG TO SHARE'],
+  ['NO_SHARE', 'SHARE ONLY FOR RUNS STARTED THIS SESSION'],
 ];
 
 // Icons: name, [c1, c2, c3] palette indices (hue*4 + step), 9 rows of 9 chars ('.' = clear).

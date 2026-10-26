@@ -93,8 +93,9 @@
 (global $E_LOAD_BOUNDS  i32 (i32.const 4))
 (global $E_LOAD_CORRUPT i32 (i32.const 5))
 
-;; Fresh game, spec §5 starting state.
-(func $init (param $seed i32)
+;; Fresh game, spec §5 starting state. ($init, the entry point, wraps it: it also restarts the input log,
+;; 24_replay.wat; likewise $load wraps $load_do.)
+(func $init_do (param $seed i32)
   (local $i i32)
   (local $p i32)
   (memory.fill (global.get $R_STATE) (i32.const 0) (global.get $STATE_SIZE))
@@ -254,7 +255,7 @@
 ;; Everything is validated from the source bytes before the state is touched, so on
 ;; error the current state is unchanged. A v1 save must be exactly $STATE_LEN bytes:
 ;; zero is not a valid default for sentinel fields, so short saves are rejected.
-(func $load (param $ptr i32) (param $len i32) (result i32)
+(func $load_do (param $ptr i32) (param $len i32) (result i32)
   (local $v i32)
   (if (i32.ne (local.get $len) (global.get $STATE_LEN))
     (then (return (global.get $E_LOAD_LEN))))
