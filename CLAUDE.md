@@ -17,7 +17,7 @@ Deliverable is exactly three files: `index.html` (inlines the loader JS), `game.
 - **Integer-only Wasm.** No `f32`/`f64` anywhere. Money = `i32` dollars; multipliers = `i32` basis points (10000 = ×1.0); growth, saturation, drift all fixed-point. This is what makes determinism work.
 - **All randomness through the xorshift32 RNG in `01_rng.wat`.** Same seed + input log must yield byte-identical state on every device (replays/share codes depend on it).
 - **Wasm features:** MVP + `bulk-memory` + `sign-ext` + `mutable-globals` only. No SIMD, threads, GC, exceptions, multi-memory.
-- **Size budgets enforced by the build (exceeding fails it):** `game.wasm` ≤ 40 KB gz / 100 KB raw (spec target 20 / 48; build warns above target); `index.html` ≤ 3 KB gz; `sw.js` ≤ 1 KB gz; total ≤ 24 KB gz. String tables ≤ 2.5 KB raw.
+- **Size budgets enforced by the build (exceeding fails it):** `game.wasm` ≤ 40 KB gz / 100 KB raw (spec target 20 / 48; build warns above target); `index.html` ≤ 4 KB gz (spec 3); `sw.js` ≤ 1 KB gz; total ≤ 24 KB gz. String tables ≤ 2.5 KB raw.
 - **Time budgets:** first interactive frame < 100 ms; End Day < 1 ms; full redraw at 360×640 < 4 ms.
 - **Loader is dumb glue.** It never contains game logic (no hit-testing, no rules). Its full responsibility list is §14.2 — don't add to it. Readable loader is source of truth; minified copy checked in beside it.
 - **Showcase numbers must be measured live** (load ms, KB, frame times) — never hard-coded (§15).

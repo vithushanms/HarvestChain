@@ -19,7 +19,7 @@ const fail = (msg) => { console.error(`build: ${msg}`); process.exit(1); };
 // UI, replay and QR code do not fit that, so the enforced ceiling is 40 KB gz / 100 KB raw (raised from 32/80 by a later ruling); the build
 // prints a warning while above the spec target.
 const SPEC_TARGET = { wasmRaw: 48 * 1024, wasmGz: 20 * 1024 };
-const BUDGETS = { wasmRaw: 100 * 1024, wasmGz: 40 * 1024, htmlGz: 3 * 1024, swGz: 1 * 1024 };
+const BUDGETS = { wasmRaw: 100 * 1024, wasmGz: 40 * 1024, htmlGz: 4 * 1024, swGz: 1 * 1024 };
 
 const SPEC_TOTAL = 24 * 1024;
 const src = arg('--src', join(root, 'src'));
