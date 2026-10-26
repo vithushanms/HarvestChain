@@ -71,9 +71,9 @@ test('stepping, RESTART and the scrubber show the recorded state of that day', a
   // drag along the bar seeks continuously
   const y = s.y + (s.h >> 1);
   g.down(...g.toCss(s.x + 2, y));
-  g.ex.pointer(...g.toCss(s.x + (s.w >> 1), y), 1);
+  g.ex.pointer(...g.toCss(s.x + (s.w >> 1), y), 1); g.frame();   // (moves coalesce: the frame seeks)
   assert.ok(Math.abs(rp(g, RPF.DAY) - 20) <= 1, `drag ${rp(g, RPF.DAY)}`);
-  g.ex.pointer(...g.toCss(s.x + s.w - 1, y), 1);
+  g.ex.pointer(...g.toCss(s.x + s.w - 1, y), 1); g.frame();
   assert.equal(rp(g, RPF.DAY), 40);
   assert.deepEqual(bytes(g), SNAPS.final);
   g.up(...g.toCss(s.x + s.w - 1, y));
@@ -186,7 +186,7 @@ test('TAKE OVER over a save needs a second tap 0.4 s later ("REPLACES SAVE")', a
   assert.equal(rp(g, RPF.PEND), 0, 'the shared run is now the game');
 });
 
-test('an invalid record mid-playback: "REPLAY INVALID AT DAY 4", playback stops, EXIT restores', async () => {
+test('an invalid record mid-playback: "REPLAY STOPPED AT DAY 4: INVALID MOVE", playback stops, EXIT restores', async () => {
   const { g, pre } = await viewer({ code: CODES.BAD_LOG });
   assert.equal(rp(g, RPF.N), 3);
   g.tap(RP.PLAY);
@@ -194,7 +194,7 @@ test('an invalid record mid-playback: "REPLAY INVALID AT DAY 4", playback stops,
   assert.equal(rp(g, RPF.BAD), 4);
   assert.equal(rp(g, RPF.PLAY), 0);
   g.frame();
-  assert.ok(g.labels().includes('REPLAY INVALID AT DAY 4'), JSON.stringify(g.labels()));
+  assert.ok(g.labels().includes('REPLAY STOPPED AT DAY 4: INVALID MOVE'), JSON.stringify(g.labels()));
   g.tap(RP.PREV);
   assert.equal(rp(g, RPF.BAD), 0, 'stepping back is fine');
   g.tap(RP.EXIT);

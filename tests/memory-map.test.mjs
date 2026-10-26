@@ -56,6 +56,8 @@ test('memory map: region bases and sizes match the constants in the sources', ()
   assert.equal(constOf('STATE_SIZE'), end('sim state = save image') - at('sim state = save image') + 1);
   assert.ok(constOf('STATE_LEN') <= constOf('STATE_SIZE'));
   assert.equal(constOf('STATE_LEN'), STATE.length);
+  // $memeq (24_replay.wat) compares 8 bytes at a time: the state length must be a multiple of 8
+  assert.equal(constOf('STATE_LEN') % 8, 0, 'STATE_LEN % 8 (24_replay.wat $memeq)');
   assert.equal(constOf('R_REPLAY'), at('replay / input log'));
   assert.equal(constOf('LOG_CAP'), end('replay / input log') - at('replay / input log') + 1);
   assert.equal(constOf('R_BAL'), at('balance tables + scene models + string table'));

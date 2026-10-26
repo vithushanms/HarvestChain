@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BLD } from './scenes.mjs';
 import { uiGame, BTN, UI } from './uistates.mjs';
-import { ICONS } from '../../tools/gen-strings.mjs';
+import { ICONS, ICON_ADDR } from '../../tools/gen-strings.mjs';
 
 test('scroll is clamped before the sheet body is drawn: the first redraw after a resize registers final regions', async () => {
   const g = await uiGame(360, 640, 200, { setup: (ex) => ex.t_set_cash(5000) });
@@ -68,7 +68,7 @@ test('UI kit text contrast >= 4.5:1 for every pair (dimmed inactive tabs excepte
   pairs.push(['tab active', 61, 59], ['recipe', 61, 57], ['recipe off', 63, 57]);
   for (const [n, a, b] of pairs) assert.ok(ratio(a, b) >= 4.5, `${n}: ${a} on ${b} = ${ratio(a, b).toFixed(2)}`);
   // non-text marks >= 3:1: the toggle-on check icon's stroke (icon colour 2) on the toggle face, pressed too
-  const chk = 0x640 + ICONS.findIndex(([n]) => n === 'CHECK') * 24;
+  const chk = ICON_ADDR + ICONS.findIndex(([n]) => n === 'CHECK') * 24;
   const [, f3, pf3] = m.slice(0x900 + 6 * 5, 0x905 + 6 * 5);   // style 6 = toggle on
   for (const face of [f3, pf3]) assert.ok(ratio(m[chk + 22], face) >= 3, `toggle check ${m[chk + 22]} on ${face} = ${ratio(m[chk + 22], face).toFixed(2)}`);
 });

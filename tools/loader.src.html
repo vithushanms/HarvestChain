@@ -71,10 +71,16 @@ function run() {
     r = ex.frame(Math.floor(performance.now()));   // 0 idle | 1 animating | 2 ambient only
     blit();
     post();
+    if (!H.t1) {                               // once: the first good frame
+      H.t1 = performance.now(); register();
+      if (mark) { mark = 0; ls('hc.bad', ''); }
+      // 8. a #code link: only now, outside the save-mark window (a trap in a hostile hash must not
+      //    blame the save); the module decodes and validates it, garbage is ignored, the hash dropped
+      if (location.hash.length > 1 && code(location.hash)) { history.replaceState(null, '', here); r = 1; }
+    }
   } catch { return die(); }
   if (r === 1) raf = requestAnimationFrame(run);
   else if (r === 2) tm = setTimeout(() => { tm = 0; schedule(); }, 83);
-  if (!H.t1) { H.t1 = performance.now(); register(); if (mark) { mark = 0; ls('hc.bad', ''); } }   // once: first frame
 }
 
 // ---- canvas (3, 6)
@@ -127,14 +133,15 @@ function toIo(bin) {
 const str = (p, n) => new TextDecoder().decode(new Uint8Array(ex.memory.buffer, p, n));
 // A replay code or link (text) -> replay_load; 1 when the module took it (Title: WATCH SHARED RUN)
 const code = (t) => { const n = toIo(t); return n && !ex.replay_load(ex.io_buf(), n); };
+// Restore the save (+ its log). Throws on a module trap (load / replay_restore): main() treats that as a
+// poisoned boot. Undecodable base64 is just "no save".
 function restore() {
-  try {
-    const n = toIo(atob(ls('hc.save') || ''));
-    if (!n || ex.load(ex.io_buf(), n)) return 0;   // a bad save is left in place until a new save overwrites it
-    const m = toIo(ls('hc.log') || '');           // its input log: kept only if it replays to this exact state
-    if (m) ex.replay_restore(ex.io_buf(), m);
-    return 1;
-  } catch { return 0; }
+  let n;
+  try { n = toIo(atob(ls('hc.save') || '')); } catch { return 0; }
+  if (!n || ex.load(ex.io_buf(), n)) return 0;   // a bad save is left in place until a new save overwrites it
+  const m = toIo(ls('hc.log') || '');           // its input log: kept only if it replays to this exact state
+  if (m) ex.replay_restore(ex.io_buf(), m);
+  return 1;
 }
 // COPY CODE: the module asks during a pointer / key handler (a user gesture); copy the share link
 function copy() {
@@ -219,24 +226,27 @@ function register() {
   try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch {}
 }
 
+let here;
 async function main() {
-  let r;
+  let r, has = 0;
   try { r = await WebAssembly.instantiateStreaming(fetch('game.wasm'), {}); }
   catch { r = await WebAssembly.instantiate(await (await fetch('game.wasm')).arrayBuffer(), {}); }
   H.ex = ex = r.instance.exports;
   const p = prefs();
   if (!ls('hc.bad') && ls('hc.save')) { mark = 1; ls('hc.bad', '1'); }   // see die(): cleared after the first good frame
-  const has = mark ? restore() : 0;                // a save marked bad by a trap is skipped
+  if (mark) try { has = restore(); }               // a save marked bad by a trap is skipped
+  catch {                                          // a trap restoring it: poisoned boot. The mark stays (and the
+    keep(); mark = 0; has = 0;                     // copy), and a fresh instance starts a new game (the trapped
+    H.ex = ex = (await WebAssembly.instantiate(r.module, {})).exports;   // one may be left mid-replay)
+  }
   const seed = crypto.getRandomValues(new Uint32Array(1))[0];
   ex.set_env(seed | 0, Math.floor(Date.now() / 86400000));
   ex.set_flags(mq.matches, p.large ? 1 : 0);
   ex.set_pref(2, p.noGazette ? 1 : 0);
   ex.ui_boot(has);
-  // 8. share link: the page URL without the hash; a #code becomes the pending replay (the module decodes and
-  //    validates it; garbage is ignored) and the hash is dropped from the address bar
-  const here = location.href.split('#')[0];
+  // 8. share link origin: the page URL without the hash (the #code itself is taken after the first frame)
+  here = location.href.split('#')[0];
   ex.set_origin(toIo(here));
-  if (location.hash.length > 1 && code(location.hash)) history.replaceState(null, '', here);
   bind();
   rz = 1;
   schedule();

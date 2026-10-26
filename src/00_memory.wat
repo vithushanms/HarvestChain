@@ -1,12 +1,13 @@
 ;; Memory and region map (spec §14.3). One linear memory, fixed layout, no allocator.
 ;;   0x00000  4 KB   scratch (0x000-0x0FF free), palette 0x100, Bayer 0x200, fonts 0x210/0x360,
 ;;                   demo strings 0x400 (see 02_data.wat), iso face table 0x600 (36 B, 21b_iso.wat),
-;;                   UI icons 0x640 (29 x 24 B, generated, 02b_strings.wat), UI tables 0x900-0x936
+;;                   0x640-0x8FF free (the icon table moved out in the Task 7a fixes), UI tables 0x900-0x936
 ;;                   (button styles, season icons, toast colours, tab icons, badge colours: 22_ui.wat / 22a_farm.wat),
 ;;                   0x937-0x939 truck upgrade cost columns, 0x93A-0x93C route stop models, 0x948-0x954 good -> icon (22b_tabs.wat);
 ;;                   0x955-0x972 screen header icons, Enter buttons, How-to models, confetti colours,
-;;                   milestone progress map (22c_screens.wat); 0xF80-0xF93 replay arg counts (24_replay.wat);
-;;                   0x973-0xF7F, 0xF94-0xFFF free
+;;                   milestone progress map (22c_screens.wat); UI icons 0xA00.. (30 x 24 B, generated,
+;;                   02b_strings.wat; room up to 0xF7F = 58 icons); 0xF80-0xF93 replay arg counts (24_replay.wat);
+;;                   0x973-0x9FF, the end of the icon table-0xF7F, 0xF94-0xFFF free
 ;;            0x6800-0x70F7 scene model table (generated, 21c_scene.wat; size in its footer),
 ;;            0x7100-0x71C7 scene look / prop tables (21c_scene.wat), 0x7200.. UI string table
 ;;            (generated, 02b_strings.wat, <= 0x7FFF); the rest of 0x6800-0x7FFF free

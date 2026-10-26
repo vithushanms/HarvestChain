@@ -73,6 +73,8 @@
 (global $rp_bad (mut i32) (i32.const 0))       ;; game day a record failed on, 0 = fine
 (global $sb_x (mut i32) (i32.const 0))         ;; scrubber track as last drawn
 (global $sb_w (mut i32) (i32.const 1))
+(global $rp_sx (mut i32) (i32.const -1))       ;; pending scrubber x (drag moves coalesce: one seek a frame)
+(global $rp_seeks (mut i32) (i32.const 0))     ;; rp_seek calls (test hook t_rp(7))
 (data (i32.const 0xF80) "\00\02\01\00\02\01\01\02\00\02\03\03\03\00\02\01\01\01\01\00")
 
 ;; ---------------------------------------------------------------- recording
@@ -126,9 +128,12 @@
   (if (i32.eqz (i32.or (global.get $rec_pause) (global.get $rec_st)))
     (then (memory.copy (global.get $PRE) (global.get $R_STATE) (global.get $STATE_LEN))))
   (local.set $e (call $act_do (local.get $id) (local.get $a) (local.get $b) (local.get $c)))
-  (if (i32.or (local.get $e) (call $rec_skip (i32.const 16))) (then (return (local.get $e))))
-  ;; an action that changed nothing (HARVEST ALL with nothing ripe ...) needs no record
-  (if (call $memeq (global.get $PRE) (global.get $R_STATE) (global.get $STATE_LEN)) (then (return (i32.const 0))))
+  (if (local.get $e) (then (return (local.get $e))))
+  ;; an action that changed nothing (HARVEST ALL with nothing ripe ...) needs no record, so no room
+  ;; either (checked first: a no-op near the cap must not stop recording; PRE is valid only while recording)
+  (if (i32.eqz (i32.or (global.get $rec_pause) (global.get $rec_st)))
+    (then (if (call $memeq (global.get $PRE) (global.get $R_STATE) (global.get $STATE_LEN)) (then (return (i32.const 0))))))
+  (if (call $rec_skip (i32.const 16)) (then (return (i32.const 0))))
   (local.set $p (i32.add (global.get $R_REPLAY) (global.get $rec_len)))
   (global.set $rec_run (i32.const 0))
   (call $rec_count)
@@ -298,8 +303,9 @@
 ;; reproduces the loaded state exactly; then recording continues where it left off. 0 or an error.
 (func $replay_restore (param $p i32) (param $n i32) (result i32)
   (local $r i32)
-  (global.set $rec_st (i32.const 2))
+  ;; (refused before anything changes while the viewer is open: the live log stays as it is)
   (if (i32.eq (global.get $scr) (i32.const 7)) (then (return (i32.const 6))))
+  (global.set $rec_st (i32.const 2))
   (local.set $n (call $log_in (local.get $p) (local.get $n)))
   (if (i32.lt_s (local.get $n) (i32.const 0)) (then (return (i32.sub (i32.const 0) (local.get $n)))))
   (if (i32.ne (i32.load offset=2 (global.get $DEC)) (i32.load (global.get $S_SEED))) (then (return (i32.const 7))))
@@ -318,6 +324,7 @@
   (global.set $rec_lt (global.get $rp_lt))
   (i32.const 0))
 
+;; n must be a multiple of 8 (STATE_LEN is: tests/memory-map.test.mjs asserts it).
 (func $memeq (param $a i32) (param $b i32) (param $n i32) (result i32)
   (loop $l (if (local.get $n) (then
     (if (i64.ne (i64.load (local.get $a)) (i64.load (local.get $b))) (then (return (i32.const 0))))
@@ -400,6 +407,7 @@
 ;; Show the state after d End Days (clamped to 0..N; N = every record).
 (func $rp_seek (param $d i32)
   (local $r i32)
+  (global.set $rp_seeks (i32.add (global.get $rp_seeks) (i32.const 1)))
   (local.set $d (call $clamp (local.get $d) (i32.const 0) (global.get $rp_N)))
   (if (i32.or (global.get $rp_bad) (i32.lt_u (local.get $d) (global.get $rp_day))) (then
     (global.set $rp_bad (i32.const 0)) (call $rp_rewind)))
@@ -419,7 +427,7 @@
   (memory.copy (global.get $SNAP) (global.get $R_STATE) (global.get $STATE_LEN))
   (global.set $rec_pause (i32.const 1))
   (global.set $rp_b (global.get $VLOG)) (global.set $rp_e (i32.add (global.get $VLOG) (global.get $rp_vn)))
-  (global.set $rp_bad (i32.const 0)) (global.set $rp_play (i32.const 0)) (global.set $rp_spd (i32.const 0))
+  (global.set $rp_bad (i32.const 0)) (global.set $rp_play (i32.const 0)) (global.set $rp_spd (i32.const 0)) (global.set $rp_sx (i32.const -1))
   (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
   (call $rp_rewind)
   (call $open (i32.const 7)))
@@ -473,10 +481,17 @@
   (global.set $rp_play (i32.const 0))
   (call $rp_seek (i32.div_s (i32.add (i32.mul (i32.sub (local.get $x) (global.get $sb_x)) (global.get $rp_N)) (i32.shr_u (global.get $sb_w) (i32.const 1)))
     (global.get $sb_w))))
-;; Playback: one day every 300 >> speed ms of frame time; 1 while playing.
+;; A drag on the scrubber only records its latest x; the frame seeks once (a backward seek on a
+;; hostile 65,535-day log replays from the seed: tens of ms, so never once per pointer move).
+(func $rp_drag (param $x i32)
+  (global.set $rp_sx (call $imax (local.get $x) (i32.const 0)))
+  (global.set $dirty (i32.const 1)))
+;; Playback: one day every 300 >> speed ms of frame time; 1 while playing. A pending scrub first.
 (func $rp_frame (result i32)
   (local $iv i32)
-  (if (i32.or (i32.ne (global.get $scr) (i32.const 7)) (i32.eqz (global.get $rp_play))) (then (return (i32.const 0))))
+  (if (i32.ne (global.get $scr) (i32.const 7)) (then (global.set $rp_sx (i32.const -1)) (return (i32.const 0))))
+  (if (i32.ge_s (global.get $rp_sx) (i32.const 0)) (then (call $rp_scrub (global.get $rp_sx)) (global.set $rp_sx (i32.const -1))))
+  (if (i32.eqz (global.get $rp_play)) (then (return (i32.const 0))))
   (global.set $rp_t (call $stamp (global.get $rp_t)))
   (local.set $iv (i32.shr_u (i32.const 300) (global.get $rp_spd)))
   (if (i32.gt_s (call $since (global.get $rp_t)) (i32.const 1000)) (then (global.set $rp_t (i32.sub (global.get $now) (local.get $iv)))))
@@ -489,11 +504,15 @@
 
 ;; ---------------------------------------------------------------- drawing
 
-;; Viewer card body: the failure line, the scrubber, the transport and TAKE OVER / EXIT rows.
+;; Viewer card body: the failure line, the scrubber, the transport and TAKE OVER / EXIT rows. A row
+;; whose labels would not fit its columns at the UI text scale (large text on a narrow phone) is
+;; stacked instead, so no label drops to scale 1 (RESTART alone, then -1 / +1 DAY side by side).
 (func $rp_body
-  (local $h i32) (local $y i32)
+  (local $h i32) (local $y i32) (local $c i32) (local $t i32)
   (if (global.get $rp_bad) (then
+    ;; REPLAY STOPPED AT DAY 4: INVALID MOVE
     (call $sb (global.get $SB1)) (call $si (i32.add (global.get $STR_SCR) (i32.const 6))) (call $si (global.get $STR_INVALID)) (call $sn0 (global.get $rp_bad))
+    (call $si (global.get $STR_INV_MOVE))
     (call $lab (global.get $I_WARN) (i32.const 37))))
   (local.set $h (call $btnh))
   (global.set $sb_x (global.get $ux)) (global.set $sb_w (call $imax (global.get $uw) (i32.const 1)))
@@ -504,19 +523,33 @@
   (if (i32.and (i32.ge_s (global.get $uy) (global.get $clip_t)) (i32.le_s (i32.add (global.get $uy) (local.get $h)) (global.get $clip_b)))
     (then (drop (call $hit_add (global.get $ux) (global.get $uy) (global.get $uw) (local.get $h) (i32.const 0x3D7)))))
   (global.set $uy (i32.add (global.get $uy) (i32.add (local.get $h) (global.get $lgap))))
-  (call $put (i32.const 0x3D0) (call $str (global.get $STR_RESTART)) (i32.const -1) (i32.const 0) (i32.const 1) (i32.const 3) (local.get $h))
+  (local.set $t (call $str (global.get $STR_RESTART)))
+  (local.set $c (call $rp_cols (local.get $t) (i32.const 0) (i32.const 3)))
+  (call $put (i32.const 0x3D0) (local.get $t) (i32.const -1) (i32.const 0) (i32.const 1) (local.get $c) (local.get $h))
+  (local.set $c (select (i32.const 3) (i32.const 2) (i32.eq (local.get $c) (i32.const 3))))
   (call $sb (global.get $SB2)) (call $sc (i32.const 45)) (call $sc (i32.const 49)) (call $si (global.get $STR_DAY1))
-  (call $put (i32.const 0x3D1) (global.get $SB2) (i32.const -1) (i32.const 0) (i32.const 1) (i32.const 3) (local.get $h))
+  (call $put (i32.const 0x3D1) (global.get $SB2) (i32.const -1) (i32.const 0) (i32.const 1) (local.get $c) (local.get $h))
   (call $sb (global.get $SB2)) (call $sc (i32.const 43)) (call $sc (i32.const 49)) (call $si (global.get $STR_DAY1))
-  (call $put (i32.const 0x3D3) (global.get $SB2) (i32.const -1) (i32.const 0) (i32.const 1) (i32.const 3) (local.get $h))
-  (call $put (i32.const 0x3D2) (call $str (select (global.get $STR_PAUSE) (global.get $STR_PLAY) (global.get $rp_play)))
-    (select (i32.const -1) (global.get $I_ARROW_R) (global.get $rp_play)) (i32.const 2) (i32.const 1) (i32.const 2) (local.get $h))
+  (call $put (i32.const 0x3D3) (global.get $SB2) (i32.const -1) (i32.const 0) (i32.const 1) (local.get $c) (local.get $h))
   (call $sb (global.get $SB2)) (call $si (global.get $STR_SPEED)) (call $si (global.get $STR_X)) (call $sn0 (i32.shl (i32.const 1) (global.get $rp_spd)))
-  (call $put (i32.const 0x3D4) (global.get $SB2) (global.get $I_CLOCK) (i32.const 0) (i32.const 1) (i32.const 2) (local.get $h))
-  (call $put_two (i32.const 0x3D5) (call $str (global.get $STR_TAKE_OVER)) (call $str (global.get $STR_REPLACES)) (i32.const -1) (i32.const 2) (local.get $h))
-  (call $put (i32.const 0x3D6) (call $str (global.get $STR_EXIT)) (global.get $I_CLOSE) (i32.const 0) (i32.const 1) (i32.const 2) (local.get $h)))
+  (local.set $c (call $rp_cols (global.get $SB2) (i32.const 1) (i32.const 2)))
+  (call $put (i32.const 0x3D2) (call $str (select (global.get $STR_PAUSE) (global.get $STR_PLAY) (global.get $rp_play)))
+    (select (i32.const -1) (global.get $I_ARROW_R) (global.get $rp_play)) (i32.const 2) (i32.const 1) (local.get $c) (local.get $h))
+  (call $put (i32.const 0x3D4) (global.get $SB2) (global.get $I_CLOCK) (i32.const 0) (i32.const 1) (local.get $c) (local.get $h))
+  (local.set $t (call $str (select (global.get $STR_REPLACES) (global.get $STR_TAKE_OVER) (i32.eq (global.get $arm) (i32.const 0x3D5)))))
+  (local.set $c (call $rp_cols (local.get $t) (i32.const 0) (i32.const 2)))
+  (call $put_two (i32.const 0x3D5) (call $str (global.get $STR_TAKE_OVER)) (call $str (global.get $STR_REPLACES)) (i32.const -1) (local.get $c) (local.get $h))
+  (call $put (i32.const 0x3D6) (call $str (global.get $STR_EXIT)) (global.get $I_CLOSE) (i32.const 0) (i32.const 1) (local.get $c) (local.get $h)))
+;; n columns when label s (plus an icon: ic = 1) fits a button 1/n of the card wide at the UI text
+;; scale ($btn: label + icon + padding), else 1.
+(func $rp_cols (param $s i32) (param $ic i32) (param $n i32) (result i32)
+  (global.set $tscale (call $ui_ts))
+  (select (local.get $n) (i32.const 1)
+    (i32.le_s (i32.add (call $tw (local.get $s)) (i32.add (i32.shl (i32.add (global.get $lgap) (i32.const 2)) (i32.const 1))
+                (i32.mul (local.get $ic) (i32.add (i32.mul (i32.const 9) (global.get $tscale)) (i32.const 3)))))
+              (i32.div_s (i32.sub (global.get $uw) (i32.mul (i32.sub (local.get $n) (i32.const 1)) (global.get $lgap))) (local.get $n)))))
 
-;; Results / Game Over share slot: the code's first 24 chars and length, then COPY CODE and WATCH
+;; Results / Game Over share slot: "SHARE CODE READY", its length and days, then COPY CODE and WATCH
 ;; REPLAY with the QR of the share link: beside them (QR left, buttons stacked right) when it fits there
 ;; at >= 2 px a module, else below them across the card, else (a link over 858 B, a long run) the line
 ;; "TOO LONG FOR QR - COPY CODE". The QR is at most 1/3 of the screen tall; the card scrolls when the
@@ -527,16 +560,13 @@
   (if (global.get $rec_st) (then
     (call $ui_label (global.get $I_LOCK) (call $str (select (global.get $STR_TOO_LONG) (global.get $STR_NO_SHARE) (i32.eq (global.get $rec_st) (i32.const 1)))) (i32.const 61))
     (return)))
+  ;; "SHARE CODE READY: 4800 CHARS, 240 DAYS" (no fragment of the code: the font is upper case only,
+  ;; so a preview would show a different base64url code to anyone retyping it)
   (local.set $n (call $share_build))
-  (call $sb (global.get $SB1)) (call $si (global.get $STR_SHARE))
-  (loop $l
-    (call $sc (i32.load8_u (i32.add (call $share_ptr) (local.get $i))))
-    (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (call $imin (local.get $n) (i32.const 24)))))
-  (call $si (global.get $STR_ELLIPSIS)) (call $sp) (call $sn (local.get $n) (i32.const 2))
-  ;; (not read out: a screen reader would spell the code; the buttons say what it is)
-  (local.set $i (global.get $lab_on)) (global.set $lab_on (i32.const 0))
-  (call $lab (global.get $I_UP) (i32.const 61))
-  (global.set $lab_on (local.get $i))
+  (drop (call $log_check (global.get $R_REPLAY) (global.get $rec_len)))
+  (call $sb (global.get $SB1)) (call $si (global.get $STR_SHARE)) (call $sn0 (local.get $n)) (call $si (global.get $STR_CHARS))
+  (call $sep) (call $s_days (global.get $chk_days))
+  (call $lab (global.get $I_COPY) (i32.const 61))
   (global.set $uy (i32.add (global.get $uy) (global.get $lgap)))
   (local.set $bh (call $btnh))
   (local.set $hm (i32.div_s (global.get $fb_h) (i32.const 3)))
@@ -566,7 +596,7 @@
           (call $lab (global.get $I_WARN) (i32.const 61))
           (global.set $uy (i32.add (global.get $uy) (global.get $lgap))))))))
 (func $share_btns (param $c i32) (param $bh i32)
-  (call $put (i32.const 0x3C8) (call $str (global.get $STR_COPY)) (global.get $I_PLUS) (i32.const 0) (i32.const 1) (local.get $c) (local.get $bh))
+  (call $put (i32.const 0x3C8) (call $str (global.get $STR_COPY)) (global.get $I_COPY) (i32.const 0) (i32.const 1) (local.get $c) (local.get $bh))
   (call $sb (global.get $SB2)) (call $si (global.get $STR_WATCH)) (call $si (i32.add (global.get $STR_SCR) (i32.const 6)))
   (call $put (i32.const 0x3D9) (global.get $SB2) (global.get $I_CLOCK) (i32.const 0) (i32.const 1) (local.get $c) (local.get $bh)))
 ;; The QR of the share link (share_url_ptr / len, re-encoded on every draw: the matrix is shared
@@ -608,4 +638,5 @@
   (if (i32.eq (local.get $k) (i32.const 3)) (then (return (global.get $rp_spd))))
   (if (i32.eq (local.get $k) (i32.const 4)) (then (return (global.get $rp_bad))))
   (if (i32.eq (local.get $k) (i32.const 5)) (then (return (global.get $rp_pend))))
-  (global.get $copy_req))
+  (if (i32.eq (local.get $k) (i32.const 6)) (then (return (global.get $copy_req))))
+  (global.get $rp_seeks))

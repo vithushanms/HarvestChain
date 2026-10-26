@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 291 strings, 2965 B at 0x7200 (spec budget 2560 B)
+;; string table: 292 strings, 2990 B at 0x7200 (spec budget 2560 B)
 (data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -293,19 +293,20 @@
   "SPEED \00" ;; 278
   "TAKE OVER\00" ;; 279
   "EXIT\00" ;; 280
-  " INVALID AT DAY \00" ;; 281
-  "WATCH \00" ;; 282
-  "SHARED RUN\00" ;; 283
-  "COPY CODE\00" ;; 284
-  "COPIED!\00" ;; 285
-  "SHARE CODE \00" ;; 286
-  "...\00" ;; 287
-  "RUN TOO LONG TO SHARE\00" ;; 288
-  "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 289
-  "TOO LONG FOR QR - \00" ;; 290
+  " STOPPED AT DAY \00" ;; 281
+  ": INVALID MOVE\00" ;; 282
+  "WATCH \00" ;; 283
+  "SHARED RUN\00" ;; 284
+  "COPY CODE\00" ;; 285
+  "COPIED!\00" ;; 286
+  "SHARE CODE READY: \00" ;; 287
+  " CHARS\00" ;; 288
+  "RUN TOO LONG TO SHARE\00" ;; 289
+  "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 290
+  "TOO LONG FOR QR - \00" ;; 291
 )
 (global $STR_BASE i32 (i32.const 0x7200))
-(global $STR_COUNT i32 (i32.const 291))
+(global $STR_COUNT i32 (i32.const 292))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -484,17 +485,18 @@
 (global $STR_TAKE_OVER i32 (i32.const 279))
 (global $STR_EXIT i32 (i32.const 280))
 (global $STR_INVALID i32 (i32.const 281))
-(global $STR_WATCH i32 (i32.const 282))
-(global $STR_SHARED i32 (i32.const 283))
-(global $STR_COPY i32 (i32.const 284))
-(global $STR_COPIED i32 (i32.const 285))
-(global $STR_SHARE i32 (i32.const 286))
-(global $STR_ELLIPSIS i32 (i32.const 287))
-(global $STR_TOO_LONG i32 (i32.const 288))
-(global $STR_NO_SHARE i32 (i32.const 289))
-(global $STR_QR_LONG i32 (i32.const 290))
-;; icons: 29 x 24 B at 0x640
-(data (i32.const 0x640)
+(global $STR_INV_MOVE i32 (i32.const 282))
+(global $STR_WATCH i32 (i32.const 283))
+(global $STR_SHARED i32 (i32.const 284))
+(global $STR_COPY i32 (i32.const 285))
+(global $STR_COPIED i32 (i32.const 286))
+(global $STR_SHARE i32 (i32.const 287))
+(global $STR_CHARS i32 (i32.const 288))
+(global $STR_TOO_LONG i32 (i32.const 289))
+(global $STR_NO_SHARE i32 (i32.const 290))
+(global $STR_QR_LONG i32 (i32.const 291))
+;; icons: 30 x 24 B at 0xa00
+(data (i32.const 0xa00)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN
   "\00\01\00\1d\00\64\40\e5\56\a4\6a\40\6a\40\9a\06\19\19\14\50\00\10\16\17" ;; 1 STAR
   "\00\01\10\00\01\a8\00\f8\0a\e1\2a\81\aa\00\a8\00\01\10\00\01\00\11\16\17" ;; 2 SUN
@@ -524,6 +526,7 @@
   "\40\05\54\55\05\00\00\fd\1f\b4\7b\d0\ee\41\bb\07\a9\1a\50\15\00\3d\2e\2f" ;; 26 TRASH
   "\40\05\00\1d\00\64\40\d5\55\bd\aa\55\59\05\64\00\90\01\40\05\00\08\0a\0b" ;; 27 PLUS
   "\54\55\91\aa\46\fe\1b\a9\6a\e4\bf\91\aa\46\aa\1a\55\55\f0\ff\03\24\26\3b" ;; 28 BOOK
+  "\55\05\04\10\10\54\55\90\6a\41\aa\55\a9\06\a4\1a\90\6a\40\55\01\3d\33\3b" ;; 29 COPY
 )
 (global $I_COIN i32 (i32.const 0))
 (global $I_STAR i32 (i32.const 1))
@@ -554,4 +557,5 @@
 (global $I_TRASH i32 (i32.const 26))
 (global $I_PLUS i32 (i32.const 27))
 (global $I_BOOK i32 (i32.const 28))
+(global $I_COPY i32 (i32.const 29))
 ;; <<< END GENERATED strings

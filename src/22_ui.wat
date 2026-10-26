@@ -179,10 +179,14 @@
   (call $text (local.get $x) (local.get $y) (local.get $s) (local.get $c) (i32.const 0)))
 (func $tw (param $s i32) (result i32) (call $text_w (local.get $s) (i32.const 0)))
 (func $lh (result i32) (i32.mul (i32.const 7) (global.get $tscale)))
-;; Text scale for a string that must fit avail px: $ui_ts, or 1 when it does not fit.
+;; Text scale for a string that must fit avail px: $ui_ts, or 1 when it does not fit ($fit_dn counts
+;; the large-text labels shrunk this frame: test hook t_ui(23)).
+(global $fit_dn (mut i32) (i32.const 0))
 (func $fit (param $s i32) (param $avail i32)
   (global.set $tscale (call $ui_ts))
-  (if (i32.gt_s (call $tw (local.get $s)) (local.get $avail)) (then (global.set $tscale (i32.const 1)))))
+  (if (i32.gt_s (call $tw (local.get $s)) (local.get $avail)) (then
+    (global.set $fit_dn (i32.add (global.get $fit_dn) (i32.gt_s (global.get $tscale) (i32.const 1))))
+    (global.set $tscale (i32.const 1)))))
 
 ;; Icon id < 64: 9x9 glyph at scale s (9s px square). 64 + crop / 80 + building: a tiny 3D model
 ;; of the farm object on a grass slab inside an s x s box (the scene's own model renderer);
@@ -213,7 +217,7 @@
     (global.set $cy0 (i32.const -0x3FFFFFFF)) (global.set $cy1 (i32.const 0x3FFFFFFF))
     (global.set $sc_sea (local.get $se))
     (return)))
-  (local.set $p (i32.add (i32.const 0x640) (i32.mul (local.get $id) (i32.const 24))))
+  (local.set $p (i32.add (i32.const 0xA00) (i32.mul (local.get $id) (i32.const 24))))
   (loop $l
     (local.set $v (i32.and (i32.shr_u (i32.load8_u (i32.add (local.get $p) (i32.shr_u (local.get $n) (i32.const 2))))
                                       (i32.shl (i32.and (local.get $n) (i32.const 3)) (i32.const 1))) (i32.const 3)))
@@ -504,7 +508,7 @@
       (if (i32.ne (local.get $t) (global.get $hover_tile)) (then
         (global.set $hover_tile (local.get $t)) (global.set $dirty (i32.const 1))))
       (return)))
-    (if (i32.eq (global.get $in_code) (i32.const 0x3D7)) (then (call $rp_scrub (local.get $lx)) (return)))
+    (if (i32.eq (global.get $in_code) (i32.const 0x3D7)) (then (call $rp_drag (local.get $lx)) (return)))
     (if (i32.and (i32.eq (global.get $in_st) (i32.const 1))
           (i32.or (i32.gt_u (i32.add (local.get $dx) (i32.const 8)) (i32.const 16)) (i32.gt_u (i32.add (local.get $dy) (i32.const 8)) (i32.const 16))))
       (then (global.set $in_st (i32.const 2)) (global.set $press (i32.const 0)) (global.set $dirty (i32.const 1))))
@@ -659,7 +663,7 @@
   (global.set $lab_on (i32.or (local.get $lo) (global.get $ann_pend)))
   (call $hit_reset_dyn)
   (if (i32.ne (call $lget (global.get $L_MODE)) (i32.const 2)) (then (global.set $hover_tile (i32.const -1))))
-  (global.set $btn_n (i32.const 0))
+  (global.set $btn_n (i32.const 0)) (global.set $fit_dn (i32.const 0))
   (global.set $lab_p (i32.const 0xA100))
   ;; placement mode: free plots tinted, their outline pulsing unless reduced motion
   (global.set $place_hi (select (i32.or (i32.const 1) (i32.shl (i32.or (global.get $flag_reduced) (i32.and (i32.shr_u (global.get $now) (i32.const 9)) (i32.const 1))) (i32.const 1)))
@@ -740,6 +744,7 @@
   (if (i32.eq (local.get $k) (i32.const 20)) (then (return (global.get $scr))))
   (if (i32.eq (local.get $k) (i32.const 21)) (then (return (global.get $page))))
   (if (i32.eq (local.get $k) (i32.const 22)) (then (return (global.get $scr_ret))))
+  (if (i32.eq (local.get $k) (i32.const 23)) (then (return (global.get $fit_dn))))
   (global.get $in_st))
 (func $t_ui_btn (param $i i32) (result i32) (i32.add (global.get $BTNS) (i32.shl (local.get $i) (i32.const 6))))
 (func $t_ui_toast (param $i i32) (result i32)

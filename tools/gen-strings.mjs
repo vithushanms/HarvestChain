@@ -13,7 +13,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const FILE = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', '02b_strings.wat');
-export const STR_ADDR = 0x7200, STR_END = 0x8000, ICON_ADDR = 0x0640, ICON_END = 0x1000;
+export const STR_ADDR = 0x7200, STR_END = 0x8000, ICON_ADDR = 0x0A00, ICON_END = 0x0F80;   // icons 0xA00..0xF7F (0xF80: replay arg counts)
 
 const STAR = '\x01';
 // [group or key, text]. A group entry is ['@NAME', [texts...]].
@@ -211,13 +211,14 @@ export const STRINGS = [
   ['SPEED', 'SPEED '],
   ['TAKE_OVER', 'TAKE OVER'],
   ['EXIT', 'EXIT'],
-  ['INVALID', ' INVALID AT DAY '],
+  ['INVALID', ' STOPPED AT DAY '],
+  ['INV_MOVE', ': INVALID MOVE'],
   ['WATCH', 'WATCH '],
   ['SHARED', 'SHARED RUN'],
   ['COPY', 'COPY CODE'],
   ['COPIED', 'COPIED!'],
-  ['SHARE', 'SHARE CODE '],
-  ['ELLIPSIS', '...'],
+  ['SHARE', 'SHARE CODE READY: '],
+  ['CHARS', ' CHARS'],
   ['TOO_LONG', 'RUN TOO LONG TO SHARE'],
   ['NO_SHARE', 'SHARE ONLY FOR RUNS STARTED THIS SESSION'],
   ['QR_LONG', 'TOO LONG FOR QR - '],   // + COPY: "TOO LONG FOR QR - COPY CODE" (Task 7 share QR)
@@ -518,6 +519,17 @@ export const ICONS = [
     '.12222221',
     '.11111111',
     '..3333333']],
+  // COPY CODE: two overlapping sheets (the back one outlined, the front one filled)
+  ['COPY', [P(15, 1), P(12, 3), P(14, 3)], [
+    '111111...',
+    '1....1...',
+    '1..111111',
+    '1..122221',
+    '1..122221',
+    '111122221',
+    '...122221',
+    '...122221',
+    '...111111']],
 ];
 
 export function strBytes() {

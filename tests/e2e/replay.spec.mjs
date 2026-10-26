@@ -182,3 +182,43 @@ test('a trap after the first good frame does not mark a healthy save', async ({ 
   await game.reload({ title: true });
   expect(await game.announce()).toMatch(/^HARVESTCHAIN\. CONTINUE/);
 });
+
+test('a trap restoring the input log is a poisoned boot: marked, copy kept, a fresh instance offers NEW GAME', async ({ game, errors }) => {
+  const { page } = game;
+  await game.instrument();
+  await page.addInitScript(() => { if (sessionStorage.getItem('trapOnce')) { sessionStorage.removeItem('trapOnce'); window.__trap = 'replay_restore'; } });
+  await game.open();
+  await game.press('KeyE');
+  const good = await game.raw('hc.save');
+  expect(await game.raw('hc.log')).toBeTruthy();
+  await page.evaluate(() => sessionStorage.setItem('trapOnce', '1'));
+  await game.reload({ title: true });                   // load() fine, replay_restore traps -> poisoned boot
+  expect(await page.getByRole('alert').count()).toBe(0);
+  expect(await game.announce()).toMatch(/^HARVESTCHAIN\. NEW GAME/);
+  expect(await game.raw('hc.bad')).toBe('1');
+  expect(await game.raw('hc.save.bad')).toBe(good);
+  await game.start();                                   // the fresh instance plays and saves; the mark clears
+  expect(await game.raw('hc.bad')).toBeFalsy();
+  expect((await game.save()).day).toBe(1);
+  await game.press('KeyE');
+  expect((await game.save()).day).toBe(2);
+  noErrors(errors.filter((e) => !/boom/.test(e)));
+});
+
+test('a #hash that traps is taken after the first good frame: the save is not blamed', async ({ game, errors }) => {
+  const { page } = game;
+  await game.instrument();
+  await page.addInitScript(() => { if (sessionStorage.getItem('trapOnce')) { sessionStorage.removeItem('trapOnce'); window.__trap = 'replay_load'; } });
+  await game.open();
+  await game.press('KeyE');
+  await page.evaluate(() => sessionStorage.setItem('trapOnce', '1'));
+  await page.goto(game.url + '#' + CODE);                // (same document: only the hash changes)
+  await page.reload();                                  // boot with the hash: restore, first frame, then the hash
+  await expect(page.getByRole('alert')).toContainText('SOMETHING WENT WRONG');
+  expect(await game.raw('hc.bad')).toBeFalsy();
+  expect(await game.raw('hc.save.bad')).toBeNull();
+  await page.goto(game.url);
+  await game.ready();
+  expect(await game.announce()).toMatch(/^HARVESTCHAIN\. CONTINUE/);
+  noErrors(errors.filter((e) => !/boom/.test(e)));
+});
