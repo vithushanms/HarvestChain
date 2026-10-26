@@ -76,13 +76,15 @@ node tools/dump-ppm.mjs all | ui | ui <prefix> | <state> <w> <h> [dpr] [--large]
 ## Frame / input contract
 
 - The loader calls these, in this order:
-  - `set_now(performance.now())` before every `pointer(x, y, type)` (type 0 down, 1 move, 2 up, 3 cancel) and every `key(code, down)`.
+  - `set_now(performance.now())` before every `pointer(x, y, type)` (type 0 down, 1 move, 2 up, 3 cancel), every `wheel(dx, dy)` (CSS px; scrolls `$scroll` like a drag, ignored during a press) and every `key(code, down)`.
+  - `resize(w, h, dpr)` clamps the CSS size to at least 1, so a zero `innerWidth` cannot divide by zero.
   - `frame(now)`. It returns 0 = idle (stop calling), 1 = animating (rAF), 2 = ambient (call again after about 83 ms).
 - Every time-based input rule reads `$now` (long press 300 ms, two-step arm 400 ms, triple tap). Timers store -1 for "starts now" and are stamped by `$stamps`.
 - `$pointer` / `$key` are thin wrappers over `$pointer0` / `$key0`.
 - `set_metrics(...)` runs before every frame.
 - `need_save()` / `ack_save()`, then the loader persists `save_ptr` / `save_len`.
 - The `announce_*` exports feed the aria-live region.
+- COPY CODE: `want_copy()`, then `ack_copy(0)` at once and `ack_copy(1)` (the COPIED! toast) only after `clipboard.writeText` resolves.
 
 ## UI conventions
 
@@ -95,7 +97,7 @@ node tools/dump-ppm.mjs all | ui | ui <prefix> | <state> <w> <h> [dpr] [--large]
   - Text is UPPERCASE, ≤ 40 chars a string.
   - Text builders are `$sb` / `$si` / `$sn` / `$sc`.
   - `$ui_wrap` word-wraps; `$fit` shrinks to scale 1 only when a line cannot fit. Prefer one scale for a whole row or list (`$b_sub1`, the Market sub-tabs and the Title pairs show the pattern).
-- Scrolling sheets use `$scroll` / `$scroll_max`, and a drag scrolls the sheet. Sheets and screens use `$put` rows on the `$draw_box` card.
+- Scrolling sheets use `$scroll` / `$scroll_max`, and a drag or the mouse wheel scrolls the sheet. Sheets and screens use `$put` rows on the `$draw_box` card.
 - `$announce` (and screen announcements from the labels drawn) feeds aria-live.
 - Visual changes must be looked at:
   1. `node tools/dump-ppm.mjs …`, then open the PNG with Read.

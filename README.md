@@ -45,7 +45,7 @@ Buildings unlock as you go. Each building's card says what it needs.
 **Controls**
 - **Touch / mouse**:
   - Tap a plot, a button or a tab.
-  - Drag a sheet to scroll it.
+  - Drag a sheet to scroll it. A mouse wheel or trackpad scrolls it too.
   - Hold a plot for 300 ms to see its details.
   - Buttons act when you release them over the button. Two-step buttons (Demolish, New Game over a save) need a second tap.
 - **Keyboard**:
@@ -85,10 +85,10 @@ The service worker needs `http://localhost` or HTTPS. Opened from `file://`, the
 
 | Command | What it does |
 |---|---|
-| `npm test` | Builds, then runs every `tests/**/*.test.mjs` with `node:test`: sim, render, UI, replay, QR, build and memory map (564 tests, about 30 s). |
+| `npm test` | Builds, then runs every `tests/**/*.test.mjs` with `node:test`: sim, render, UI, replay, QR, build and memory map (571 tests, about 32 s). |
 | `node --test tests/state.test.mjs` | One file. Build first: tests load `build/game.test.wasm`. |
 | `node --test --test-name-pattern="round-trip" tests/state.test.mjs` | One test. |
-| `npm run test:e2e` | Runs `npm run dist`, then Playwright (chromium, phone 360×640@2 and desktop 1280×800). Run `npx playwright install chromium` once first. 130 tests. |
+| `npm run test:e2e` | Runs `npm run dist`, then Playwright (chromium, phone 360×640@2 and desktop 1280×800). Run `npx playwright install chromium` once first. 134 tests (133 run; the mouse-wheel test is desktop-only, so it is skipped on the phone project). |
 | `npm run check:dist` | Rebuilds and fails if the committed `index.html` / `sw.js` differ from the build output. |
 | `npm run gen` | Regenerates the data from `tools/gen-*.mjs`: palette, font, models, strings + icons, QR tables. Tests fail if the committed data drifts. |
 | `npm run size-report` | Shows the shipping binary's sections, top functions and data segments, and code bytes per source file (`tools/size-report.mjs`). |
@@ -100,7 +100,7 @@ The service worker needs `http://localhost` or HTTPS. Opened from `file://`, the
 
 ```
 index.html (loader, ~3.4 KB gz) ──instantiateStreaming──▶ game.wasm (no imports)
-  resize / pointer / key / set_now ──▶  input state machine, layout, hit regions
+  resize / pointer / wheel / key / set_now ──▶  input state machine, layout, hit regions
   frame(now) while it returns non-zero  ──▶  scene + UI drawn into an RGBA framebuffer in linear memory
   putImageData(fb)  ◀──  fb_ptr / fb_w / fb_h
   localStorage hc.save / hc.prefs / hc.log  ◀──▶  save_ptr / load / need_save, get_flags / set_pref
@@ -151,10 +151,10 @@ Measured on 2026-10-26 (Apple M3 Pro, Node 24, Chromium from Playwright 1.57). T
 
 | | raw | gzip -9 |
 |---|---|---|
-| `game.wasm` | 67,717 B | 36,265 B |
-| `index.html` | 6,729 B | 3,373 B |
-| `sw.js` | 502 B | 320 B |
-| **total transfer** | | **39,958 B** |
+| `game.wasm` | 67,795 B | 36,291 B |
+| `index.html` | 6,903 B | 3,440 B |
+| `sw.js` | 502 B | 318 B |
+| **total transfer** | | **40,049 B** |
 
 | Measure | Result |
 |---|---|
