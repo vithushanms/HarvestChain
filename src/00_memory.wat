@@ -7,7 +7,8 @@
 ;;   0x01000  16 KB  game state = save image
 ;;   0x05000  4 KB   replay / input log
 ;;   0x06000  8 KB   balance tables
-;;   0x08000  64 KB  layout, hit regions, draw lists, announce buffer
+;;   0x08000  64 KB  layout, hit regions, draw lists, announce buffer (rect table 0x8000, UI block 0x8100,
+;;                   hit table 0x8200..0x8BFF: map in 20_layout.wat; 0x8C00.. free for Task 5)
 ;;            (0x10000 upper 32 KB: IO staging for save / replay bytes from the loader)
 ;;   0x18000  ...    framebuffer w*h*4 bytes + canary word 0xCAFEF00D (memory.grow in $resize)
 

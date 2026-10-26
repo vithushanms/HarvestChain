@@ -119,6 +119,7 @@ export const SCENES = {
 export async function sceneGame(name, w = 360, h = 640, t = 1000, o = {}) {
   const g = await loadGame();
   g.ex.resize(w, h, 100);
+  g.ex.t_scene_viewport(0, 0, 0, 0);   // resize() applies the layout GRID; scene goldens pin the default fit
   SCENES[name](g.ex);
   drawScene(g, t, o);
   return g;

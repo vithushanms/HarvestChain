@@ -3,6 +3,8 @@
 //        node tools/dump-ppm.mjs all      (every farm-* scene at 360x640 and 1280x800)
 //   scenes: demo (palette swatches, fonts, shapes), iso (isometric 3D showcase),
 //           iso-small (the iso showcase at 180x320 logical; size args ignored),
+//           layout[-large][-open] (farm-full scene + coloured outlines and ids of every layout rect,
+//           tile diamonds in grey; -large = large-text mode, -open = bottom sheet open)
 //           farm-* (canned farm scenes from tests/render/scenes.mjs, drawn by $scene_draw)
 // Output: build/<scene>-<w>x<h>.png (nearest-neighbour zoomed, default 2x; 1x above 1000 px).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -42,6 +44,29 @@ export function encodePng(w, h, rgba) {
     chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
 
+const LAYOUT_IDS = ['TOPBAR', 'DAY', 'CASH', 'REP', 'HARV', 'END', 'GRID', 'TABS', 'T0', 'T1', 'T2', 'T3', 'T4', 'PANEL', 'X', 'TOAST'];
+// Debug overlay: outline + id of every layout rect (hue per id), grey outline of each owned tile's ground diamond box.
+function drawLayoutDebug(ex) {
+  const mem = new Uint8Array(ex.memory.buffer);
+  const outline = (x, y, w, h, c) => { ex.t_rect(x, y, w, 1, c); ex.t_rect(x, y + h - 1, w, 1, c); ex.t_rect(x, y, 1, h, c); ex.t_rect(x + w - 1, y, 1, h, c); };
+  const g = mem[0x1000 + 0x0] ? 0 : 0;
+  for (let i = 0; i < 64; i++) {
+    if ((i & 7) > 5 || (i >> 3) > 5) continue;
+    outline(ex.t_tile_rect(i, 0), ex.t_tile_rect(i, 1), ex.t_tile_rect(i, 2), ex.t_tile_rect(i, 3), ex.t_pal(0x1c));
+  }
+  for (let id = 0; id < 16; id++) {
+    const x = ex.t_lay_x(id), y = ex.t_lay_y(id), w = ex.t_lay_w(id), h = ex.t_lay_h(id);
+    if (!w || !h) continue;
+    const c = ex.t_pal([0x1b, 0x17, 0x37, 0x23, 0x2f, 0x1f][id % 6]);
+    outline(x, y, w, h, c);
+    const label = Buffer.from(`${LAYOUT_IDS[id]}\0`);
+    mem.set(label, 0x40);
+    const tw = ex.t_text_w(0x40, 1);
+    ex.t_rect(x + 1, y + 1, tw + 2, 7, ex.t_pal(0x3c));
+    ex.t_text(x + 2, y + 2, 0x40, c, 1);
+  }
+}
+
 export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = false) {
   const { instance } = await WebAssembly.instantiate(readFileSync(join(root, 'build', 'game.wasm')), {});
   const ex = instance.exports;
@@ -50,8 +75,14 @@ export async function renderScene(scene, w, h, dpr = 100, t = 1000, reduced = fa
   else ex.resize(w, h, dpr);
   if (scene === 'demo') ex.t_demo(0);
   else if (scene === 'iso' || scene === 'iso-small') ex.t_iso_demo(0);
-  else if (SCENES[scene]) { SCENES[scene](ex); drawScene({ ex }, t, { reduced }); }
-  else throw new Error(`unknown scene "${scene}" (available: demo, iso, iso-small, ${Object.keys(SCENES).join(', ')})`);
+  else if (scene.startsWith('layout')) {
+    SCENES['farm-full'](ex);
+    ex.set_flags(0, scene.includes('large') ? 1 : 0);
+    ex.t_layout_panel(scene.endsWith('open') ? 1 : 0);
+    ex.t_scene_flags(0, scene.endsWith('open') ? 18 : -1, -1); ex.t_scene_time(t); ex.t_scene_draw();
+    drawLayoutDebug(ex);
+  } else if (SCENES[scene]) { SCENES[scene](ex); drawScene({ ex }, t, { reduced }); }
+  else throw new Error(`unknown scene "${scene}" (available: demo, iso, iso-small, layout[-large][-open], ${Object.keys(SCENES).join(', ')})`);
   const fw = ex.fb_w(), fh = ex.fb_h();
   return { w: fw, h: fh, rgba: new Uint8Array(ex.memory.buffer.slice(ex.fb_ptr(), ex.fb_ptr() + fw * fh * 4)) };
 }

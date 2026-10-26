@@ -20,6 +20,7 @@ const snap = (g) => g.mem().slice(R_FB, R_FB + g.ex.fb_w() * g.ex.fb_h() * 4);
 async function emptyFarm(w, h, grid = 4) {
   const g = await loadGame();
   g.ex.resize(w, h, 100);
+  g.ex.t_scene_viewport(0, 0, 0, 0);   // default fit (layout tests cover the GRID viewport)
   g.ex.init(2);
   farm(g.ex).clear().grid(grid).day(25);
   return g;

@@ -12,6 +12,9 @@
 (func $resize (param $w i32) (param $h i32) (param $dpr i32)
   (local $pw i32) (local $ph i32) (local $s i32) (local $lw i32) (local $lh i32)
   (local $need i32) (local $pages i32)
+  (call $lput (global.get $L_CSSW) (call $imin (local.get $w) (i32.const 16384)))
+  (call $lput (global.get $L_CSSH) (call $imin (local.get $h) (i32.const 16384)))
+  (call $lput (i32.const 0x108) (local.get $dpr))
   (local.set $dpr (select (local.get $dpr) (i32.const 100) (i32.gt_s (local.get $dpr) (i32.const 100))))
   (local.set $dpr (select (local.get $dpr) (i32.const 200) (i32.lt_s (local.get $dpr) (i32.const 200))))
   (local.set $pw (i32.div_u (i32.mul (local.get $w) (local.get $dpr)) (i32.const 100)))
@@ -38,10 +41,11 @@
   ;; on grow failure (-1) fall back to an empty 0x0 framebuffer, never a stale size
   (if (i32.gt_s (local.get $pages) (i32.const 0))
     (then (if (i32.lt_s (memory.grow (local.get $pages)) (i32.const 0)) (then
-      (global.set $fb_w (i32.const 0)) (global.set $fb_h (i32.const 0)) (return)))))
+      (global.set $fb_w (i32.const 0)) (global.set $fb_h (i32.const 0)) (call $layout) (return)))))
   (global.set $fb_w (local.get $lw))
   (global.set $fb_h (local.get $lh))
-  (i32.store (i32.sub (local.get $need) (i32.const 4)) (global.get $CANARY)))
+  (i32.store (i32.sub (local.get $need) (i32.const 4)) (global.get $CANARY))
+  (call $layout))
 
 (func $fb_ptr (result i32) (global.get $R_FB))
 (func $fb_w (result i32) (global.get $fb_w))

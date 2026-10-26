@@ -172,11 +172,12 @@ test('rendering never touches sim state, RNG or anything below the framebuffer',
   const g = await game(360, 640);
   g.ex.t_set_cash(1234);
   const rngBefore = new DataView(g.ex.memory.buffer).getUint32(0x1008, true);
-  const before = g.mem().slice(0, R_FB);
+  const outside = (m) => [m.slice(0, 0x8000), m.slice(0x10000, R_FB)];   // R_LAYOUT (0x8000..0xFFFF) is UI state
+  const before = outside(g.mem());
   for (let k = 0; k < 3; k++) g.ex.t_demo(k % 2);
   g.ex.resize(720, 1280, 100);
   g.ex.t_demo(0);
-  const after = g.mem().slice(0, R_FB);
+  const after = outside(g.mem());
   assert.deepEqual(after, before);
   assert.equal(new DataView(g.ex.memory.buffer).getUint32(0x1008, true), rngBefore);
   assert.equal(g.ex.t_canary_ok(), 1);
