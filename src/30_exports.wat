@@ -142,3 +142,4 @@
 (export "t_err_str"    (func $err_str))
 (export "t_str"        (func $str))
 (export "t_toast_drop" (func $toast_drop))
+(export "t_lab_on"     (func $t_lab_on))

@@ -163,7 +163,8 @@ test('keyboard: E, H, 1-5, Esc, arrows + Enter', async () => {
   g.key(KEY.ENTER);
   assert.equal(g.ui(UI.SHEET), 1);
   g.key(KEY.D2);
-  assert.equal(g.ui(UI.SHEET), 1, 'tabs 2-5 are not built yet: ignored');
+  assert.equal(g.ui(UI.SHEET), 1, 'Process tab: its sheet');
+  assert.equal(g.ui(UI.SEL), -1, 'a tab switch clears the plot selection');
   g.key(KEY.D1);
   g.key(KEY.ESC);
   assert.equal(g.ui(UI.SHEET), 0);
@@ -424,11 +425,14 @@ test('ui_new_game and ui_loaded reset UI state and refit', async () => {
 
 // Every UI state x size: registered dynamic hit regions (buttons) are >= min_touch and in the framebuffer.
 const SIZES = [[360, 640, 200], [320, 568, 200], [1280, 800, 100], [1440, 900, 100], [768, 1024, 100], [640, 360, 200]];
-test('every dynamic hit region is >= 44 css px (min_touch) in every UI state, size and text size', async () => {
+test('every dynamic hit region is >= 44 css px (min_touch) in every UI state, size and text size; hit table <= 128', async () => {
+  let most = 0;
   for (const name of Object.keys(UI_STATES)) for (const [w, h, d] of SIZES) for (const large of [false, true]) {
     const g = await uiState(name, w, h, d);
     g.ex.set_flags(1, large ? 1 : 0);
     g.frame();
+    most = Math.max(most, g.ex.t_hit_n());
+    assert.ok(g.ex.t_hit_n() < 128, `${name} ${w}x${h}: hit table not full (${g.ex.t_hit_n()})`);
     const mt = g.ex.t_min_touch(), W = g.ex.fb_w(), H = g.ex.fb_h();
     for (const r of g.hits().slice(staticN(g))) {
       assert.ok(r.w >= mt && r.h >= mt, `${name} ${w}x${h} large=${large} 0x${r.code.toString(16)} ${r.w}x${r.h} < ${mt}`);
@@ -436,6 +440,8 @@ test('every dynamic hit region is >= 44 css px (min_touch) in every UI state, si
     }
     assert.ok(g.ex.t_canary_ok());
   }
+  assert.ok(most > 20 && most < 128, `max hit regions seen: ${most}`);
+  console.log(`# max hit regions seen: ${most}`);
 });
 
 // Golden render hashes (UPDATE_GOLDEN=1 to refresh after a deliberate visual change; review the PNGs).

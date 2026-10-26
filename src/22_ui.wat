@@ -11,9 +11,10 @@
 ;;   0x8E00..0x8FFF  announce ring (512 B): each message is written after the previous one,
 ;;                   wrapping to the start; announce_ptr/len point at the latest, announce_seq
 ;;                   counts messages (the loader mirrors it into an aria-live region)
-;;   0x9000..0x99FF  draw list of the buttons drawn this frame: 40 x 64 B {code i32, enabled i32,
+;;   0x9000..0x9FFF  draw list of the buttons drawn this frame: 64 x 64 B {code i32, enabled i32,
 ;;                   label 28 B, reason 28 B} (tests read it; taps on disabled buttons toast the reason)
-;;   0x9A00..0x9A3F  $ui_wrap line buffer
+;;   0xA000..0xA03F  $ui_wrap line buffer   0xA040..0xA0BF tab amounts / plan (22b_tabs.wat)
+;;   0xA100..0xA8FF  label log: every $ui_label text drawn this frame, NUL-separated (tests)
 ;; Static data at 0x0900 (00_memory.wat): button styles (6 x 5 palette indices: border, face,
 ;; pressed face, text, second line) and the season -> icon map at 0x0920.
 ;;
@@ -35,8 +36,8 @@
 ;; what the player sees; relayouts (open/close/resize/refit) clear the dynamic regions.
 ;;
 ;; Keys (key(code, down); loader maps KeyboardEvent.code via tools/keycodes.json):
-;;   1 KeyE end day    2 KeyH harvest all    3..7 Digit1..5 tabs (only Farm exists in 5a)
-;;   8 Escape close    9 ArrowUp 10 ArrowDown 11 ArrowLeft 12 ArrowRight: move the tile cursor
+;;   1 KeyE end day    2 KeyH harvest all    3..7 Digit1..5 tabs (Farm Process Market Trucks Build)
+;;   8 Escape back (leave placement / a dispatch step / the tab, then close the sheet)    9 ArrowUp 10 ArrowDown 11 ArrowLeft 12 ArrowRight: move the tile cursor
 ;;   (Right/Left = +-x, Down/Up = +-y on the board, clamped to the owned grid + the next ring)
 ;;   13 Enter / 16 Space open the selected plot    14 Backquote (stats, Task 7)    15 KeyR (replay, Task 7)
 ;;   Auto-repeat: a key acts once per press. A down (any non-zero value) for a code already held
@@ -84,7 +85,9 @@
 (global $SB2 i32 (i32.const 0x8C80))
 (global $SB3 i32 (i32.const 0x8CC0))
 (global $TOASTS i32 (i32.const 0x8D10))
-(global $WRAPBUF i32 (i32.const 0x9A00))
+(global $WRAPBUF i32 (i32.const 0xA000))
+(global $lab_p (mut i32) (i32.const 0xA100))   ;; label log end (see $ui_label)
+(global $lab_on (mut i32) (i32.const 0))       ;; label log enabled (test hook t_lab_on only)
 (global $BTNS i32 (i32.const 0x9000))
 
 ;; Button styles: border, face, pressed face, text, second line (palette idx = hue*4+step).
@@ -155,9 +158,10 @@
     (local.set $p (i32.div_u (local.get $p) (i32.const 10)))
     (br_if $d (local.get $p))))
 (func $sep (call $si (global.get $STR_SEP)))
+(func $sn0 (param $n i32) (call $sn (local.get $n) (i32.const 0)))
 ;; "n DAYS" / "1 DAY"
 (func $s_days (param $n i32)
-  (call $sn (local.get $n) (i32.const 0))
+  (call $sn0 (local.get $n))
   (call $si (select (global.get $STR_DAY1) (global.get $STR_DAYS) (i32.eq (local.get $n) (i32.const 1)))))
 
 ;; Error code -> message string.
@@ -237,7 +241,7 @@
 ;; Count badge (number on a barn-red pill) with its top-right corner at (x, y).
 (func $ui_badge (param $x i32) (param $y i32) (param $n i32)
   (local $w i32)
-  (call $sb (global.get $SB3)) (call $sn (local.get $n) (i32.const 0))
+  (call $sb (global.get $SB3)) (call $sn0 (local.get $n))
   (local.set $w (i32.add (call $tw (global.get $SB3)) (i32.const 6)))
   (call $rrect (i32.sub (local.get $x) (local.get $w)) (local.get $y) (local.get $w) (i32.add (call $lh) (i32.const 5)) (i32.const 3) (call $pal (i32.const 60)))
   (call $rrect (i32.sub (i32.sub (local.get $x) (local.get $w)) (i32.const -1)) (i32.add (local.get $y) (i32.const 1))
@@ -290,7 +294,7 @@
   (if (i32.and (i32.ge_s (local.get $y) (global.get $clip_t))
                (i32.le_s (i32.add (local.get $y) (local.get $h)) (global.get $clip_b)))
     (then (drop (call $hit_add (local.get $x) (local.get $y) (local.get $w) (local.get $h) (local.get $code)))))
-  (if (i32.lt_u (global.get $btn_n) (i32.const 40)) (then
+  (if (i32.lt_u (global.get $btn_n) (i32.const 64)) (then
     (local.set $e (i32.add (global.get $BTNS) (i32.shl (global.get $btn_n) (i32.const 6))))
     (i32.store (local.get $e) (local.get $code))
     (i32.store offset=4 (local.get $e) (local.get $en))
@@ -508,7 +512,7 @@
 ;; A press that began on the sheet / side panel (its body, buttons or close).
 (func $in_panel (param $c i32) (result i32)
   (i32.or (i32.or (i32.eq (local.get $c) (global.get $HIT_PANEL)) (i32.eq (local.get $c) (global.get $HIT_CLOSE)))
-          (i32.eq (i32.shr_u (local.get $c) (i32.const 8)) (i32.const 2))))
+          (i32.ge_u (local.get $c) (i32.const 0x200))))
 
 (func $key (param $code i32) (param $down i32)
   (local $i i32) (local $x i32) (local $y i32) (local $m i32)
@@ -523,9 +527,11 @@
   (global.set $keys (i32.or (global.get $keys) (local.get $m)))
   (if (i32.eq (local.get $code) (i32.const 1)) (then (call $do_endday)))
   (if (i32.eq (local.get $code) (i32.const 2)) (then (call $do_harvest_all)))
-  (if (i32.eq (local.get $code) (i32.const 8)) (then (call $close)))
+  (if (i32.eq (local.get $code) (i32.const 8)) (then (call $back)))
+  (if (i32.lt_u (i32.sub (local.get $code) (i32.const 3)) (i32.const 5)) (then (call $set_tab (i32.sub (local.get $code) (i32.const 3)))))
   (if (i32.or (i32.eq (local.get $code) (i32.const 13)) (i32.eq (local.get $code) (i32.const 16)))
-    (then (if (i32.ge_s (global.get $sel_tile) (i32.const 0)) (then (call $select (global.get $sel_tile) (i32.const 1))))))
+    (then (if (i32.ge_s (global.get $sel_tile) (i32.const 0)) (then
+      (if (global.get $place) (then (call $place_at (global.get $sel_tile))) (else (call $select (global.get $sel_tile) (i32.const 1))))))))
   (if (i32.lt_u (i32.sub (local.get $code) (i32.const 9)) (i32.const 4)) (then
     ;; arrows move the tile cursor over the owned grid + the next ring
     (local.set $i (global.get $sel_tile))
@@ -539,7 +545,7 @@
       (if (i32.eq (local.get $code) (i32.const 12)) (then (local.set $x (i32.add (local.get $x) (i32.const 1)))))
       (local.set $i (i32.add (i32.shl (call $clamp (local.get $y) (i32.const 0) (local.get $m)) (i32.const 3))
                              (call $clamp (local.get $x) (i32.const 0) (local.get $m))))))
-    (call $select (call $imax (local.get $i) (i32.const 0)) (global.get $sheet))))
+    (call $select (call $imax (local.get $i) (i32.const 0)) (i32.and (global.get $sheet) (i32.eqz (global.get $tab))))))
   (global.set $dirty (i32.const 1)))
 
 ;; ---------------------------------------------------------------- frame loop
@@ -617,12 +623,17 @@
   (call $hit_reset_dyn)
   (if (i32.ne (call $lget (global.get $L_MODE)) (i32.const 2)) (then (global.set $hover_tile (i32.const -1))))
   (global.set $btn_n (i32.const 0))
+  (global.set $lab_p (i32.const 0xA100))
+  ;; placement mode: the empty owned plots glow (pulsing unless reduced motion)
+  (global.set $place_hi (i32.and (i32.ne (global.get $place) (i32.const 0))
+    (i32.or (global.get $flag_reduced) (i32.and (i32.shr_u (global.get $now) (i32.const 9)) (i32.const 1)))))
   (call $scene_time (global.get $now))
   (call $scene_draw)
   (global.set $tscale (call $ui_ts))
   (call $draw_top)
   (call $draw_tabs)
   (call $draw_sheet)
+  (call $draw_place)
   (call $draw_toasts)
   (global.set $tscale (i32.const 1)))
 
@@ -637,6 +648,8 @@
   (global.set $arm (i32.const 0)) (global.set $in_st (i32.const 0)) (global.set $press (i32.const 0)) (global.set $keys (i32.const 0))
   (global.set $slide_t (i32.const -2)) (global.set $shake_t (i32.const -2))
   (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
+  (global.set $tab (i32.const 0)) (global.set $msub (i32.const 0)) (global.set $place (i32.const 0)) (global.set $dsp (i32.const -1))
+  (call $qreset)
   (call $layout_panel (i32.const 0))
   (global.set $dirty (i32.const 1)))
 (func $ui_new_game (param $seed i32)
@@ -663,6 +676,14 @@
   (if (i32.eq (local.get $k) (i32.const 8)) (then (return (global.get $arm))))
   (if (i32.eq (local.get $k) (i32.const 9)) (then (return (global.get $dirty))))
   (if (i32.eq (local.get $k) (i32.const 10)) (then (return (global.get $slide_p))))
+  (if (i32.eq (local.get $k) (i32.const 12)) (then (return (global.get $tab))))
+  (if (i32.eq (local.get $k) (i32.const 13)) (then (return (global.get $msub))))
+  (if (i32.eq (local.get $k) (i32.const 14)) (then (return (global.get $place))))
+  (if (i32.eq (local.get $k) (i32.const 15)) (then (return (global.get $dsp))))
+  (if (i32.eq (local.get $k) (i32.const 16)) (then (return (global.get $dstep))))
+  (if (i32.eq (local.get $k) (i32.const 17)) (then (return (global.get $dm))))
+  (if (i32.eq (local.get $k) (i32.const 18)) (then (return (global.get $dc))))
+  (if (i32.eq (local.get $k) (i32.const 19)) (then (return (global.get $lab_p))))
   (global.get $in_st))
 (func $t_ui_btn (param $i i32) (result i32) (i32.add (global.get $BTNS) (i32.shl (local.get $i) (i32.const 6))))
 (func $t_ui_toast (param $i i32) (result i32)
@@ -670,5 +691,6 @@
   (local.set $p (i32.add (global.get $TOASTS) (i32.shl (local.get $i) (i32.const 6))))
   (select (i32.add (local.get $p) (i32.const 8)) (i32.const 0) (i32.load offset=4 (local.get $p))))
 ;; (t_str = $str, t_toast_drop = $toast_drop are exported directly)
+(func $t_lab_on (param $v i32) (global.set $lab_on (local.get $v)))
 (func $t_fmt (param $n i32) (param $m i32) (result i32)
   (call $sb (global.get $SB3)) (call $sn (local.get $n) (local.get $m)) (global.get $SB3))

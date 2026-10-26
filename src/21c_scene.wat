@@ -30,6 +30,7 @@
 (global $flag_reduced (mut i32) (i32.const 0))
 (global $sel_tile (mut i32) (i32.const -1))
 (global $hover_tile (mut i32) (i32.const -1))
+(global $place_hi (mut i32) (i32.const 0))      ;; UI placement mode: empty owned plots glow
 (global $vp_x (mut i32) (i32.const 0))
 (global $vp_y (mut i32) (i32.const 0))
 (global $vp_w (mut i32) (i32.const 0))
@@ -818,7 +819,8 @@
       (global.set $dlev (i32.add (i32.const 3) (i32.and (i32.shr_u (local.get $n) (i32.const 4)) (i32.const 3))))
       (if (i32.eq (global.get $sc_wx) (i32.const 4)) (then (global.set $dlev (i32.const 2))))))   ;; frost: sparse rime
   (call $iso_quad (local.get $wx) (local.get $wy) (i32.const 0) (i32.const 16) (i32.const 16) (local.get $c))
-  (local.set $glow (i32.or (i32.eq (local.get $i) (global.get $sel_tile)) (i32.eq (local.get $i) (global.get $hover_tile))))
+  (local.set $glow (i32.or (i32.or (i32.eq (local.get $i) (global.get $sel_tile)) (i32.eq (local.get $i) (global.get $hover_tile)))
+    (i32.and (global.get $place_hi) (i32.and (local.get $own) (i32.eqz (i32.load8_u (local.get $p)))))))
   (if (local.get $bed) (then
     ;; tilled bed inset one unit, three furrow ridges (lit crest + shaded trough)
     (local.set $k (select (global.get $H_SOIL) (global.get $H_TILLED) (i32.eq (global.get $sc_wx) (i32.const 2))))

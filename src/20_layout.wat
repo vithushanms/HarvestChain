@@ -32,7 +32,7 @@
 ;;   column = TABS above PANEL (<= 520 css) flush with the right edge, GRID (max 640 css) centred in
 ;;   the space left of it; the panel is always present. TABLET = 768 <= w < 1024 otherwise. PORTRAIT = the rest. Portrait and tablet: top bar,
 ;;   GRID full width, tab bar at the bottom; PANEL is a bottom sheet = the lower 45% of the screen
-;;   (tab bar included) that exists only while open ($layout_panel(1)); then GRID shrinks to end where
+;;   (tab bar included; 62% for the Task 5b tabs, $layout_panel(2)) that exists only while open ($layout_panel(1)); then GRID shrinks to end where
 ;;   the sheet begins, so the scene re-fits above it and End Day (top bar) stays reachable.
 ;;   Tablet sheets are two columns ($lay cols = 2).
 ;;
@@ -269,7 +269,8 @@
       (if (call $lget (global.get $L_OPEN))
         (then
           ;; (a two-row top bar leaves little room: the sheet then takes 2/3 of the space between the bars)
-          (local.set $i (call $imax (call $imax (i32.sub (i32.div_u (i32.mul (local.get $H) (i32.const 45)) (i32.const 100)) (local.get $tabh))
+          (local.set $i (call $imax (call $imax (i32.sub (i32.div_u (i32.mul (local.get $H)
+                (select (i32.const 62) (i32.const 45) (i32.eq (call $lget (global.get $L_OPEN)) (i32.const 2)))) (i32.const 100)) (local.get $tabh))
                                                 (i32.mul (local.get $two) (i32.div_u (i32.shl (local.get $ph) (i32.const 1)) (i32.const 3))))
                                     (i32.add (local.get $mt) (i32.shl (local.get $g) (i32.const 1)))))
           (local.set $i (call $imin (local.get $i) (local.get $ph)))
@@ -314,9 +315,10 @@
   (call $scene_viewport (call $lay_x (global.get $LR_GRID)) (call $lay_y (global.get $LR_GRID))
                         (call $lay_w (global.get $LR_GRID)) (call $lay_h (global.get $LR_GRID))))
 
-;; Open (1) / close (0) the bottom sheet (portrait + tablet; ignored in laptop mode) and relayout.
+;; Open (1; 2 = tall: 62% of the screen, for the tabs) / close (0) the bottom sheet (portrait +
+;; tablet; ignored in laptop mode) and relayout.
 (func $layout_panel (param $open i32)
-  (call $lput (global.get $L_OPEN) (i32.ne (local.get $open) (i32.const 0)))
+  (call $lput (global.get $L_OPEN) (local.get $open))
   (call $layout))
 
 ;; Exports: loader/Task 5 entry points.

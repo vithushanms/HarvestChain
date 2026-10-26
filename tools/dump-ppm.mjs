@@ -8,7 +8,8 @@
 //           farm-* (canned farm scenes from tests/render/scenes.mjs, drawn by $scene_draw)
 //           ui-* (UI states from tests/render/uistates.mjs: scene + top bar, tabs, sheet, toasts via frame();
 //           dpr applies; add --large for large text)
-//        node tools/dump-ppm.mjs ui  (every ui-* state at 360x640@2 and 1280x800@1, + large text at 360x640)
+//        node tools/dump-ppm.mjs ui [prefix]  (every ui-* state at 360x640@2 and 1280x800@1, + large text at
+//           360x640; with a prefix only the matching states, + large text at 320x568)
 // Output: build/<scene>-<w>x<h>.png (nearest-neighbour zoomed, default 2x; 1x above 1000 px).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -130,9 +131,13 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const large = li >= 0 && Boolean(args.splice(li, 1));
   const [scene = 'demo', w = '360', h = '640', dpr = '100'] = args;
   if (scene === 'ui') {
-    for (const name of Object.keys(UI_STATES)) {
+    // optional filter: node tools/dump-ppm.mjs ui ui-market   (states whose name starts with it;
+    // large text is also dumped at 320x568 for them)
+    const only = args[1];
+    for (const name of Object.keys(UI_STATES).filter((n) => !only || n.startsWith(only))) {
       for (const [sw, sh, d] of [[360, 640, 200], [1280, 800, 100]]) await dump(name, sw, sh, d, zoom, t, reduced);
       await dump(name, 360, 640, 200, zoom, t, reduced, '', null, true);
+      if (only) await dump(name, 320, 568, 200, zoom, t, reduced, '', null, true);
     }
   } else if (scene === 'all') {
     for (const name of Object.keys(SCENES)) for (const [sw, sh] of [[360, 640], [1280, 800]]) await dump(name, sw, sh, 100, zoom, t, reduced);

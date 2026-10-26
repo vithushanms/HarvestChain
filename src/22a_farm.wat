@@ -37,34 +37,20 @@
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
   (local.get $n))
 
-;; Storage units that will spoil tonight (estimate for the End Day summary): perishable stock
-;; that ages past its shelf life, minus the Cold Store's protected oldest units; goods a
-;; processor is set to consume are skipped (it eats the oldest units first), so this never
+;; Storage units that will spoil tonight (estimate for the End Day summary): $rot per good,
+;; skipping goods a processor is set to consume (it eats the oldest units first), so this never
 ;; over-reports.
 (func $spoil_est (result i32)
-  (local $i i32) (local $p i32) (local $mask i32) (local $g i32) (local $d i32) (local $a i32)
-  (local $step i32) (local $prot i32) (local $ex i32) (local $all i32) (local $n i32) (local $v i32)
+  (local $i i32) (local $p i32) (local $mask i32) (local $g i32) (local $n i32)
   (loop $t
     (local.set $p (call $tile_ptr (local.get $i)))
     (if (i32.and (i32.eq (i32.load8_u (local.get $p)) (i32.const 2)) (i32.ne (i32.load8_u offset=7 (local.get $p)) (i32.const 0)))
       (then (local.set $mask (i32.or (local.get $mask)
         (i32.shl (i32.const 1) (call $bal (global.get $T_RECIPE) (call $imin (i32.sub (i32.load8_u offset=7 (local.get $p)) (i32.const 1)) (i32.const 7)) (i32.const 1)))))))
     (br_if $t (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
-  (local.set $step (i32.add (i32.const 1)
-    (select (call $k (global.get $K_HEAT_AGE_EXTRA)) (i32.const 0) (i32.eq (i32.load8_u (global.get $S_WEATHER)) (global.get $W_HEAT)))))
-  (local.set $prot (i32.mul (call $count_bld (global.get $BLD_COLD)) (call $k (global.get $K_COLD_PER_STORE))))
   (loop $gl
-    (local.set $d (call $bal (global.get $T_GOOD) (local.get $g) (i32.const 1)))
-    (if (local.get $d) (then
-      (local.set $ex (i32.const 0)) (local.set $all (i32.const 0)) (local.set $a (i32.const 0))
-      (loop $al
-        (local.set $v (i32.load16_u (call $inv_ptr (local.get $g) (local.get $a))))
-        (local.set $all (i32.add (local.get $all) (local.get $v)))
-        (if (i32.ge_s (i32.add (local.get $a) (local.get $step)) (local.get $d)) (then (local.set $ex (i32.add (local.get $ex) (local.get $v)))))
-        (br_if $al (i32.lt_u (local.tee $a (i32.add (local.get $a) (i32.const 1))) (i32.const 8))))
-      (if (i32.eqz (i32.and (local.get $mask) (i32.shl (i32.const 1) (local.get $g))))
-        (then (local.set $n (i32.add (local.get $n) (i32.sub (local.get $ex) (call $imin (local.get $ex) (local.get $prot)))))))
-      (local.set $prot (i32.sub (local.get $prot) (call $imin (local.get $prot) (local.get $all))))))
+    (if (i32.eqz (i32.and (local.get $mask) (i32.shl (i32.const 1) (local.get $g))))
+      (then (local.set $n (i32.add (local.get $n) (call $rot (local.get $g))))))
     (br_if $gl (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (global.get $GOODS))))
   (local.get $n))
 
@@ -88,9 +74,9 @@
 ;; "PLOT x,y" (1-based) into the current builder.
 (func $s_plot (param $i i32)
   (call $si (global.get $STR_PLOT))
-  (call $sn (i32.add (i32.and (local.get $i) (i32.const 7)) (i32.const 1)) (i32.const 0))
+  (call $sn0 (i32.add (i32.and (local.get $i) (i32.const 7)) (i32.const 1)))
   (call $sc (i32.const 44))
-  (call $sn (i32.add (i32.shr_u (local.get $i) (i32.const 3)) (i32.const 1)) (i32.const 0)))
+  (call $sn0 (i32.add (i32.shr_u (local.get $i) (i32.const 3)) (i32.const 1))))
 
 ;; One-line tile status into SB3 ("PLOT 2,1: WHEAT, 1 DAYS" / "... RIPE" / "WILD LAND" ...).
 (func $tile_info (param $i i32)
@@ -114,7 +100,7 @@
 
 ;; Recipe row r as "2 WHEAT > 1 FLOUR" into the current builder.
 (func $s_recipe (param $r i32)
-  (call $sn (call $bal (global.get $T_RECIPE) (local.get $r) (i32.const 2)) (i32.const 0))
+  (call $sn0 (call $bal (global.get $T_RECIPE) (local.get $r) (i32.const 2)))
   (call $sc (i32.const 32))
   (call $si (i32.add (global.get $STR_GOOD) (call $bal (global.get $T_RECIPE) (local.get $r) (i32.const 1))))
   (call $sc (i32.const 32)) (call $sc (i32.const 62)) (call $sc (i32.const 32)) (call $sc (i32.const 49)) (call $sc (i32.const 32))
@@ -138,8 +124,8 @@
   (local.set $a (call $bal (global.get $T_BLD) (local.get $b) (i32.const 5)))
   (call $sb (global.get $SB3))
   (if (i32.eq (local.get $k) (i32.const 1)) (then (call $si (global.get $STR_NEEDS)) (call $si (i32.add (global.get $STR_BLD) (local.get $a)))))
-  (if (i32.eq (local.get $k) (i32.const 2)) (then (call $si (global.get $STR_NEEDS_STAR)) (call $sn (local.get $a) (i32.const 0))))
-  (if (i32.eq (local.get $k) (i32.const 3)) (then (call $si (global.get $STR_FROM_DAY)) (call $sn (local.get $a) (i32.const 0))))
+  (if (i32.eq (local.get $k) (i32.const 2)) (then (call $si (global.get $STR_NEEDS_STAR)) (call $sn0 (local.get $a))))
+  (if (i32.eq (local.get $k) (i32.const 3)) (then (call $si (global.get $STR_FROM_DAY)) (call $sn0 (local.get $a))))
   (global.get $SB3))
 
 ;; ---------------------------------------------------------------- actions
@@ -153,18 +139,16 @@
   (if (i32.ne (local.get $i) (global.get $sel_tile)) (then
     (global.set $scroll (i32.const 0)) (global.set $pick (i32.const 0)) (global.set $arm (i32.const 0))))
   (global.set $sel_tile (local.get $i))
+  (if (i32.eqz (global.get $place)) (then (global.set $tab (i32.const 0)) (global.set $dsp (i32.const -1))))
   (call $tile_info (local.get $i))
   (call $announce (global.get $SB3))
-  (if (i32.and (local.get $open) (i32.eqz (global.get $sheet))) (then
-    (global.set $sheet (i32.const 1))
-    (global.set $slide_t (select (i32.const -2) (i32.const -1)
-      (i32.or (global.get $flag_reduced) (i32.eq (call $lget (global.get $L_MODE)) (i32.const 2)))))
-    (call $layout_panel (i32.const 1))))
+  (if (local.get $open) (then (call $open_sheet)))
   (global.set $dirty (i32.const 1)))
 
 (func $close
   (global.set $sel_tile (i32.const -1)) (global.set $sheet (i32.const 0)) (global.set $scroll (i32.const 0))
   (global.set $arm (i32.const 0)) (global.set $pick (i32.const 0))
+  (global.set $tab (i32.const 0)) (global.set $place (i32.const 0)) (global.set $dsp (i32.const -1))
   (call $layout_panel (i32.const 0))
   (global.set $dirty (i32.const 1)))
 
@@ -180,14 +164,16 @@
     (call $sep) (call $si (global.get $STR_FORECAST)) (call $si (i32.add (global.get $STR_WX) (call $wx (i32.const 2))))
     (call $toast (i32.const 1) (global.get $SB3))
     (return)))
+  (if (i32.lt_u (i32.sub (local.get $c) (global.get $HIT_TAB0)) (i32.const 5)) (then (call $set_tab (i32.sub (local.get $c) (global.get $HIT_TAB0))) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_GRID)) (then
     (local.set $t (call $tile_at (global.get $in_lx) (global.get $in_ly)))
+    (if (global.get $place) (then (call $place_at (local.get $t)) (return)))
     (if (i32.or (i32.lt_s (local.get $t) (i32.const 0))
                 (i32.and (i32.eq (local.get $t) (global.get $sel_tile)) (global.get $sheet)))
       (then (call $close))
       (else (call $select (local.get $t) (i32.const 1))))
     (return)))
-  (if (i32.eq (i32.shr_u (local.get $c) (i32.const 8)) (i32.const 2)) (then (call $panel_btn (local.get $c)))))
+  (if (i32.ge_u (local.get $c) (i32.const 0x200)) (then (call $panel_btn (local.get $c)))))
 
 (func $wx (param $o i32) (result i32)
   (call $clamp (i32.load8_u (i32.add (global.get $S_WEATHER) (local.get $o))) (i32.const 0) (i32.const 5)))
@@ -202,15 +188,15 @@
   (global.set $want_save (i32.const 1))
   (global.set $arm (i32.const 0))
   (call $sb (global.get $SB3))
-  (call $si (global.get $STR_DAY)) (call $sn (i32.load16_u (global.get $S_DAY)) (i32.const 0)) (call $sc (i32.const 32))
+  (call $si (global.get $STR_DAY)) (call $sn0 (i32.load16_u (global.get $S_DAY))) (call $sc (i32.const 32))
   (local.set $v (i32.sub (i32.load (global.get $S_CASH)) (local.get $c0)))
   (if (i32.ge_s (local.get $v) (i32.const 0)) (then (call $sc (i32.const 43))))
   (call $sn (local.get $v) (i32.const 1))
   (local.set $v (call $ripe_count))
-  (if (local.get $v) (then (call $sep) (call $sn (local.get $v) (i32.const 0)) (call $si (global.get $STR_NOW_RIPE))))
+  (if (local.get $v) (then (call $sep) (call $sn0 (local.get $v)) (call $si (global.get $STR_NOW_RIPE))))
   (local.set $v (i32.sub (local.get $n0) (call $crop_count)))
-  (if (i32.gt_s (local.get $v) (i32.const 0)) (then (call $sep) (call $sn (local.get $v) (i32.const 0)) (call $si (global.get $STR_LOST))))
-  (if (local.get $sp) (then (call $sep) (call $sn (local.get $sp) (i32.const 0)) (call $si (global.get $STR_SPOILED))))
+  (if (i32.gt_s (local.get $v) (i32.const 0)) (then (call $sep) (call $sn0 (local.get $v)) (call $si (global.get $STR_LOST))))
+  (if (local.get $sp) (then (call $sep) (call $sn0 (local.get $sp)) (call $si (global.get $STR_SPOILED))))
   (call $toast (i32.const 1) (global.get $SB3)))
 
 (func $do_harvest_all
@@ -223,7 +209,7 @@
   (if (i32.eqz (local.get $h)) (then (call $fail (global.get $E_STORAGE_FULL)) (return)))
   (global.set $want_save (i32.const 1))
   (call $sb (global.get $SB3))
-  (call $si (global.get $STR_HARVESTED)) (call $sn (local.get $h) (i32.const 0)) (call $si (global.get $STR_PLOTS))
+  (call $si (global.get $STR_HARVESTED)) (call $sn0 (local.get $h)) (call $si (global.get $STR_PLOTS))
   (if (i32.lt_u (local.get $h) (local.get $n0)) (then (call $sep) (call $si (i32.add (global.get $STR_ERR) (global.get $E_STORAGE_FULL)))))
   (call $toast (i32.const 3) (global.get $SB3)))
 
@@ -235,6 +221,12 @@
     (call $fail_s (select (i32.add (local.get $r) (i32.const 36)) (i32.add (local.get $r) (i32.const 8))
       (i32.load8_u offset=36 (local.get $r))))
     (return)))
+  (if (call $tab_btn (local.get $c)) (then (return)))
+  (local.set $i (global.get $sel_tile))
+  ;; Process tab recipe arrows 0x340 / 0x380 + tile act on that tile like the sheet's 0x205 / 0x206
+  (if (i32.ge_u (local.get $c) (i32.const 0x340)) (then
+    (local.set $i (i32.and (local.get $c) (i32.const 63)))
+    (local.set $c (i32.add (i32.const 0x205) (i32.ge_u (local.get $c) (i32.const 0x380))))))
   (if (i32.lt_u (i32.sub (local.get $c) (i32.const 0x200)) (i32.const 2)) (then
     (global.set $pick (i32.sub (local.get $c) (i32.const 0x200)))
     (global.set $scroll (i32.const 0)) (global.set $dirty (i32.const 1))
@@ -249,8 +241,7 @@
       (global.set $dirty (i32.const 1))
       (return)))))
   (global.set $arm (i32.const 0))
-  (local.set $i (global.get $sel_tile))
-  (if (i32.lt_s (local.get $i) (i32.const 0)) (then (return)))
+  (if (i32.and (i32.lt_s (local.get $i) (i32.const 0)) (i32.ne (local.get $c) (i32.const 0x207))) (then (return)))
   (local.set $p (call $tile_ptr (local.get $i)))
   (local.set $name (call $tile_name (local.get $p)))
   (local.set $e (global.get $E_BAD_ARG))
@@ -290,26 +281,14 @@
 
 ;; "FARM 5X5" into the current builder.
 (func $s_farm_size (param $g i32)
-  (call $si (global.get $STR_FARM_SIZE)) (call $sn (local.get $g) (i32.const 0))
-  (call $si (global.get $STR_X)) (call $sn (local.get $g) (i32.const 0)))
+  (call $si (global.get $STR_FARM_SIZE)) (call $sn0 (local.get $g))
+  (call $si (global.get $STR_X)) (call $sn0 (local.get $g)))
 
 ;; ---------------------------------------------------------------- top bar and tabs
 
 ;; Fill layout rect id with palette colour c.
 (func $rect_r (param $id i32) (param $c i32)
   (call $rect (call $lay_x (local.get $id)) (call $lay_y (local.get $id)) (call $lay_w (local.get $id)) (call $lay_h (local.get $id)) (call $pal (local.get $c))))
-
-;; Lighten every pixel of a rect halfway toward PAPER1 (disabled tabs).
-(func $dim (param $x i32) (param $y i32) (param $w i32) (param $h i32)
-  (local $i i32) (local $j i32) (local $c i32)
-  (local.set $c (call $pal (i32.const 57)))
-  (loop $r
-    (local.set $i (i32.const 0))
-    (loop $l
-      (call $px (i32.add (local.get $x) (local.get $i)) (i32.add (local.get $y) (local.get $j))
-        (call $blend50 (call $getpx (i32.add (local.get $x) (local.get $i)) (i32.add (local.get $y) (local.get $j))) (local.get $c)))
-      (br_if $l (i32.lt_s (local.tee $i (i32.add (local.get $i) (i32.const 1))) (local.get $w))))
-    (br_if $r (i32.lt_s (local.tee $j (i32.add (local.get $j) (i32.const 1))) (local.get $h)))))
 
 ;; Top-bar info card (rect id): line 1 = [icon] s1 (colour c1), line 2 = s2 (secondary) or, with
 ;; s2 = 0, the weather row (season, today, arrow, forecast). Falls back to one line / scale 1.
@@ -362,15 +341,15 @@
   (call $rect_r (global.get $LR_TOPBAR) (i32.const 61))
   (call $hline (i32.const 0) (i32.sub (call $lay_h (global.get $LR_TOPBAR)) (i32.const 1)) (call $lay_w (global.get $LR_TOPBAR)) (call $pal (i32.const 60)))
   (call $sb (global.get $SB0))
-  (call $si (global.get $STR_DAY)) (call $sn (i32.load16_u (global.get $S_DAY)) (i32.const 0))
+  (call $si (global.get $STR_DAY)) (call $sn0 (i32.load16_u (global.get $S_DAY)))
   (call $card (global.get $LR_DAYBOX) (i32.const -1) (global.get $SB0) (i32.const 61) (i32.const 0)
     (i32.eq (global.get $press) (global.get $HIT_DAY)))
   (local.set $c (i32.load (global.get $S_CASH)))
   (call $sb (global.get $SB0)) (call $sn (local.get $c) (i32.const 1))
   (call $card (i32.const 2) (global.get $I_COIN) (global.get $SB0) (select (i32.const 37) (i32.const 61) (i32.lt_s (local.get $c) (i32.const 0)))
     (call $str (global.get $STR_CASH)) (i32.const 0))
-  (call $sb (global.get $SB0)) (call $sn (call $rank) (i32.const 0))
-  (call $sb (global.get $SB1)) (call $sn (i32.load8_u (global.get $S_REP)) (i32.const 0)) (call $si (global.get $STR_PTS))
+  (call $sb (global.get $SB0)) (call $sn0 (call $rank))
+  (call $sb (global.get $SB1)) (call $sn0 (i32.load8_u (global.get $S_REP))) (call $si (global.get $STR_PTS))
   (call $card (i32.const 3) (global.get $I_STAR) (global.get $SB0) (i32.const 61) (global.get $SB1) (i32.const 0))
   (local.set $n (call $ripe_count))
   (if (local.get $n) (then
@@ -384,7 +363,7 @@
   (call $btn (local.get $code) (call $lay_x (local.get $id)) (call $lay_y (local.get $id)) (call $lay_w (local.get $id)) (call $lay_h (local.get $id))
     (local.get $label) (local.get $icon) (local.get $style) (local.get $en)))
 
-;; Five tabs (icon + label). Only Farm exists in 5a: the others are drawn dimmed and ignore taps.
+;; Five tabs (icon + label); the current one ($tab) is raised with a barn-red top edge.
 (func $draw_tabs
   (local $i i32) (local $x i32) (local $y i32) (local $w i32) (local $h i32) (local $s i32) (local $ic i32) (local $font i32)
   (local $lw i32) (local $ty i32) (local $is i32)
@@ -408,7 +387,7 @@
     (local.set $y (call $lay_y (i32.add (global.get $LR_TAB0) (local.get $i))))
     (local.set $w (call $lay_w (i32.add (global.get $LR_TAB0) (local.get $i))))
     (local.set $h (call $lay_h (i32.add (global.get $LR_TAB0) (local.get $i))))
-    (if (i32.eqz (local.get $i)) (then
+    (if (i32.eq (local.get $i) (global.get $tab)) (then
       (call $rect (i32.add (local.get $x) (i32.const 1)) (i32.add (local.get $y) (i32.const 1)) (i32.sub (local.get $w) (i32.const 2)) (i32.sub (local.get $h) (i32.const 1)) (call $pal (i32.const 59)))
       (call $rect (i32.add (local.get $x) (i32.const 3)) (i32.add (local.get $y) (i32.const 1)) (i32.sub (local.get $w) (i32.const 6)) (i32.const 3) (call $pal (i32.const 38)))))
     (if (local.get $i) (then (call $vline (local.get $x) (i32.add (local.get $y) (i32.const 3)) (i32.sub (local.get $h) (i32.const 6)) (call $pal (i32.const 56)))))
@@ -423,8 +402,7 @@
       (local.get $ty) (local.get $is))
     (drop (call $text (i32.add (local.get $x) (i32.shr_s (i32.sub (local.get $w) (call $text_w (local.get $s) (local.get $font))) (i32.const 1)))
       (i32.add (i32.add (local.get $ty) (i32.mul (i32.const 9) (local.get $is))) (i32.sub (i32.const 2) (local.get $font)))
-      (local.get $s) (call $pal (i32.const 61)) (local.get $font)))
-    (if (local.get $i) (then (call $dim (i32.add (local.get $x) (i32.const 1)) (i32.add (local.get $y) (i32.const 1)) (i32.sub (local.get $w) (i32.const 1)) (i32.sub (local.get $h) (i32.const 1)))))
+      (local.get $s) (call $pal (select (i32.const 61) (i32.const 63) (i32.eq (local.get $i) (global.get $tab)))) (local.get $font)))
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 5))))
   (global.set $tscale (call $ui_ts)))
 
@@ -454,9 +432,18 @@
     (global.set $ucol (i32.const 0))
     (global.set $uy (i32.add (global.get $uy) (i32.add (local.get $h) (global.get $lgap)))))))
 
+;; $ui_label of the text in SB1.
+(func $lab (param $icon i32) (param $c i32) (call $ui_label (local.get $icon) (global.get $SB1) (local.get $c)))
 ;; A wrapped text line at the cursor with an optional glyph icon (palette colour c).
 (func $ui_label (param $icon i32) (param $s i32) (param $c i32)
   (local $x i32)
+  ;; label log for tests (on only via the t_lab_on hook, so the shipping build drops it):
+  ;; NUL-separated copies at 0xA100..0xA8FF, reset by $render
+  (if (global.get $lab_on) (then
+    (local.set $x (i32.add (call $strlen (local.get $s)) (i32.const 1)))
+    (if (i32.lt_u (i32.add (global.get $lab_p) (local.get $x)) (i32.const 0xA900)) (then
+      (memory.copy (global.get $lab_p) (local.get $s) (local.get $x))
+      (global.set $lab_p (i32.add (global.get $lab_p) (local.get $x)))))))
   (global.set $tscale (call $ui_ts))
   (local.set $x (global.get $ux))
   (if (i32.ge_s (local.get $icon) (i32.const 0)) (then
@@ -487,7 +474,7 @@
   (local.set $hh (call $lay_h (global.get $LR_CLOSE)))
   (call $sheet_head (i32.add (local.get $x) (i32.shl (local.get $g) (i32.const 1))) (i32.add (local.get $y) (local.get $g))
     (i32.sub (i32.sub (call $lay_x (global.get $LR_CLOSE)) (call $lay_x (global.get $LR_PANEL))) (i32.mul (local.get $g) (i32.const 3))) (local.get $hh))
-  (if (i32.ge_s (global.get $sel_tile) (i32.const 0)) (then
+  (if (i32.or (i32.ge_s (global.get $sel_tile) (i32.const 0)) (global.get $tab)) (then
     (call $btn (global.get $HIT_CLOSE) (i32.add (call $lay_x (global.get $LR_CLOSE)) (local.get $ox)) (i32.add (call $lay_y (global.get $LR_CLOSE)) (local.get $oy))
       (call $lay_w (global.get $LR_CLOSE)) (local.get $hh) (i32.const 0) (global.get $I_CLOSE) (i32.const 0) (i32.const 1))))
   (local.set $t (i32.add (i32.add (local.get $y) (local.get $hh)) (i32.shl (local.get $g) (i32.const 1))))
@@ -522,12 +509,13 @@
 (func $sheet_head (param $x i32) (param $y i32) (param $w i32) (param $hh i32)
   (local $i i32) (local $p i32) (local $icon i32) (local $title i32) (local $c i32) (local $is i32) (local $ty i32) (local $two i32)
   (local.set $i (global.get $sel_tile))
-  (local.set $icon (global.get $I_HOUSE))
-  (local.set $title (call $str (global.get $STR_TAB)))
+  (local.set $icon (i32.load8_u (i32.add (i32.const 0x930) (global.get $tab))))
+  (local.set $title (call $str (i32.add (global.get $STR_TAB) (global.get $tab))))
   (call $sb (global.get $SB1))
   (if (i32.lt_s (local.get $i) (i32.const 0))
-    (then (call $si (global.get $STR_DAY)) (call $sn (i32.load16_u (global.get $S_DAY)) (i32.const 0)) (call $sep)
-          (call $si (i32.add (global.get $STR_SEA) (call $season))))
+    (then (if (i32.ge_s (global.get $dsp) (i32.const 0)) (then (call $s_step)) (else
+          (call $si (global.get $STR_DAY)) (call $sn0 (i32.load16_u (global.get $S_DAY))) (call $sep)
+          (call $si (i32.add (global.get $STR_SEA) (call $season))))))
     (else
       (local.set $p (call $tile_ptr (local.get $i)))
       (call $s_plot (local.get $i))
@@ -558,38 +546,33 @@
     (drop (call $txt (local.get $x) (local.get $ty) (global.get $SB1) (call $pal (i32.const 63))))))
   (global.set $tscale (call $ui_ts)))
 
-;; Crop picker rows: any = 1 ignores the season (Greenhouse).
-(func $crop_rows (param $any i32)
-  (local $c i32) (local $why i32) (local $cost i32)
+;; Picker rows (one table-driven list): k 0 crops in season, 1 crops in any season (Greenhouse),
+;; 2 buildings (unlock reason, upkeep, owned count). Disabled rows carry their reason.
+(func $pick_rows (param $k i32)
+  (local $i i32) (local $why i32) (local $cost i32) (local $b i32)
+  (local.set $b (i32.eq (local.get $k) (i32.const 2)))
   (loop $l
-    (local.set $cost (call $bal (global.get $T_CROP) (local.get $c) (i32.const 0)))
+    (local.set $cost (call $bal (select (global.get $T_BLD) (global.get $T_CROP) (local.get $b)) (local.get $i) (i32.const 0)))
     (local.set $why (i32.const 0))
     (if (i32.lt_s (i32.load (global.get $S_CASH)) (local.get $cost)) (then (local.set $why (call $err_str (global.get $E_CASH)))))
-    (if (i32.eqz (i32.or (local.get $any) (i32.and (call $bal (global.get $T_CROP) (local.get $c) (i32.const 5)) (i32.shl (i32.const 1) (call $season)))))
-      (then (local.set $why (call $err_str (global.get $E_SEASON)))))
+    ;; ($lock_reason builds in SB3: before SB1 is started)
+    (if (i32.and (local.get $b) (i32.eqz (call $bld_unlocked (local.get $i)))) (then (local.set $why (call $lock_reason (local.get $i)))))
     (call $sb (global.get $SB1))
-    (call $s_days (call $bal (global.get $T_CROP) (local.get $c) (i32.const 1)))
-    (call $sep) (call $si (select (global.get $STR_SEASON_ANY) (global.get $STR_IN_SEASON) (local.get $any)))
+    (if (local.get $b)
+      (then
+        (call $si (global.get $STR_UPKEEP)) (call $sn (call $bal (global.get $T_BLD) (local.get $i) (i32.const 1)) (i32.const 1)) (call $si (global.get $STR_PER_DAY))
+        (if (call $count_bld (local.get $i)) (then (call $sep) (call $sn0 (call $count_bld (local.get $i))) (call $si (global.get $STR_OWNED)))))
+      (else
+        (if (i32.eqz (i32.or (local.get $k) (i32.and (call $bal (global.get $T_CROP) (local.get $i) (i32.const 5)) (i32.shl (i32.const 1) (call $season)))))
+          (then (local.set $why (call $err_str (global.get $E_SEASON)))))
+        (call $s_days (call $bal (global.get $T_CROP) (local.get $i) (i32.const 1)))
+        (call $sep) (call $si (select (global.get $STR_SEASON_ANY) (global.get $STR_IN_SEASON) (local.get $k)))))
     (call $sb (global.get $SB2)) (call $sn (local.get $cost) (i32.const 1))
     (global.set $b_row (i32.const 1)) (global.set $b_sub (global.get $SB1)) (global.set $b_right (global.get $SB2)) (global.set $b_why (local.get $why))
-    (call $put (i32.add (i32.const 0x210) (local.get $c)) (call $str (i32.add (global.get $STR_GOOD) (local.get $c))) (i32.add (i32.const 64) (local.get $c))
-      (i32.const 0) (i32.eqz (local.get $why)) (call $lget (global.get $L_COLS)) (call $rowh))
-    (br_if $l (i32.lt_u (local.tee $c (i32.add (local.get $c) (i32.const 1))) (i32.const 5)))))
-
-(func $bld_rows
-  (local $b i32) (local $why i32) (local $cost i32)
-  (loop $l
-    (local.set $cost (call $bal (global.get $T_BLD) (local.get $b) (i32.const 0)))
-    (local.set $why (i32.const 0))
-    (if (i32.lt_s (i32.load (global.get $S_CASH)) (local.get $cost)) (then (local.set $why (call $err_str (global.get $E_CASH)))))
-    (if (i32.eqz (call $bld_unlocked (local.get $b))) (then (local.set $why (call $lock_reason (local.get $b)))))
-    (call $sb (global.get $SB1))
-    (call $si (global.get $STR_UPKEEP)) (call $sn (call $bal (global.get $T_BLD) (local.get $b) (i32.const 1)) (i32.const 1)) (call $si (global.get $STR_PER_DAY))
-    (call $sb (global.get $SB2)) (call $sn (local.get $cost) (i32.const 1))
-    (global.set $b_row (i32.const 1)) (global.set $b_sub (global.get $SB1)) (global.set $b_right (global.get $SB2)) (global.set $b_why (local.get $why))
-    (call $put (i32.add (i32.const 0x220) (local.get $b)) (call $str (i32.add (global.get $STR_BLD) (local.get $b))) (i32.add (i32.const 80) (local.get $b))
-      (i32.const 0) (i32.eqz (local.get $why)) (call $lget (global.get $L_COLS)) (call $rowh))
-    (br_if $l (i32.lt_u (local.tee $b (i32.add (local.get $b) (i32.const 1))) (i32.const 10)))))
+    (local.set $cost (i32.add (i32.shl (local.get $b) (i32.const 4)) (local.get $i)))
+    (call $put (i32.add (i32.const 0x210) (local.get $cost)) (call $str (i32.add (select (global.get $STR_BLD) (global.get $STR_GOOD) (local.get $b)) (local.get $i)))
+      (i32.add (i32.const 64) (local.get $cost)) (i32.const 0) (i32.eqz (local.get $why)) (call $lget (global.get $L_COLS)) (call $rowh))
+    (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (select (i32.const 10) (i32.const 5) (local.get $b))))))
 
 ;; Two-step demolish / clear button: TAP AGAIN while armed, drawn dimmed (style 5) for the first
 ;; 400 ms while the confirming tap is not live yet, then danger red.
@@ -599,20 +582,55 @@
   (call $put (i32.const 0x203) (call $str (select (global.get $STR_TAP_AGAIN) (local.get $label) (local.get $a)))
     (global.get $I_TRASH) (select (select (i32.const 4) (i32.const 5) (call $arm_live)) (i32.const 0) (local.get $a)) (i32.const 1) (local.get $cols) (local.get $h)))
 
+;; "FARM 4X4 > 5X5" and BUY LAND $x for the next ring of a farm of side n (< maxGrid).
+(func $land_ui (param $n i32)
+  (local $v i32) (local $t i32)
+  (local.set $v (call $bal (global.get $T_LAND) (i32.sub (local.get $n) (call $k (global.get $K_START_GRID))) (i32.const 0)))
+  (call $sb (global.get $SB1)) (call $s_farm_size (local.get $n)) (call $sc (i32.const 32)) (call $sc (i32.const 62)) (call $sc (i32.const 32))
+  (call $sn0 (i32.add (local.get $n) (i32.const 1))) (call $si (global.get $STR_X)) (call $sn0 (i32.add (local.get $n) (i32.const 1)))
+  (call $lab (global.get $I_PLUS) (i32.const 61))
+  (call $sb (global.get $SB2)) (call $si (global.get $STR_BUY_LAND)) (call $sc (i32.const 32)) (call $sn (local.get $v) (i32.const 1))
+  (global.set $b_why (call $err_str (global.get $E_CASH)))
+  (local.set $t (i32.ge_s (i32.load (global.get $S_CASH)) (local.get $v)))
+  ;; disabled: label + reason need the two-line row height
+  (call $put (i32.const 0x207) (global.get $SB2) (global.get $I_PLUS) (i32.const 2)
+    (local.get $t) (i32.const 1) (select (call $btnh) (call $rowh) (local.get $t))))
+
+;; Recipe selector [<] "2 WHEAT > 1 FLOUR" [>] for the building at p; codes c (prev), c + 0x40 or
+;; c + 1 (next): the sheet uses 0x205 / 0x206, the Process tab 0x340 / 0x380 + tile.
+(func $recipe_sel (param $p i32) (param $c i32)
+  (local $bh i32) (local $v i32) (local $n i32) (local $t i32)
+  (local.set $bh (call $btnh))
+  (call $btn (local.get $c) (global.get $ux) (global.get $uy) (local.get $bh) (local.get $bh) (i32.const 0) (global.get $I_ARROW_L) (i32.const 0) (i32.const 1))
+  (call $btn (i32.add (local.get $c) (select (i32.const 1) (i32.const 0x40) (i32.lt_u (local.get $c) (i32.const 0x300))))
+    (i32.sub (i32.add (global.get $ux) (global.get $uw)) (local.get $bh)) (global.get $uy) (local.get $bh) (local.get $bh) (i32.const 0) (global.get $I_ARROW_R) (i32.const 0) (i32.const 1))
+  (local.set $v (i32.add (global.get $ux) (i32.add (local.get $bh) (global.get $lgap))))
+  (local.set $n (i32.sub (global.get $uw) (i32.shl (i32.add (local.get $bh) (global.get $lgap)) (i32.const 1))))
+  (call $rrect (local.get $v) (global.get $uy) (local.get $n) (i32.sub (local.get $bh) (i32.const 2)) (i32.const 2) (call $pal (i32.const 57)))
+  (call $sb (global.get $SB1))
+  (local.set $t (i32.load8_u offset=7 (local.get $p)))
+  (if (local.get $t) (then (call $s_recipe (i32.sub (local.get $t) (i32.const 1)))) (else (call $si (global.get $STR_OFF))))
+  (call $fit (global.get $SB1) (i32.sub (local.get $n) (i32.const 4)))
+  (drop (call $txt (i32.add (local.get $v) (i32.shr_s (i32.sub (local.get $n) (call $tw (global.get $SB1))) (i32.const 1)))
+    (i32.add (global.get $uy) (i32.shr_s (i32.sub (i32.sub (local.get $bh) (i32.const 2)) (call $lh)) (i32.const 1)))
+    (global.get $SB1) (call $pal (select (i32.const 61) (i32.const 63) (local.get $t)))))
+  (global.set $uy (i32.add (global.get $uy) (i32.add (local.get $bh) (global.get $lgap)))))
+
 (func $sheet_body
   (local $i i32) (local $p i32) (local $c i32) (local $b i32) (local $n i32) (local $v i32) (local $t i32) (local $why i32) (local $bh i32) (local $j i32)
+  (if (global.get $tab) (then (call $tab_body) (return)))
   (local.set $bh (call $btnh))
   (local.set $i (global.get $sel_tile))
   (if (i32.lt_s (local.get $i) (i32.const 0)) (then
     ;; laptop overview: storage, ripe count, how to start
     (call $sb (global.get $SB1)) (call $si (global.get $STR_STORAGE))
-    (call $sn (call $storage_used) (i32.const 0)) (call $sc (i32.const 47)) (call $sn (call $storage_cap) (i32.const 0))
-    (call $ui_label (global.get $I_CRATE) (global.get $SB1) (i32.const 61))
+    (call $sn0 (call $storage_used)) (call $sc (i32.const 47)) (call $sn0 (call $storage_cap))
+    (call $lab (global.get $I_CRATE) (i32.const 61))
     (local.set $n (call $ripe_count))
     (call $sb (global.get $SB1))
-    (if (local.get $n) (then (call $sn (local.get $n) (i32.const 0)) (call $si (global.get $STR_NOW_RIPE)))
+    (if (local.get $n) (then (call $sn0 (local.get $n)) (call $si (global.get $STR_NOW_RIPE)))
                        (else (call $si (global.get $STR_NO_RIPE))))
-    (call $ui_label (global.get $I_BASKET) (global.get $SB1) (i32.const 61))
+    (call $lab (global.get $I_BASKET) (i32.const 61))
     (call $ui_label (i32.const -1) (call $str (global.get $STR_HINT)) (i32.const 63))
     (call $ui_label (i32.const -1) (call $str (global.get $STR_KEYS)) (i32.const 63))
     (return)))
@@ -622,24 +640,14 @@
     (local.set $n (i32.load8_u (global.get $S_GRID)))
     (if (i32.and (i32.lt_u (local.get $n) (call $k (global.get $K_MAX_GRID)))
                  (i32.and (i32.le_u (i32.and (local.get $i) (i32.const 7)) (local.get $n)) (i32.le_u (i32.shr_u (local.get $i) (i32.const 3)) (local.get $n))))
-      (then
-        (local.set $v (call $bal (global.get $T_LAND) (i32.sub (local.get $n) (call $k (global.get $K_START_GRID))) (i32.const 0)))
-        (call $sb (global.get $SB1)) (call $s_farm_size (local.get $n)) (call $sc (i32.const 32)) (call $sc (i32.const 62)) (call $sc (i32.const 32))
-        (call $sn (i32.add (local.get $n) (i32.const 1)) (i32.const 0)) (call $si (global.get $STR_X)) (call $sn (i32.add (local.get $n) (i32.const 1)) (i32.const 0))
-        (call $ui_label (global.get $I_PLUS) (global.get $SB1) (i32.const 61))
-        (call $sb (global.get $SB2)) (call $si (global.get $STR_BUY_LAND)) (call $sc (i32.const 32)) (call $sn (local.get $v) (i32.const 1))
-        (global.set $b_why (call $err_str (global.get $E_CASH)))
-        (local.set $t (i32.ge_s (i32.load (global.get $S_CASH)) (local.get $v)))
-        ;; disabled: label + reason need the two-line row height
-        (call $put (i32.const 0x207) (global.get $SB2) (global.get $I_PLUS) (i32.const 2)
-          (local.get $t) (i32.const 1) (select (local.get $bh) (call $rowh) (local.get $t))))
+      (then (call $land_ui (local.get $n)))
       (else (call $ui_label (global.get $I_LOCK) (call $str (global.get $STR_NEXT_RING)) (i32.const 63))))
     (return)))
   (if (i32.eqz (i32.load8_u (local.get $p))) (then
     ;; empty plot: PLANT / BUILD toggle and the matching picker
     (call $put (i32.const 0x200) (call $str (global.get $STR_PLANT)) (global.get $I_SPROUT) (select (i32.const 0) (i32.const 3) (global.get $pick)) (i32.const 1) (i32.const 2) (local.get $bh))
     (call $put (i32.const 0x201) (call $str (i32.add (global.get $STR_TAB) (i32.const 4))) (global.get $I_HAMMER) (select (i32.const 3) (i32.const 0) (global.get $pick)) (i32.const 1) (i32.const 2) (local.get $bh))
-    (if (global.get $pick) (then (call $bld_rows)) (else (call $crop_rows (i32.const 0))))
+    (call $pick_rows (i32.shl (global.get $pick) (i32.const 1)))
     (return)))
   (local.set $c (call $tile_crop (local.get $p)))
   (local.set $b (i32.load8_u offset=1 (local.get $p)))
@@ -659,15 +667,15 @@
             (then (call $si (global.get $STR_ROTS_IN)) (call $s_days (local.get $n)))
             (else (call $si (global.get $STR_ROTTING)))))))
       (else (call $si (global.get $STR_READY_IN)) (call $s_days (call $days_left (local.get $p) (local.get $c)))))
-    (call $ui_label (select (global.get $I_CHECK) (global.get $I_CLOCK) (local.get $v)) (global.get $SB1) (i32.const 61))
+    (call $lab (select (global.get $I_CHECK) (global.get $I_CLOCK) (local.get $v)) (i32.const 61))
     (local.set $n (i32.add (i32.const 4) (i32.shl (call $ui_ts) (i32.const 1))))
     (call $ui_bar (global.get $ux) (global.get $uy) (global.get $uw) (local.get $n) (i32.load16_u offset=2 (local.get $p)) (local.get $t)
       (select (i32.const 10) (i32.const 18) (local.get $v)))
     (global.set $uy (i32.add (global.get $uy) (i32.add (local.get $n) (i32.add (global.get $lgap) (i32.const 2)))))
     (call $sb (global.get $SB1))
-    (call $si (global.get $STR_YIELD)) (call $sn (call $yield (local.get $c)) (i32.const 0)) (call $sep)
-    (call $si (global.get $STR_STORAGE)) (call $sn (call $storage_used) (i32.const 0)) (call $sc (i32.const 47)) (call $sn (call $storage_cap) (i32.const 0))
-    (call $ui_label (global.get $I_CRATE) (global.get $SB1) (i32.const 63))
+    (call $si (global.get $STR_YIELD)) (call $sn0 (call $yield (local.get $c))) (call $sep)
+    (call $si (global.get $STR_STORAGE)) (call $sn0 (call $storage_used)) (call $sc (i32.const 47)) (call $sn0 (call $storage_cap))
+    (call $lab (global.get $I_CRATE) (i32.const 63))
     (local.set $why (i32.const 0))
     (if (i32.eqz (call $storage_fits (call $yield (local.get $c)))) (then (local.set $why (call $err_str (global.get $E_STORAGE_FULL)))))
     (if (i32.eqz (local.get $v)) (then (local.set $why (call $err_str (global.get $E_NOT_RIPE)))))
@@ -679,23 +687,10 @@
   ;; building
   (call $sb (global.get $SB1))
   (call $si (global.get $STR_UPKEEP)) (call $sn (call $bal (global.get $T_BLD) (local.get $b) (i32.const 1)) (i32.const 1)) (call $si (global.get $STR_PER_DAY))
-  (call $ui_label (global.get $I_COIN) (global.get $SB1) (i32.const 61))
+  (call $lab (global.get $I_COIN) (i32.const 61))
   (if (i32.le_u (local.get $b) (i32.const 4))
     (then
-      ;; recipe selector: [<] recipe [>]
-      (call $btn (i32.const 0x205) (global.get $ux) (global.get $uy) (local.get $bh) (local.get $bh) (i32.const 0) (global.get $I_ARROW_L) (i32.const 0) (i32.const 1))
-      (call $btn (i32.const 0x206) (i32.sub (i32.add (global.get $ux) (global.get $uw)) (local.get $bh)) (global.get $uy) (local.get $bh) (local.get $bh) (i32.const 0) (global.get $I_ARROW_R) (i32.const 0) (i32.const 1))
-      (local.set $v (i32.add (global.get $ux) (i32.add (local.get $bh) (global.get $lgap))))
-      (local.set $n (i32.sub (global.get $uw) (i32.shl (i32.add (local.get $bh) (global.get $lgap)) (i32.const 1))))
-      (call $rrect (local.get $v) (global.get $uy) (local.get $n) (i32.sub (local.get $bh) (i32.const 2)) (i32.const 2) (call $pal (i32.const 57)))
-      (call $sb (global.get $SB1))
-      (local.set $t (i32.load8_u offset=7 (local.get $p)))
-      (if (local.get $t) (then (call $s_recipe (i32.sub (local.get $t) (i32.const 1)))) (else (call $si (global.get $STR_OFF))))
-      (call $fit (global.get $SB1) (i32.sub (local.get $n) (i32.const 4)))
-      (drop (call $txt (i32.add (local.get $v) (i32.shr_s (i32.sub (local.get $n) (call $tw (global.get $SB1))) (i32.const 1)))
-        (i32.add (global.get $uy) (i32.shr_s (i32.sub (i32.sub (local.get $bh) (i32.const 2)) (call $lh)) (i32.const 1)))
-        (global.get $SB1) (call $pal (select (i32.const 61) (i32.const 63) (local.get $t)))))
-      (global.set $uy (i32.add (global.get $uy) (i32.add (local.get $bh) (global.get $lgap))))
+      (call $recipe_sel (local.get $p) (i32.const 0x205))
       (call $sb (global.get $SB1))
       (if (i32.eq (local.get $b) (global.get $BLD_CELLAR))
         (then
@@ -708,23 +703,23 @@
             (local.set $n (i32.add (local.get $n) (local.get $v)))
             (if (local.get $v) (then (local.set $why (i32.add (local.get $j) (i32.const 1)))))
             (br_if $cl (local.get $j)))
-          (call $si (global.get $STR_AGING)) (call $sn (local.get $n) (i32.const 0))
+          (call $si (global.get $STR_AGING)) (call $sn0 (local.get $n))
           (if (local.get $n) (then (call $sep) (call $si (global.get $STR_READY_IN)) (call $s_days (local.get $why)))))
         (else
           (call $si (i32.add (global.get $STR_CAP) (i32.const 0)))
-          (call $sn (i32.mul (call $bal (global.get $T_BLD) (local.get $b) (i32.const 2))
-            (select (call $k (global.get $K_BLD_UPG_CAP_MULT)) (i32.const 1) (i32.and (i32.load8_u offset=5 (local.get $p)) (i32.const 2)))) (i32.const 0))
+          (call $sn0 (i32.mul (call $bal (global.get $T_BLD) (local.get $b) (i32.const 2))
+            (select (call $k (global.get $K_BLD_UPG_CAP_MULT)) (i32.const 1) (i32.and (i32.load8_u offset=5 (local.get $p)) (i32.const 2)))))
           (call $si (global.get $STR_PER_DAY))))
-      (call $ui_label (global.get $I_GEAR) (global.get $SB1) (i32.const 63)))
+      (call $lab (global.get $I_GEAR) (i32.const 63)))
     (else
       (local.set $n (call $bal (global.get $T_BLD) (local.get $b) (i32.const 3)))
       (if (local.get $n) (then
-        (call $sc (i32.const 43)) (call $sn (local.get $n) (i32.const 0)) (call $sc (i32.const 32)) (call $si (global.get $STR_STORAGE))
-        (call $ui_label (global.get $I_CRATE) (global.get $SB1) (i32.const 61))))
+        (call $sc (i32.const 43)) (call $sn0 (local.get $n)) (call $sc (i32.const 32)) (call $si (global.get $STR_STORAGE))
+        (call $lab (global.get $I_CRATE) (i32.const 61))))
       (call $ui_label (global.get $I_CHECK) (call $str (i32.add (global.get $STR_BINFO) (local.get $b))) (i32.const 63))))
   (if (i32.eq (local.get $b) (global.get $BLD_GREENHOUSE)) (then
     (call $ui_label (global.get $I_SPROUT) (call $str (global.get $STR_PICK)) (i32.const 61))
-    (call $crop_rows (i32.const 1))
+    (call $pick_rows (i32.const 1))
     (call $flush (call $rowh))))
   (if (i32.le_u (local.get $b) (i32.const 3)) (then
     (local.set $v (i32.div_u (i32.mul (call $bal (global.get $T_BLD) (local.get $b) (i32.const 0)) (call $k (global.get $K_BLD_UPG_PCT))) (i32.const 10000)))

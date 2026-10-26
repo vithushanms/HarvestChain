@@ -85,10 +85,13 @@ node tools/dump-ppm.mjs all                       # every farm-* scene at 360x64
 node tools/dump-ppm.mjs farm-mid 360 640 --t 2500 # one scene at an animation time (--reduced, --zoom N, --crop x,y,w,h)
 node tools/dump-ppm.mjs ui                        # every ui-* state (top bar, tabs, tile sheet, toasts) at 360x640@2,
                                                   # 1280x800 and large text -> build/ui-*.png
+node tools/dump-ppm.mjs ui ui-dispatch            # only the matching states, + large text at 320x568
 node tools/dump-ppm.mjs ui-build 768 1024 100 --large   # one UI state at any size
 ```
 
 The UI states are scripted in `tests/render/uistates.mjs` through the same `pointer` / `key` / `frame` exports the loader uses.
+
+The five tabs are Farm (tile sheet, `src/22a_farm.wat`) and Process, Market (prices / Farm Stand sell / contracts), Trucks (cards, route strip, the four-step dispatch flow) and Build (placement mode, land, loan) in `src/22b_tabs.wat`. Their content lives in the PANEL rect: a tall bottom sheet in portrait (the farm stays visible above it), the side panel on laptop. Every action goes through `act()`; the read-only `quote(market, good, qty)` export (what selling would pay, saturation included) prices the sell panel and the dispatch summary.
 
 ## Looking after it
 
