@@ -69,9 +69,12 @@ function sizes(list) {
   }
   return [t, w, r];
 }
+// the module's input clock: set right before every pointer() / key() (frame() is not called while idle)
+const clk = () => ex.set_now(Math.floor(performance.now()));
 // a pointer / key call; the one during which the day changed is the End Day timing
 function timed(f) {
   const d = ex.cur_day(), a = performance.now();
+  clk();
   f();
   if (ex.cur_day() !== d) eu = us(a);
 }
@@ -91,8 +94,8 @@ function run() {
   try {
     if (rz) resize();
     H.n++;
-    const P = performance;
-    ex.set_metrics(...(H.m = [H.t1 ? Math.round(H.t1 - t0) : 0, ...sizes(P.getEntriesByType('navigation').concat(P.getEntriesByType('resource'))), eu, fu]));
+    const P = performance, E = (t) => P.getEntriesByType?.(t) || [];   // (not on every engine)
+    ex.set_metrics(...(H.m = [H.t1 ? Math.round(H.t1 - t0) : 0, ...sizes(E('navigation').concat(E('resource'))), eu, fu]));
     const a = P.now();
     r = ex.frame(Math.floor(a));               // 0 idle | 1 animating | 2 ambient only
     blit();
@@ -193,6 +196,7 @@ function pt(e, type) {
 function drop() {
   if (active === null) return;
   active = null;
+  clk();
   ex.pointer(-1, -1, 3);
   schedule();
 }
@@ -222,7 +226,7 @@ function bind() {
     const c = KEYS.indexOf(e.code) + 1;
     if (!c || e.isComposing) return;
     if (!d) {                                  // always release a held key, whatever modifiers are down now
-      if (held.delete(c)) { ex.key(c, 0); schedule(); }
+      if (held.delete(c)) { clk(); ex.key(c, 0); schedule(); }
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -235,7 +239,7 @@ function bind() {
   });
   onkeydown = key(1);
   onkeyup = key(0);
-  const release = guard(() => { for (const c of held) ex.key(c, 0); held.clear(); drop(); schedule(); });
+  const release = guard(() => { for (const c of held) clk(), ex.key(c, 0); held.clear(); drop(); schedule(); });
   onblur = release;
   onresize = onorientationchange = dirty;     // (event handler properties: nothing else sets them)
   if (window.visualViewport) visualViewport.onresize = dirty;

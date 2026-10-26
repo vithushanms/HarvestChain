@@ -480,7 +480,24 @@
 
 ;; ---------------------------------------------------------------- input
 
+(global $now_fresh (mut i32) (i32.const 0))   ;; set_now ran since the last frame / input call
+;; The loader calls set_now(performance.now()) right before every pointer() / key(): frame() is not called
+;; while idle (reduced motion), so $now would be stale for every time-based input rule. Timers armed by the
+;; call (stamp: -1) take that fresh clock now, not at the next frame.
+(func $set_now (param $t i32) (global.set $now (local.get $t)) (global.set $now_fresh (i32.const 1)))
+(func $stamps
+  (global.set $slide_t (call $stamp (global.get $slide_t)))
+  (global.set $shake_t (call $stamp (global.get $shake_t)))
+  (global.set $arm_t (call $stamp (global.get $arm_t)))
+  (global.set $in_t (call $stamp (global.get $in_t)))
+  (global.set $scr_t (call $stamp (global.get $scr_t))))
 (func $pointer (param $x i32) (param $y i32) (param $type i32)
+  (call $pointer0 (local.get $x) (local.get $y) (local.get $type)) (call $input_done))
+(func $key (param $code i32) (param $down i32)
+  (call $key0 (local.get $code) (local.get $down)) (call $input_done))
+(func $input_done (if (global.get $now_fresh) (then (global.set $now_fresh (i32.const 0)) (call $stamps))))
+
+(func $pointer0 (param $x i32) (param $y i32) (param $type i32)
   (local $lx i32) (local $ly i32) (local $dx i32) (local $dy i32) (local $t i32)
   (local.set $lx (call $css_to_fb_x (local.get $x)))
   (local.set $ly (call $css_to_fb_y (local.get $y)))
@@ -538,7 +555,7 @@
   (i32.or (i32.or (i32.eq (local.get $c) (global.get $HIT_PANEL)) (i32.eq (local.get $c) (global.get $HIT_CLOSE)))
           (i32.ge_u (local.get $c) (i32.const 0x200))))
 
-(func $key (param $code i32) (param $down i32)
+(func $key0 (param $code i32) (param $down i32)
   (local $i i32) (local $x i32) (local $y i32) (local $m i32)
   ;; auto-repeat filter: a down while the code is held is ignored; up releases it; any non-zero
   ;; down value counts as down; codes >= 32 are unmapped
@@ -595,12 +612,8 @@
 
 (func $frame (param $now i32) (result i32)
   (local $anim i32) (local $low i32) (local $i i32) (local $p i32) (local $w i32) (local $lt i32)
-  (global.set $now (local.get $now))
-  (global.set $slide_t (call $stamp (global.get $slide_t)))
-  (global.set $shake_t (call $stamp (global.get $shake_t)))
-  (global.set $arm_t (call $stamp (global.get $arm_t)))
-  (global.set $in_t (call $stamp (global.get $in_t)))
-  (global.set $scr_t (call $stamp (global.get $scr_t)))
+  (global.set $now (local.get $now)) (global.set $now_fresh (i32.const 0))
+  (call $stamps)
   ;; long press: 300 ms on a plot without moving (buttons ignore the hold time)
   (if (i32.and (i32.and (i32.eq (global.get $in_st) (i32.const 1)) (i32.eqz (global.get $in_lp)))
                (i32.and (i32.eq (global.get $in_code) (global.get $HIT_GRID))

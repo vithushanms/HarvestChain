@@ -77,6 +77,23 @@ test('a quick triple tap on the top-left corner of the canvas opens the overlay'
   noErrors(errors);
 });
 
+test('under prefers-reduced-motion (idle, no frames) a triple tap 100-150 ms apart opens the overlay', async ({ game, errors }) => {
+  const { page, mobile } = game;
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await game.hooks();
+  await game.open();
+  await game.settle();
+  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+  await page.waitForTimeout(1500);                      // idle: frame() has returned 0 and the loader has stopped
+  for (const gap of [0, 130, 110]) {
+    await page.waitForTimeout(gap);
+    if (mobile) await page.touchscreen.tap(8, 8); else await page.mouse.click(8, 8);
+  }
+  await game.settle();
+  expect(await page.evaluate(() => window.__hc.ex.t_ovl(0))).toBe(1);
+  noErrors(errors);
+});
+
 test('after a service-worker reload nothing is transferred: the load line says CACHED', async ({ game, errors, page }) => {
   await game.open('', { title: true });
   expect((await metrics(page))[1]).toBeGreaterThan(0);  // the first load came over the network

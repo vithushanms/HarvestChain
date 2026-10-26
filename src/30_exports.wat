@@ -127,6 +127,7 @@
 ;; UI, input and frame loop (22_ui.wat, 22a_farm.wat).
 (export "pointer"      (func $pointer))
 (export "key"          (func $key))
+(export "set_now"      (func $set_now))
 (export "frame"        (func $frame))
 (export "need_save"    (func $need_save))
 (export "ack_save"     (func $ack_save))
