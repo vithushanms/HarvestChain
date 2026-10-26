@@ -16,6 +16,10 @@
 
 ;; Unit price in whole dollars, Decision 12 order: market mult, drift, event, saturation.
 (func $price (param $m i32) (param $g i32) (result i32)
+  (call $price_at (local.get $m) (local.get $g) (i32.load16_u (call $sat_ptr (local.get $m) (local.get $g)))))
+
+;; $price with saturation sat (bp) instead of the stored value.
+(func $price_at (param $m i32) (param $g i32) (param $sat i32) (result i32)
   (local $v i32) (local $tier i32)
   (local.set $tier (call $bal (global.get $T_GOOD) (local.get $g) (i32.const 2)))
   (local.set $v (i32.mul (call $bal (global.get $T_GOOD) (local.get $g) (i32.const 0)) (i32.const 100)))
@@ -25,7 +29,7 @@
   (local.set $v (call $bp_mul (local.get $v)
     (i32.load16_u (i32.add (global.get $S_DRIFT) (i32.shl (local.get $g) (i32.const 1))))))
   (local.set $v (call $bp_mul (local.get $v) (call $event_mod (local.get $m) (local.get $g))))
-  (local.set $v (call $bp_mul (local.get $v) (i32.load16_u (call $sat_ptr (local.get $m) (local.get $g)))))
+  (local.set $v (call $bp_mul (local.get $v) (local.get $sat)))
   (local.set $v (i32.div_u (local.get $v) (i32.const 100)))
   (select (local.get $v) (i32.const 1) (i32.gt_u (local.get $v) (i32.const 1))))
 
@@ -36,28 +40,41 @@
   (i32.store16 (local.get $p)
     (select (local.get $v) (i32.const 65535) (i32.lt_u (local.get $v) (i32.const 65535)))))
 
-;; Sell qty units one at a time at the current price, lowering saturation after each.
-;; Returns total dollars. Does not remove inventory.
-(func $sell_units (param $m i32) (param $g i32) (param $qty i32) (result i32)
-  (local $i i32) (local $total i32) (local $sp i32) (local $s i32) (local $step i32) (local $floor i32) (local $lower i32)
+;; Dollars for selling qty units one at a time at the current price, saturation lowered after
+;; each unit (Festival: not at the Farm Stand), floor satFloorBp. commit = 1 stores the final
+;; saturation; 0 only computes (quote). Pure arithmetic on a local copy of the saturation.
+(func $sell_walk (param $m i32) (param $g i32) (param $qty i32) (param $commit i32) (result i32)
+  (local $i i32) (local $total i32) (local $sp i32) (local $s i32) (local $n i32) (local $step i32) (local $floor i32) (local $lower i32)
   (if (i32.eqz (local.get $qty)) (then (return (i32.const 0))))
   (local.set $sp (call $sat_ptr (local.get $m) (local.get $g)))
+  (local.set $s (i32.load16_u (local.get $sp)))
   (local.set $step (call $bal (global.get $T_MKT) (local.get $m) (i32.const 3)))
   (local.set $floor (call $k (global.get $K_SAT_FLOOR)))
   (local.set $lower (i32.const 1))
   (if (i32.eqz (local.get $m))
     (then (local.set $lower (i32.eqz (call $event_active (global.get $EV_FESTIVAL))))))
   (loop $unit
-    (local.set $total (i32.add (local.get $total) (call $price (local.get $m) (local.get $g))))
+    (local.set $total (i32.add (local.get $total) (call $price_at (local.get $m) (local.get $g) (local.get $s))))
     (if (local.get $lower)
       (then
-        (local.set $s (i32.load16_u (local.get $sp)))
-        (local.set $s (select (i32.sub (local.get $s) (local.get $step)) (local.get $floor)
+        (local.set $n (select (i32.sub (local.get $s) (local.get $step)) (local.get $floor)
                               (i32.gt_s (i32.sub (local.get $s) (local.get $step)) (local.get $floor))))
         ;; never raise sat above its current value (sat already below floor stays put)
-        (if (i32.lt_u (local.get $s) (i32.load16_u (local.get $sp)))
-          (then (i32.store16 (local.get $sp) (local.get $s))))))
+        (if (i32.lt_u (local.get $n) (local.get $s)) (then (local.set $s (local.get $n))))))
     (br_if $unit (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (local.get $qty))))
+  (if (local.get $commit) (then (i32.store16 (local.get $sp) (local.get $s))))
+  (local.get $total))
+
+;; Read-only quote: what $sell_units(m, g, qty) would pay right now (shipping export "quote").
+(func $quote (param $m i32) (param $g i32) (param $qty i32) (result i32)
+  (call $sell_walk (local.get $m) (local.get $g) (local.get $qty) (i32.const 0)))
+
+;; Sell qty units (saturation lowered per unit) and count them for the milestones.
+;; Returns total dollars. Does not remove inventory.
+(func $sell_units (param $m i32) (param $g i32) (param $qty i32) (result i32)
+  (local $total i32)
+  (if (i32.eqz (local.get $qty)) (then (return (i32.const 0))))
+  (local.set $total (call $sell_walk (local.get $m) (local.get $g) (local.get $qty) (i32.const 1)))
   (if (call $bal (global.get $T_GOOD) (local.get $g) (i32.const 2))
     (then (call $ctr_add (global.get $S_PROC_SOLD) (local.get $qty))))
   (if (i32.eq (local.get $g) (global.get $GOOD_WINE))

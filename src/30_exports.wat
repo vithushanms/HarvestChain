@@ -14,6 +14,7 @@
 (export "net_worth"    (func $net_worth))
 (export "score"        (func $score))
 (export "truck_cap"     (func $truck_cap))
+(export "quote"         (func $quote))
 
 ;; Test hooks.
 (export "t_rng_seed"  (func $rng_seed))
