@@ -208,7 +208,7 @@ test('long-press a plot (held across frame timestamps) shows tile info without o
   assert.ok(g.toasts().some((t) => /WHEAT/.test(t)), JSON.stringify(g.toasts()));
 });
 
-test('demolish needs two taps within 3 s', async () => {
+test('demolish needs two taps 0.4 to 3 s apart', async () => {
   const g = await uiGame(360, 640, 200, { setup: (ex) => farm(ex).bld(EMPTY, BLD.WELL) });
   g.tapTile(EMPTY);
   g.settle();
@@ -218,7 +218,7 @@ test('demolish needs two taps within 3 s', async () => {
   assert.equal(g.btn(BTN.DEMOLISH).label, 'TAP AGAIN');
   for (let i = 0; i < 200; i++) g.frame(20);    // 4 s: disarms
   assert.equal(g.btn(BTN.DEMOLISH).label, 'DEMOLISH');
-  g.tap(BTN.DEMOLISH); g.tap(BTN.DEMOLISH);
+  g.tap(BTN.DEMOLISH); g.settle(); g.tap(BTN.DEMOLISH);   // settle: past the 400 ms double-tap guard
   assert.equal(g.tile(EMPTY), 0);
   assert.match(g.announce(), /CLEARED WELL/);
 });

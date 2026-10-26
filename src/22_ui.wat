@@ -18,14 +18,17 @@
 ;; pressed face, text, second line) and the season -> icon map at 0x0920.
 ;;
 ;; Frame loop (ruling C5): frame(now_ms) draws when something is dirty or moving and returns
-;; 1 while a slide / toast / press / shake / rain or storm particles need the next frame, 2 when
-;; only ambient motion (clouds, sway) runs (loader re-calls after ~83 ms), 0 when idle under
-;; reduced motion. Draws never change the sim state. Timers store -1 = "starts at the next
-;; frame" because pointer/key events carry no timestamp.
+;; 1 while a slide / press / shake / rain or storm particles need the next frame, 2 when only
+;; static timers (a toast on screen, an armed TAP AGAIN) or ambient motion (clouds, sway) run
+;; (loader re-calls after ~83 ms), 0 when idle under reduced motion. Draws never change the sim
+;; state. Timers store -1 = "starts at the next frame" because pointer/key events carry no
+;; timestamp.
 ;;
 ;; Input (one path for touch and mouse; all thresholds in CSS px): idle -> pressed (down) ->
-;; drag once the pointer leaves an 8 px slop, else tap on up; a press held 300 ms (frame
-;; timestamps) on a plot is a long press (tile info toast, no tap). A drag that starts in the
+;; drag once the pointer leaves an 8 px slop, else tap on up (buttons: only when released inside
+;; the pressed button, however long it was held); a press held 300 ms (frame timestamps) on a
+;; plot is a long press (tile info toast, no tap). Two-step buttons (DEMOLISH) ignore their
+;; confirming tap for 400 ms after arming and disarm after 3 s. A drag that starts in the
 ;; sheet scrolls it; on a portrait/tablet sheet scrolled to the top, a downward drag >= 40 px
 ;; dismisses it. Moves with no button pressed are hover (laptop: tile highlight + status line).
 ;; Before a press is resolved against the hit table, a dirty UI is redrawn so the regions match
@@ -36,6 +39,9 @@
 ;;   8 Escape close    9 ArrowUp 10 ArrowDown 11 ArrowLeft 12 ArrowRight: move the tile cursor
 ;;   (Right/Left = +-x, Down/Up = +-y on the board, clamped to the owned grid + the next ring)
 ;;   13 Enter / 16 Space open the selected plot    14 Backquote (stats, Task 7)    15 KeyR (replay, Task 7)
+;;   Auto-repeat: a key acts once per press. A down (any non-zero value) for a code already held
+;;   is ignored until its up (down = 0); codes >= 32 are ignored. The loader should also drop
+;;   events with event.repeat and send an up for held keys on window blur.
 
 (global $now (mut i32) (i32.const 0))
 (global $dirty (mut i32) (i32.const 1))
@@ -49,6 +55,8 @@
 (global $shake_t (mut i32) (i32.const -2))
 (global $arm (mut i32) (i32.const 0))          ;; armed two-step button code (demolish)
 (global $arm_t (mut i32) (i32.const 0))
+(global $arm_lv (mut i32) (i32.const 0))       ;; $arm_live as last drawn
+(global $keys (mut i32) (i32.const 0))         ;; held key codes (bit per code < 32): auto-repeat filter
 (global $in_st (mut i32) (i32.const 0))        ;; 0 idle, 1 pressed, 2 drag
 (global $in_x (mut i32) (i32.const 0))         ;; down position, css
 (global $in_y (mut i32) (i32.const 0))
@@ -88,9 +96,11 @@
 
 ;; ---------------------------------------------------------------- strings and text building
 
-;; Pointer to string id (the table at 0x7700 is walked; ids are small).
+;; Pointer to string id (the table at 0x7700 is walked; ids are small). Ids outside
+;; [0, STR_COUNT) give the empty string at 0x8D00 (never written).
 (func $str (param $id i32) (result i32)
   (local $p i32)
+  (if (i32.ge_u (local.get $id) (global.get $STR_COUNT)) (then (return (i32.const 0x8D00))))
   (local.set $p (i32.const 0x7700))
   (block $d (loop $l
     (br_if $d (i32.eqz (local.get $id)))
@@ -394,6 +404,7 @@
   (global.set $dirty (i32.const 1)))
 (func $toast_drop (param $i i32)
   (local $p i32)
+  (if (i32.ge_u (local.get $i) (i32.const 3)) (then (return)))   ;; slots 0..2 only
   (local.set $p (i32.add (global.get $TOASTS) (i32.shl (local.get $i) (i32.const 6))))
   (memory.copy (local.get $p) (i32.add (local.get $p) (i32.const 64)) (i32.sub (i32.const 128) (i32.shl (local.get $i) (i32.const 6))))
   (memory.fill (i32.add (global.get $TOASTS) (i32.const 128)) (i32.const 0) (i32.const 64))
@@ -472,7 +483,9 @@
     (return)))
   ;; up (or anything else: cancel)
   (if (i32.eq (local.get $type) (i32.const 2)) (then
-    (if (i32.and (i32.eq (global.get $in_st) (i32.const 1)) (i32.eqz (global.get $in_lp)))
+    (if (i32.and (i32.and (i32.eq (global.get $in_st) (i32.const 1)) (i32.eqz (global.get $in_lp)))
+                 (i32.or (i32.eq (global.get $in_code) (global.get $HIT_GRID))
+                         (i32.eq (call $hit_test (local.get $lx) (local.get $ly)) (global.get $in_code))))
       (then (call $tap (global.get $in_code))))
     (if (i32.and (i32.and (i32.eq (global.get $in_st) (i32.const 2)) (call $in_panel (global.get $in_code)))
                  (i32.and (i32.and (i32.eqz (global.get $in_s0)) (i32.ge_s (local.get $dy) (i32.const 40)))
@@ -489,7 +502,15 @@
 
 (func $key (param $code i32) (param $down i32)
   (local $i i32) (local $x i32) (local $y i32) (local $m i32)
-  (if (i32.eqz (local.get $down)) (then (return)))
+  ;; auto-repeat filter: a down while the code is held is ignored; up releases it; any non-zero
+  ;; down value counts as down; codes >= 32 are unmapped
+  (if (i32.ge_u (local.get $code) (i32.const 32)) (then (return)))
+  (local.set $m (i32.shl (i32.const 1) (local.get $code)))
+  (if (i32.eqz (local.get $down)) (then
+    (global.set $keys (i32.and (global.get $keys) (i32.xor (local.get $m) (i32.const -1))))
+    (return)))
+  (if (i32.and (global.get $keys) (local.get $m)) (then (return)))
+  (global.set $keys (i32.or (global.get $keys) (local.get $m)))
   (if (i32.eq (local.get $code) (i32.const 1)) (then (call $do_endday)))
   (if (i32.eq (local.get $code) (i32.const 2)) (then (call $do_harvest_all)))
   (if (i32.eq (local.get $code) (i32.const 8)) (then (call $close)))
@@ -518,22 +539,22 @@
 (func $since (param $t i32) (result i32) (i32.sub (global.get $now) (local.get $t)))
 
 (func $frame (param $now i32) (result i32)
-  (local $anim i32) (local $i i32) (local $p i32) (local $w i32)
+  (local $anim i32) (local $low i32) (local $i i32) (local $p i32) (local $w i32) (local $lt i32)
   (global.set $now (local.get $now))
   (global.set $slide_t (call $stamp (global.get $slide_t)))
   (global.set $shake_t (call $stamp (global.get $shake_t)))
   (global.set $arm_t (call $stamp (global.get $arm_t)))
   (global.set $in_t (call $stamp (global.get $in_t)))
-  ;; long press: 300 ms on a plot without moving
+  ;; long press: 300 ms on a plot without moving (buttons ignore the hold time)
   (if (i32.and (i32.and (i32.eq (global.get $in_st) (i32.const 1)) (i32.eqz (global.get $in_lp)))
-               (i32.ge_s (call $since (global.get $in_t)) (i32.const 300))) (then
+               (i32.and (i32.eq (global.get $in_code) (global.get $HIT_GRID))
+                        (i32.ge_s (call $since (global.get $in_t)) (i32.const 300)))) (then
     (global.set $in_lp (i32.const 1))
     (global.set $press (i32.const 0))
-    (if (i32.eq (global.get $in_code) (global.get $HIT_GRID)) (then
-      (local.set $i (call $tile_at (global.get $in_lx) (global.get $in_ly)))
-      (if (i32.ge_s (local.get $i) (i32.const 0)) (then
-        (call $tile_info (local.get $i))
-        (call $toast (i32.const 1) (global.get $SB3))))))
+    (local.set $lt (call $tile_at (global.get $in_lx) (global.get $in_ly)))
+    (if (i32.ge_s (local.get $lt) (i32.const 0)) (then
+      (call $tile_info (local.get $lt))
+      (call $toast (i32.const 1) (global.get $SB3))))
     (global.set $dirty (i32.const 1))))
   ;; sheet slide (ease-out), shake, armed two-step button, toasts
   (global.set $slide_p (i32.const 256))
@@ -549,15 +570,23 @@
     (if (i32.or (global.get $flag_reduced) (i32.ge_s (call $since (global.get $shake_t)) (i32.const 300)))
       (then (global.set $shake_t (i32.const -2)) (global.set $dirty (i32.const 1)))
       (else (local.set $anim (i32.const 1))))))
-  (if (i32.and (i32.ne (global.get $arm) (i32.const 0)) (i32.ge_s (call $since (global.get $arm_t)) (i32.const 3000)))
-    (then (global.set $arm (i32.const 0)) (global.set $dirty (i32.const 1))))
+  ;; armed button: drawn dimmed until live (400 ms; redraw when that flips), disarmed after 3 s;
+  ;; low-rate frames meanwhile so the timeout runs under reduced motion too
+  (if (global.get $arm) (then
+    (local.set $low (i32.const 1))
+    (if (i32.ne (call $arm_live) (global.get $arm_lv))
+      (then (global.set $arm_lv (call $arm_live)) (global.set $dirty (i32.const 1))))
+    (if (i32.ge_s (call $since (global.get $arm_t)) (i32.const 3000))
+      (then (global.set $arm (i32.const 0)) (global.set $dirty (i32.const 1))))))
+  ;; toasts are static until they expire: low-rate frames are enough
+  (local.set $i (i32.const 0))
   (loop $tl
     (local.set $p (i32.add (global.get $TOASTS) (i32.shl (local.get $i) (i32.const 6))))
     (if (i32.load offset=4 (local.get $p)) (then
       (i32.store (local.get $p) (call $stamp (i32.load (local.get $p))))
       (if (i32.ge_s (call $since (i32.load (local.get $p))) (i32.const 3000))
         (then (call $toast_drop (local.get $i)) (br $tl)))
-      (local.set $anim (i32.const 1))))
+      (local.set $low (i32.const 1))))
     (br_if $tl (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
   (if (global.get $in_st) (then (local.set $anim (i32.const 1))))
   ;; rain and storm particles move every frame
@@ -566,7 +595,12 @@
     (then (local.set $anim (i32.const 1))))
   (if (i32.or (i32.or (global.get $dirty) (local.get $anim)) (i32.eqz (global.get $flag_reduced))) (then (call $render)))
   (global.set $dirty (i32.const 0))
-  (select (i32.const 1) (i32.shl (i32.eqz (global.get $flag_reduced)) (i32.const 1)) (local.get $anim)))
+  (if (local.get $anim) (then (return (i32.const 1))))
+  (i32.shl (i32.or (local.get $low) (i32.eqz (global.get $flag_reduced))) (i32.const 1)))
+
+;; The armed two-step button accepts its confirming tap only 400 ms after arming.
+(func $arm_live (result i32)
+  (i32.and (i32.ne (global.get $arm_t) (i32.const -1)) (i32.ge_s (call $since (global.get $arm_t)) (i32.const 400))))
 
 ;; One full redraw: scene, then chrome; rebuilds the dynamic hit regions and the draw list.
 (func $render
@@ -588,7 +622,7 @@
 (func $ui_reset
   (global.set $sel_tile (i32.const -1)) (global.set $hover_tile (i32.const -1))
   (global.set $sheet (i32.const 0)) (global.set $pick (i32.const 0)) (global.set $scroll (i32.const 0))
-  (global.set $arm (i32.const 0)) (global.set $in_st (i32.const 0)) (global.set $press (i32.const 0))
+  (global.set $arm (i32.const 0)) (global.set $in_st (i32.const 0)) (global.set $press (i32.const 0)) (global.set $keys (i32.const 0))
   (global.set $slide_t (i32.const -2)) (global.set $shake_t (i32.const -2))
   (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
   (call $layout_panel (i32.const 0))
@@ -626,5 +660,6 @@
   (local $p i32)
   (local.set $p (i32.add (global.get $TOASTS) (i32.shl (local.get $i) (i32.const 6))))
   (select (i32.add (local.get $p) (i32.const 8)) (i32.const 0) (i32.load offset=4 (local.get $p))))
+;; (t_str = $str, t_toast_drop = $toast_drop are exported directly)
 (func $t_fmt (param $n i32) (param $m i32) (result i32)
   (call $sb (global.get $SB3)) (call $sn (local.get $n) (local.get $m)) (global.get $SB3))

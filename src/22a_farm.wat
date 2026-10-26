@@ -239,11 +239,15 @@
     (global.set $pick (i32.sub (local.get $c) (i32.const 0x200)))
     (global.set $scroll (i32.const 0)) (global.set $dirty (i32.const 1))
     (return)))
-  (if (i32.and (i32.eq (local.get $c) (i32.const 0x203)) (i32.ne (global.get $arm) (local.get $c))) (then
-    (global.set $arm (local.get $c)) (global.set $arm_t (i32.const -1))
-    (call $announce (call $str (global.get $STR_TAP_AGAIN)))
-    (global.set $dirty (i32.const 1))
-    (return)))
+  (if (i32.eq (local.get $c) (i32.const 0x203)) (then
+    ;; armed: the confirming tap counts only 400 ms after arming (no accidental double tap)
+    (if (i32.and (i32.eq (global.get $arm) (local.get $c)) (i32.eqz (call $arm_live))) (then (return)))
+    ;; first tap, or the 3 s window has passed (frames may not have run): arm
+    (if (i32.or (i32.ne (global.get $arm) (local.get $c)) (i32.ge_s (call $since (global.get $arm_t)) (i32.const 3000))) (then
+      (global.set $arm (local.get $c)) (global.set $arm_t (i32.const -1)) (global.set $arm_lv (i32.const 0))
+      (call $announce (call $str (global.get $STR_TAP_AGAIN)))
+      (global.set $dirty (i32.const 1))
+      (return)))))
   (global.set $arm (i32.const 0))
   (local.set $i (global.get $sel_tile))
   (if (i32.lt_s (local.get $i) (i32.const 0)) (then (return)))
@@ -251,8 +255,9 @@
   (local.set $name (call $tile_name (local.get $p)))
   (local.set $e (global.get $E_BAD_ARG))
   (if (i32.eq (local.get $c) (i32.const 0x202)) (then
-    (local.set $e (call $act (i32.const 2) (local.get $i) (i32.const 0) (i32.const 0))) (local.set $verb (global.get $STR_HARVESTED))
-    (if (i32.eq (i32.load8_u (local.get $p)) (i32.const 2)) (then (local.set $name (i32.add (global.get $STR_GOOD) (call $tile_crop (local.get $p))))))))
+    ;; name the crop BEFORE acting: a harvested Greenhouse forgets its crop
+    (if (i32.eq (i32.load8_u (local.get $p)) (i32.const 2)) (then (local.set $name (i32.add (global.get $STR_GOOD) (call $tile_crop (local.get $p))))))
+    (local.set $e (call $act (i32.const 2) (local.get $i) (i32.const 0) (i32.const 0))) (local.set $verb (global.get $STR_HARVESTED))))
   (if (i32.eq (local.get $c) (i32.const 0x203)) (then
     (local.set $e (call $act (i32.const 5) (local.get $i) (i32.const 0) (i32.const 0))) (local.set $verb (global.get $STR_CLEARED))))
   (if (i32.eq (local.get $c) (i32.const 0x204)) (then
@@ -578,10 +583,13 @@
       (i32.const 0) (i32.eqz (local.get $why)) (call $lget (global.get $L_COLS)) (call $rowh))
     (br_if $l (i32.lt_u (local.tee $b (i32.add (local.get $b) (i32.const 1))) (i32.const 10)))))
 
-;; Two-step demolish / clear button (TAP AGAIN while armed).
+;; Two-step demolish / clear button: TAP AGAIN while armed, drawn dimmed (style 5) for the first
+;; 400 ms while the confirming tap is not live yet, then danger red.
 (func $put_demolish (param $label i32) (param $cols i32) (param $h i32)
-  (call $put (i32.const 0x203) (call $str (select (global.get $STR_TAP_AGAIN) (local.get $label) (i32.eq (global.get $arm) (i32.const 0x203))))
-    (global.get $I_TRASH) (select (i32.const 4) (i32.const 0) (i32.eq (global.get $arm) (i32.const 0x203))) (i32.const 1) (local.get $cols) (local.get $h)))
+  (local $a i32)
+  (local.set $a (i32.eq (global.get $arm) (i32.const 0x203)))
+  (call $put (i32.const 0x203) (call $str (select (global.get $STR_TAP_AGAIN) (local.get $label) (local.get $a)))
+    (global.get $I_TRASH) (select (select (i32.const 4) (i32.const 5) (call $arm_live)) (i32.const 0) (local.get $a)) (i32.const 1) (local.get $cols) (local.get $h)))
 
 (func $sheet_body
   (local $i i32) (local $p i32) (local $c i32) (local $b i32) (local $n i32) (local $v i32) (local $t i32) (local $why i32) (local $bh i32) (local $j i32)

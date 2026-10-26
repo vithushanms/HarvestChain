@@ -141,6 +141,7 @@
   "X\00" ;; 126
   " PLOTS\00" ;; 127
 )
+(global $STR_COUNT i32 (i32.const 128))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))

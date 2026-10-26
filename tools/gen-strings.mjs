@@ -419,6 +419,7 @@ export function generate() {
   t += `(data (i32.const 0x${STR_ADDR.toString(16)})\n`;
   for (const e of s.out) t += `  "${watStr(e.text)}\\00" ;; ${e.id}\n`;
   t += ')\n';
+  t += `(global $STR_COUNT i32 (i32.const ${s.count}))\n`;
   for (const [g, id] of Object.entries(s.groups)) t += `(global $STR_${g} i32 (i32.const ${id}))\n`;
   for (const [k, id] of s.ids) t += `(global $STR_${k} i32 (i32.const ${id}))\n`;
   t += `;; icons: ${ic.length} x 24 B at 0x${ICON_ADDR.toString(16)}\n(data (i32.const 0x${ICON_ADDR.toString(16)})\n`;

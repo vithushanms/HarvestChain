@@ -139,3 +139,5 @@
 (export "t_ui_toast"   (func $t_ui_toast))
 (export "t_fmt"        (func $t_fmt))
 (export "t_err_str"    (func $err_str))
+(export "t_str"        (func $str))
+(export "t_toast_drop" (func $toast_drop))
