@@ -7,22 +7,21 @@
 ;; (0 until measured: shown "--"); transfer_bytes = transferSize of the page, game.wasm and sw.js
 ;; (0 with a load time = everything came from a cache: "CACHED"); wasm_enc_bytes = game.wasm bytes on
 ;; the wire (encodedBodySize: the gzip size when the host compresses, else the raw size, so the
-;; overlay calls it WIRE, not GZ); wasm_raw_bytes = decoded size; endday_us = the pointer / key call in
-;; which the day changed; frame_us = the previous frame() + blit. Negative values read as 0. Each
-;; call with frame_us > 0 adds one sample to the 120-sample ring (clamped to 10 s so the sum fits).
+;; overlay calls it WIRE, not GZ); wasm_raw_bytes = decoded size; endday_us = the pointer / key call that moved
+;; cur_day() (the count of End Days played from the farm: not replay seeks, Take Over or loads); frame_us = the previous frame() + blit. Negative values read as 0. Each
+;; call with frame_us > 0 adds one sample to the 120-sample ring (endday_us and frame_us clamp to 10 s once, so the sum fits; shown ">10,000,000").
 ;; A change of load_ms / transfer redraws (the Title and Results show "LOADED IN 47 MS ^ 18.2 KB").
 ;;
 ;; Overlay: Backquote (key 14) toggles it anywhere; Esc closes it first; a triple tap on the top-left
-;; 44 x 44 CSS px corner (three downs within 600 ms of frame time) toggles it. The first two taps of
+;; 44 x 44 CSS px corner (three downs within 600 ms of the set_now clock) toggles it. The first two taps of
 ;; a triple tap reach whatever is under them (the DAY box opens the Gazette; that is accepted: no tap
 ;; is delayed or swallowed for a gesture that may never complete); the third down is consumed. The
 ;; panel sits at the top-left of the farm viewport (LR_GRID), so it never covers the top bar, End Day,
-;; the tabs or the side panel; it is render-only and passes taps through except its header row
-;; (hit 0x3DA, >= min_touch tall), which closes it. While open, frame() redraws every frame (returns
+;; the tabs or the side panel; it is render-only: on the farm it passes taps through except its header row
+;; (hit 0x3DA, >= min_touch tall), which closes it; over a screen its body also absorbs taps (hit 0x3DB). While open, frame() redraws every frame (returns
 ;; 1), so the sparkline shows real, continuous frame times. Announced "STATS ON" / "STATS OFF".
 ;; Sparkline: one bar per sample, newest right, fixed scale 0..20 ms with the 16.7 ms (60 fps)
-;; frame budget marked; a bar over the budget is tomato red. Large text falls back to scale 1
-;; when the panel would not fit the viewport.
+;; frame budget marked; a bar over the budget is tomato red. Large text draws at scale 2 when the panel fits the viewport (320x568 and up), else falls back to scale 1 (t_ovl 11 reads the scale).
 ;;
 ;; Memory (R_LAYOUT, was free): 0xAC40..0xAE1F frame ring (120 x i32 us), 0xAE20..0xAF1F row text
 ;; builders (value; label + value for the t_ovl_line test hook).
@@ -42,6 +41,7 @@
 (global $ov_y (mut i32) (i32.const 0))
 (global $ov_w (mut i32) (i32.const 0))
 (global $ov_h (mut i32) (i32.const 0))
+(global $ov_s (mut i32) (i32.const 1))                ;; the scale it drew at (t_ovl 11)
 (global $sp_x (mut i32) (i32.const 0))         ;; sparkline box as last drawn
 (global $sp_y (mut i32) (i32.const 0))
 (global $sp_w (mut i32) (i32.const 0))
@@ -56,13 +56,17 @@
     (then (global.set $dirty (i32.const 1))))
   (global.set $met_ms (local.get $ms)) (global.set $met_bytes (local.get $tb))
   (global.set $met_enc (call $imax (local.get $enc) (i32.const 0))) (global.set $met_raw (call $imax (local.get $raw) (i32.const 0)))
-  (global.set $met_ed (call $imax (local.get $ed) (i32.const 0)))
-  (global.set $met_fr (call $imax (local.get $fr) (i32.const 0)))
+  ;; one clamp for everything measured in us: 10 s (a sum of 120 samples fits an i32; shown as ">10,000,000")
+  (local.set $ed (call $imin (call $imax (local.get $ed) (i32.const 0)) (i32.const 10000000)))
+  (local.set $fr (call $imin (call $imax (local.get $fr) (i32.const 0)) (i32.const 10000000)))
+  (global.set $met_ed (local.get $ed))
+  (global.set $met_fr (local.get $fr))
   (if (i32.gt_s (local.get $fr) (i32.const 0)) (then
-    (i32.store (i32.add (global.get $FRING) (i32.shl (global.get $fr_i) (i32.const 2))) (call $imin (local.get $fr) (i32.const 10000000)))
+    (i32.store (i32.add (global.get $FRING) (i32.shl (global.get $fr_i) (i32.const 2))) (local.get $fr))
     (global.set $fr_i (i32.rem_u (i32.add (global.get $fr_i) (i32.const 1)) (i32.const 120)))
     (global.set $fr_n (call $imin (i32.add (global.get $fr_n) (i32.const 1)) (i32.const 120))))))
-(func $cur_day (result i32) (i32.load16_u (global.get $S_DAY)))
+(global $ed_n (mut i32) (i32.const 0))           ;; End Days played from the farm (not replay seeks, Take Over or loads)
+(func $cur_day (result i32) (global.get $ed_n))
 
 ;; Ring sample j (0 = oldest held).
 (func $fr_at (param $j i32) (result i32)
@@ -73,7 +77,9 @@
 ;; half up (18,637 B -> "18.2"; i64 so 2^31 - 1 B cannot overflow).
 (func $s_met (param $v i32) (param $u i32)
   (if (i32.le_s (local.get $v) (i32.const 0)) (then (call $sc (i32.const 45)) (call $sc (i32.const 45)) (return)))
-  (if (i32.eq (local.get $u) (i32.const 1)) (then (call $sn (local.get $v) (i32.const 2)) (return)))
+  (if (i32.eq (local.get $u) (i32.const 1)) (then
+    (if (i32.ge_u (local.get $v) (i32.const 10000000)) (then (call $sc (i32.const 62)) (local.set $v (i32.const 10000000))))   ;; the clamp: ">10,000,000"
+    (call $sn (local.get $v) (i32.const 2)) (return)))
   (local.set $v (i32.wrap_i64 (i64.div_u (i64.add (i64.mul (i64.extend_i32_u (local.get $v)) (i64.const 10)) (i64.const 512)) (i64.const 1024))))
   (call $sn (i32.div_u (local.get $v) (i32.const 10)) (i32.const 2)) (call $sc (i32.const 46)) (call $sn0 (i32.rem_u (local.get $v) (i32.const 10))))
 ;; Transfer: "18.2 KB", "CACHED" (a load time but nothing transferred) or "-- KB".
@@ -160,7 +166,7 @@
     (if (i32.gt_s (call $tw (local.get $v)) (local.get $w)) (then (global.set $tscale (i32.const 1))))
     (local.set $vw (call $tw (local.get $v)))
     (global.set $tscale (local.get $ts))
-    (if (i32.eqz (global.get $nodraw)) (then (drop (call $txt (local.get $x) (local.get $y) (local.get $l) (call $pal (i32.const 46))))))
+    (if (i32.eqz (global.get $nodraw)) (then (drop (call $txt (local.get $x) (local.get $y) (local.get $l) (call $pal (i32.const 47))))))
     (if (i32.gt_s (i32.add (i32.add (call $tw (local.get $l)) (local.get $vw)) (i32.mul (i32.const 12) (global.get $tscale))) (local.get $w))
       (then (local.set $y (i32.add (local.get $y) (i32.add (call $lh) (i32.const 3))))))
     (if (i32.eqz (global.get $nodraw)) (then
@@ -175,7 +181,7 @@
   (local $h i32) (local $i i32)
   (loop $l
     (local.set $h (i32.add (local.get $h) (call $ui_wrap (local.get $x) (i32.add (local.get $y) (local.get $h)) (local.get $w)
-      (call $str (i32.add (global.get $STR_TYP) (local.get $i))) (call $pal (i32.const 46)))))
+      (call $str (i32.add (global.get $STR_TYP) (local.get $i))) (call $pal (i32.const 47)))))
     (br_if $l (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 3))))
   (local.get $h))
 
@@ -202,15 +208,15 @@
     (local.set $w (call $imin (i32.add (i32.mul (i32.const 276) (global.get $tscale)) (i32.shl (local.get $p) (i32.const 1))) (local.get $aw)))
     (local.set $iw (i32.sub (local.get $w) (i32.shl (local.get $p) (i32.const 1))))
     (local.set $hh (call $imax (call $min_touch) (i32.add (call $lh) (i32.shl (local.get $g) (i32.const 2)))))
-    (local.set $sh (i32.add (i32.mul (global.get $tscale) (i32.const 12)) (i32.const 12)))
+    (local.set $sh (i32.const 24))
     (global.set $nodraw (i32.const 1))
     (local.set $h (i32.add (i32.add (local.get $hh) (call $ovl_rows (i32.const 0) (i32.const 0) (local.get $iw)))
-      (i32.add (i32.add (local.get $sh) (call $ovl_typ (i32.const 0) (i32.const 0) (local.get $iw))) (i32.add (i32.shl (local.get $p) (i32.const 1)) (local.get $g)))))
+      (i32.add (i32.add (local.get $sh) (call $ovl_typ (i32.const 0) (i32.const 0) (local.get $iw))) (i32.shl (local.get $p) (i32.const 1)))))
     (global.set $nodraw (i32.const 0))
     (if (i32.and (i32.gt_s (local.get $h) (local.get $mx)) (i32.gt_s (global.get $tscale) (i32.const 1))) (then
       (global.set $tscale (i32.const 1)) (br $fit))))
   (local.set $ix (i32.add (local.get $x) (local.get $p)))
-  (global.set $ov_r (local.get $x)) (global.set $ov_y (local.get $y)) (global.set $ov_w (local.get $w)) (global.set $ov_h (local.get $h))
+  (global.set $ov_s (global.get $tscale)) (global.set $ov_r (local.get $x)) (global.set $ov_y (local.get $y)) (global.set $ov_w (local.get $w)) (global.set $ov_h (local.get $h))
   ;; a dark instrument panel: ink face; header "STATS" in wheat, a paper close chip on the right
   (call $panel_c (local.get $x) (local.get $y) (local.get $w) (local.get $h) (i32.const 0x3E3D3C))
   (drop (call $txt (local.get $ix) (i32.add (local.get $y) (i32.shr_s (i32.sub (local.get $hh) (call $lh)) (i32.const 1)))
@@ -221,6 +227,9 @@
   (call $rrect (local.get $v) (local.get $by) (local.get $t) (local.get $t) (i32.const 2) (call $pal (i32.const 59)))
   (call $ui_icon (global.get $I_CLOSE) (i32.add (local.get $v) (i32.const 3)) (i32.add (local.get $by) (i32.const 3)) (global.get $tscale))
   (call $hline (i32.add (local.get $x) (i32.const 2)) (i32.add (local.get $y) (local.get $hh)) (i32.sub (local.get $w) (i32.const 4)) (call $pal (i32.const 62)))
+  ;; over a screen the body absorbs taps (hit 0x3DB, ignored by $tap): buttons under it stay dead; on the
+  ;; farm the panel only covers plots, which keep working through it
+  (if (global.get $scr) (then (drop (call $hit_add (local.get $x) (i32.add (local.get $y) (local.get $hh)) (local.get $w) (i32.sub (local.get $h) (local.get $hh)) (i32.const 0x3DB)))))
   (drop (call $hit_add (local.get $x) (local.get $y) (local.get $w) (local.get $hh) (i32.const 0x3DA)))
   (local.set $by (i32.add (i32.add (local.get $y) (local.get $hh)) (local.get $p)))
   (local.set $by (i32.add (local.get $by) (call $ovl_rows (local.get $ix) (local.get $by) (local.get $iw))))
@@ -245,13 +254,14 @@
   (global.set $tscale (call $ui_ts)))
 
 ;; Test hook t_ovl(k): 0 on, 1 samples held, 2..5 panel x, y, w, h, 6..9 sparkline x, y, w, h as last
-;; drawn, 10: the load line ($s_load) text.
+;; drawn, 10: the load line ($s_load) text, 11: the text scale the panel was really drawn at.
 (func $t_ovl (param $k i32) (result i32)
   (if (i32.eq (local.get $k) (i32.const 6)) (then (return (global.get $sp_x))))
   (if (i32.eq (local.get $k) (i32.const 7)) (then (return (global.get $sp_y))))
   (if (i32.eq (local.get $k) (i32.const 8)) (then (return (global.get $sp_w))))
   (if (i32.eq (local.get $k) (i32.const 9)) (then (return (global.get $sp_h))))
   (if (i32.eq (local.get $k) (i32.const 10)) (then (call $s_load) (return (global.get $SB1))))
+  (if (i32.eq (local.get $k) (i32.const 11)) (then (return (global.get $ov_s))))
   (if (i32.eqz (local.get $k)) (then (return (global.get $ovl_on))))
   (if (i32.eq (local.get $k) (i32.const 1)) (then (return (global.get $fr_n))))
   (if (i32.eq (local.get $k) (i32.const 2)) (then (return (global.get $ov_r))))

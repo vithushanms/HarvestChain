@@ -157,6 +157,7 @@
 (func $tap (param $c i32)
   (local $t i32)
   (if (i32.eq (local.get $c) (i32.const 0x3DA)) (then (call $ovl_toggle) (return)))   ;; stats overlay header
+  (if (i32.eq (local.get $c) (i32.const 0x3DB)) (then (return)))   ;; its body over a screen: absorbed
   (if (i32.or (global.get $scr) (i32.ge_u (local.get $c) (i32.const 0x3C0))) (then (call $ovl_tap (local.get $c)) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_ENDDAY)) (then (call $do_endday) (return)))
   (if (i32.eq (local.get $c) (global.get $HIT_HARVALL)) (then (call $do_harvest_all) (return)))
@@ -183,6 +184,7 @@
   (local.set $sp (call $spoil_est))
   (local.set $e (call $end_day))
   (if (local.get $e) (then (call $fail (local.get $e)) (return)))
+  (global.set $ed_n (i32.add (global.get $ed_n) (i32.const 1)))   ;; the loader times the call that moved this (End Day us)
   (global.set $want_save (i32.const 1))
   (global.set $arm (i32.const 0))
   (call $sb (global.get $SB3))

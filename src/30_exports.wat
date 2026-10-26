@@ -71,6 +71,7 @@
 (export "fb_h"    (func $fb_h))
 (export "t_canary_ok" (func $canary_ok))
 (export "t_px"     (func $t_px))
+(export "t_draw"   (func $t_draw))
 (export "t_putpx"  (func $px))
 (export "t_fill"   (func $fill))
 (export "t_rect"   (func $rect))

@@ -66,7 +66,12 @@ test('UI kit text contrast >= 4.5:1 for every pair (dimmed inactive tabs excepte
   // sheet / panel text on paper 58; cards on 59 (pressed 58); active tab 61 on 59; recipe box on 57
   for (const c of [60, 61, 63, 37]) pairs.push([`sheet ${c}`, c, 58], [`card ${c}`, c, 59]);
   pairs.push(['tab active', 61, 59], ['recipe', 61, 57], ['recipe off', 63, 57]);
+  // stats overlay (src/23_overlay.wat): header 19, row labels and the honesty text 47, values 59, on the ink face 61
+  pairs.push(['overlay header', 19, 61], ['overlay label', 47, 61], ['overlay value', 59, 61]);
   for (const [n, a, b] of pairs) assert.ok(ratio(a, b) >= 4.5, `${n}: ${a} on ${b} = ${ratio(a, b).toFixed(2)}`);
+  // overlay sparkline marks (budget line 18, bars 15 / 26) on its dark field 60: >= 3:1
+  for (const c of [18, 15, 26]) assert.ok(ratio(c, 60) >= 3, `sparkline ${c} on 60 = ${ratio(c, 60).toFixed(2)}`);
+  assert.ok(ratio(47, 61) > ratio(46, 61) + 1, 'the labels are clearly lighter than the old 46');
   // non-text marks >= 3:1: the toggle-on check icon's stroke (icon colour 2) on the toggle face, pressed too
   const chk = ICON_ADDR + ICONS.findIndex(([n]) => n === 'CHECK') * 24;
   const [, f3, pf3] = m.slice(0x900 + 6 * 5, 0x905 + 6 * 5);   // style 6 = toggle on

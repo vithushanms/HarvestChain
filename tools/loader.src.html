@@ -71,7 +71,7 @@ function sizes(list) {
 }
 // the module's input clock: set right before every pointer() / key() (frame() is not called while idle)
 const clk = () => ex.set_now(Math.floor(performance.now()));
-// a pointer / key call; the one during which the day changed is the End Day timing
+// a pointer / key call; the one that moved the module's End Day counter (cur_day) is the End Day timing
 function timed(f) {
   const d = ex.cur_day(), a = performance.now();
   clk();

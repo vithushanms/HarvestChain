@@ -94,6 +94,7 @@
   (call $pal (i32.add (i32.shl (local.get $hue) (i32.const 2)) (local.get $step))))
 
 (func $px (param $x i32) (param $y i32) (param $c i32)
+  (global.set $dr_n (i32.add (global.get $dr_n) (i32.const 1)))
   (if (i32.and (i32.and (i32.lt_u (local.get $x) (global.get $fb_w)) (i32.lt_u (local.get $y) (global.get $fb_h)))
                (i32.and (i32.ge_s (local.get $y) (global.get $clip_t)) (i32.lt_s (local.get $y) (global.get $clip_b))))
     (then (i32.store
@@ -116,8 +117,11 @@
     (local.set $p (i32.add (local.get $p) (i32.const 4)))
     (br $l))))
 
+(global $dr_n (mut i32) (i32.const 0))   ;; draw work counters (t_draw): rect / px calls and pixels written by rect
+(global $dr_px (mut i32) (i32.const 0))
 (func $rect (param $x i32) (param $y i32) (param $w i32) (param $h i32) (param $c i32)
   (local $x1 i32) (local $y1 i32) (local $xx i32) (local $row i32)
+  (global.set $dr_n (i32.add (global.get $dr_n) (i32.const 1)))
   (local.set $x1 (i32.add (local.get $x) (local.get $w)))
   (local.set $y1 (i32.add (local.get $y) (local.get $h)))
   (if (i32.lt_s (local.get $x) (i32.const 0)) (then (local.set $x (i32.const 0))))
@@ -126,6 +130,8 @@
   (if (i32.gt_s (local.get $y1) (global.get $fb_h)) (then (local.set $y1 (global.get $fb_h))))
   (if (i32.lt_s (local.get $y) (global.get $clip_t)) (then (local.set $y (global.get $clip_t))))
   (if (i32.gt_s (local.get $y1) (global.get $clip_b)) (then (local.set $y1 (global.get $clip_b))))
+  (if (i32.and (i32.lt_s (local.get $x) (local.get $x1)) (i32.lt_s (local.get $y) (local.get $y1)))
+    (then (global.set $dr_px (i32.add (global.get $dr_px) (i32.mul (i32.sub (local.get $x1) (local.get $x)) (i32.sub (local.get $y1) (local.get $y)))))))
   (block $out (loop $ly
     (br_if $out (i32.ge_s (local.get $y) (local.get $y1)))
     (local.set $xx (local.get $x))
@@ -384,6 +390,7 @@
         (br_if $l (i32.lt_u (local.get $i) (i32.const 14)))))))
 
 ;; Test hooks (draw).
+(func $t_draw (param $k i32) (result i32) (select (global.get $dr_px) (global.get $dr_n) (local.get $k)))
 (func $t_px (param $x i32) (param $y i32) (result i32) (call $getpx (local.get $x) (local.get $y)))
 (func $t_text (param i32 i32 i32 i32 i32) (result i32)
   (call $text (local.get 0) (local.get 1) (local.get 2) (local.get 3) (local.get 4)))

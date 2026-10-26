@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { stateBytes, STATE } from '../helpers.mjs';
-import { uiGame, uiState, HIT, KEY, SCR, UI, METRICS, feedMetrics } from './uistates.mjs';
+import { uiGame, uiState, HIT, KEY, SCR, UI, RP, METRICS, feedMetrics } from './uistates.mjs';
 import { farm } from './scenes.mjs';
 
 const OV = { ON: 0, N: 1, X: 2, Y: 3, W: 4, H: 5, SX: 6, SY: 7, SW: 8, SH: 9, LOAD: 10 };
@@ -75,16 +75,34 @@ test('extreme values (0, 2^31 - 1, negative) never trap and read sanely in every
       for (let i = 1; i <= 8; i++) {
         const s = line(g, i);
         assert.doesNotMatch(s, /(^|[^-])-[0-9]/, `no negative number: ${s}`);
-        assert.match(s, /^[A-Z/ ]+ (([0-9,.]+|--)( KB| MS| US| PAGES)?|CACHED)( \^ [0-9,]+ KB)?(\/([0-9,]+|--))*( US)?$/, s);
+        assert.match(s, /^[A-Z/ ]+ ((>?[0-9,.]+|--)( KB| MS| US| PAGES)?|CACHED)( \^ [0-9,]+ KB)?(\/(>?[0-9,]+|--))*( US)?$/, s);
       }
       assert.ok(ov(g, OV.X) >= 0 && ov(g, OV.X) + ov(g, OV.W) <= g.ex.fb_w(), `${w}x${h} x`);
       assert.ok(ov(g, OV.Y) >= 0 && ov(g, OV.Y) + ov(g, OV.H) <= g.ex.fb_h(), `${w}x${h} y`);
     }
-    assert.equal(line(g, 7), 'LAST FRAME 2,147,483,647 US');
-    assert.equal(line(g, 8), 'FRAME MIN/AVG/MAX 10,000,000/10,000,000/10,000,000 US', 'ring samples clamp at 10 s');
+    assert.equal(line(g, 7), 'LAST FRAME >10,000,000 US', 'the same clamp as the ring');
+    assert.equal(line(g, 8), 'FRAME MIN/AVG/MAX >10,000,000/>10,000,000/>10,000,000 US', 'ring samples clamp at 10 s');
+    g.ex.set_metrics(1, 1, 1, 1, MAX, 5);
+    assert.equal(line(g, 6), 'LAST END DAY >10,000,000 US', 'one clamp: 10 s, shown with a >');
     const fb = g.ex.fb_ptr(), wd = g.ex.fb_w(), ht = g.ex.fb_h();
     assert.equal(new DataView(g.ex.memory.buffer).getUint32(fb + wd * ht * 4, true), 0xCAFEF00D, 'canary');
   }
+});
+
+test('cur_day (the loader times the call that moves it) counts End Days played, not replay seeks, Take Over or loads', async () => {
+  const g = await uiGame(360, 640, 200, {});
+  assert.equal(g.ex.cur_day(), 0);
+  g.key(KEY.E);
+  assert.equal(g.ex.cur_day(), 1, 'End Day from the farm');
+  g.key(KEY.E);
+  assert.equal(g.ex.cur_day(), 2);
+  const t = await uiState('ui-replay-mid');
+  assert.equal(t.ui(UI.SCR), 7, 'viewer');
+  const c = t.ex.cur_day();
+  t.tap(RP.NEXT); t.tap(RP.PREV); t.tap(RP.RESTART);
+  assert.equal(t.ex.cur_day(), c, 'viewer seeks do not count');
+  t.tap(RP.TAKE);
+  assert.equal(t.ex.cur_day(), c, 'Take Over does not count');
 });
 
 test('Backquote toggles the overlay anywhere and announces it; Esc and its header close it', async () => {
@@ -169,11 +187,46 @@ test('triple tap on the top-left 44 css px corner toggles it; double taps and sl
   assert.equal(t.ui(UI.SCR), SCR.TITLE);
 });
 
+test('on a screen the panel body absorbs taps: buttons hidden under it stay dead (farm: pass-through, tested above)', async () => {
+  const ABSORB = 0x3DB;
+  let covered = 0;
+  for (const name of ['ui-title', 'ui-title-save', 'ui-title-large', 'ui-title-watch', 'ui-results', 'ui-results-share', 'ui-gameover', 'ui-journal', 'ui-journal-large', 'ui-howto', 'ui-gazette-calm']) {
+    for (const [w, h, dpr] of [[360, 640, 200], [320, 568, 200], [1280, 800, 100], [360, 480, 200]]) {
+      const g = await uiState(name, w, h, dpr);
+      g.key(KEY.BACKQUOTE);
+      g.frame();
+      const P = [OV.X, OV.Y, OV.W, OV.H].map((k) => ov(g, k)), hd = g.hit(CLOSE);
+      const body = [P[0], hd.y + hd.h, P[2], P[1] + P[3] - hd.y - hd.h];
+      for (const r of g.hits().filter((r) => ![CLOSE, ABSORB, 5, 6, 7].includes(r.code))) {
+        const x0 = Math.max(r.x, body[0]), x1 = Math.min(r.x + r.w, body[0] + body[2]), y0 = Math.max(r.y, body[1]), y1 = Math.min(r.y + r.h, body[1] + body[3]);
+        if (x0 >= x1 || y0 >= y1) continue;
+        covered++;
+        const at = [x0 + ((x1 - x0) >> 1), y0 + ((y1 - y0) >> 1)], tag = `${name} ${w}x${h} 0x${r.code.toString(16)}`;
+        const top = g.hits().filter((q) => q.x <= at[0] && at[0] < q.x + q.w && q.y <= at[1] && at[1] < q.y + q.h).pop();
+        assert.equal(top.code, ABSORB, `${tag}: the panel body is on top of the hidden button`);
+        const s0 = createHash('sha1').update(stateBytes(g.mem(), STATE.length)).digest('hex'), scr = g.ui(UI.SCR), fl = g.ex.get_flags();
+        g.tapCss(...g.toCss(...at));
+        assert.equal(g.ui(UI.SCR), scr, `${tag}: screen unchanged`);
+        assert.equal(g.ex.get_flags(), fl, `${tag}: flags unchanged`);
+        assert.equal(createHash('sha1').update(stateBytes(g.mem(), STATE.length)).digest('hex'), s0, `${tag}: state unchanged`);
+        assert.equal(ov(g, OV.ON), 1, `${tag}: panel still open`);
+      }
+    }
+  }
+  assert.ok(covered >= 20, `the sweep found ${covered} covered buttons`);
+  // the farm keeps passing taps through (the layout test keeps the panel clear of every control)
+  const f = await uiGame(360, 640, 200, {});
+  f.key(KEY.BACKQUOTE); f.frame();
+  assert.equal(f.hits().some((r) => r.code === ABSORB), false, 'no absorbing region on the farm');
+});
+
 test('layouts: the panel fits the farm viewport at 360x640, large 320x568 and 1280x800, clear of the chrome', async () => {
   const L = { TOPBAR: 0, ENDDAY: 5, GRID: 6, TABS: 7, PANEL: 13 };
   const rect = (g, id) => [0, 1, 2, 3].map((k) => [g.ex.t_lay_x, g.ex.t_lay_y, g.ex.t_lay_w, g.ex.t_lay_h][k](id));
   const meet = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
-  for (const [w, h, dpr, large, ts] of [[360, 640, 200, 0, 1], [320, 568, 200, 1, 2], [1280, 800, 100, 0, 1], [360, 640, 200, 1, 2]]) {
+  for (const [w, h, dpr, large, ts] of [[360, 640, 200, 0, 1], [320, 568, 200, 1, 2], [1280, 800, 100, 0, 1], [360, 640, 200, 1, 2], [1280, 800, 100, 1, 2],
+    // too short for scale 2 (viewport 268 px): the documented fallback to scale 1, still inside the viewport
+    [320, 480, 200, 1, 1]]) {
     const g = await uiGame(w, h, dpr, { large: !!large });
     feedMetrics(g.ex);
     g.key(KEY.BACKQUOTE);
@@ -187,7 +240,7 @@ test('layouts: the panel fits the farm viewport at 360x640, large 320x568 and 12
     }
     const c = g.hit(CLOSE);
     assert.ok(c.w >= g.ex.t_min_touch() && c.h >= g.ex.t_min_touch(), `${tag}: close >= min_touch`);
-    assert.equal(g.ex.t_ui_ts(), ts, `${tag}: text scale`);
+    assert.equal(ov(g, 11), ts, `${tag}: the scale the panel really drew at (t_ovl 11), not the UI text scale`);
     // the sparkline is inside the panel; the text scale stays the UI one (it fits)
     const s = [OV.SX, OV.SY, OV.SW, OV.SH].map((k) => ov(g, k));
     assert.ok(s[0] >= p[0] && s[1] > p[1] && s[0] + s[2] <= p[0] + p[2] && s[1] + s[3] < p[1] + p[3], `${tag}: sparkline in the panel`);
@@ -254,38 +307,38 @@ test('Title and Results load lines show the measured numbers (and redraw when th
   assert.equal(c.str(ov(c, OV.LOAD)), 'LOADED IN 12 MS ^ CACHED');
 });
 
-test('steady frames: storm + rain particles at 360x640, 300 frames of module render time stay flat', async () => {
-  // Timed in process CPU time (process.cpuUsage, us) as well as wall time: npm test runs the test files in
-  // parallel, so wall time also measures the other processes; CPU time is what the frame itself costs.
+test('steady frames: storm + rain particles at 360x640, 300 frames do constant draw work (counters) and flat relative time', async () => {
+  // Deterministic guard: the module counts rect / px calls and the pixels rects write (t_draw); a frame in a
+  // storm with the overlay open must do the same work every time, within the particle variation. Timing is
+  // only a relative check (max < 4x the median, in process CPU time: wall time also measures the other
+  // test processes), never an absolute number: CI machines differ.
   const g = await uiGame(360, 640, 200, { setup: (ex) => farm(ex).weather(3) });
   g.key(KEY.BACKQUOTE);
   const run = (k) => {
-    const cpu = [], wall = [];
+    const cpu = [], calls = [], px = [];
     for (let i = 0; i < k; i++) {
       g.ex.set_metrics(...METRICS, 2000);
-      const a = performance.now(), c = process.cpuUsage();
+      const n0 = g.ex.t_draw(0), p0 = g.ex.t_draw(1), c = process.cpuUsage();
       assert.equal(g.ex.frame(g.t += 16), 1);
       const d = process.cpuUsage(c);
-      wall.push(performance.now() - a); cpu.push((d.user + d.system) / 1000);
+      cpu.push((d.user + d.system) / 1000); calls.push(g.ex.t_draw(0) - n0); px.push(g.ex.t_draw(1) - p0);
     }
-    return { cpu, wall };
+    return { cpu, calls, px };
   };
-  const stat = (t) => {
-    t = [...t].sort((a, b) => a - b);
-    const mean = t.reduce((s, v) => s + v, 0) / t.length;
-    return { mean, sd: Math.sqrt(t.reduce((s, v) => s + (v - mean) ** 2, 0) / t.length), p99: t[Math.floor(t.length * 0.99)], max: t[t.length - 1] };
-  };
-  const f = (s) => `mean ${s.mean.toFixed(3)} ms, sd ${s.sd.toFixed(3)} ms, p99 ${s.p99.toFixed(3)} ms, max ${s.max.toFixed(3)} ms`;
-  run(60);                                                  // warm up (JIT tiers)
-  // best of three 300-frame runs (a real regression - allocation, a slow storm path - fails all three)
-  let best;
-  for (let k = 0; k < 3; k++) {
-    const r = run(300), c = stat(r.cpu), w = stat(r.wall);
-    if (!best || c.max < best.c.max) best = { c, w };
-    if (c.sd < 0.5 && c.max < 4) break;
+  const med = (t) => [...t].sort((a, b) => a - b)[t.length >> 1];
+  run(60);                                                  // warm up (JIT tiers, particles settle)
+  const r = run(300);
+  const [mc, mp] = [med(r.calls), med(r.px)];
+  console.log(`storm + overlay frame: ${mc} draw calls, ${mp} rect px per frame (calls ${Math.min(...r.calls)}..${Math.max(...r.calls)}, px ${Math.min(...r.px)}..${Math.max(...r.px)})`);
+  assert.ok(mc > 5000 && mp > 100000, 'the counters count');
+  assert.ok(Math.max(...r.calls) - Math.min(...r.calls) <= mc * 0.08, `draw calls vary by the particles only: ${Math.min(...r.calls)}..${Math.max(...r.calls)}`);
+  assert.ok(Math.max(...r.px) - Math.min(...r.px) <= mp * 0.03, `pixels written vary by the particles only: ${Math.min(...r.px)}..${Math.max(...r.px)}`);
+  // relative timing: the worst of 300 frames against the median (best of three runs: a real regression fails all)
+  let ok = false, worst = 0;
+  for (let k = 0; k < 3 && !ok; k++) {
+    const t = k ? run(300).cpu : r.cpu, m = Math.max(med(t), 0.05);
+    worst = Math.max(...t) / m;
+    ok = worst < 4;
   }
-  console.log(`storm + overlay frame (module render) at 360x640: CPU ${f(best.c)}; wall ${f(best.w)}`);
-  assert.ok(best.c.sd < 0.5, `stddev ${best.c.sd} ms`);
-  assert.ok(best.c.max < 4, `max ${best.c.max} ms`);
-  assert.ok(best.c.mean < 4, `mean ${best.c.mean} ms`);
+  assert.ok(ok, `max frame time is ${worst.toFixed(1)}x the median`);
 });
