@@ -49,7 +49,7 @@ Exports: `init, pointer, key, resize, frame, save_len, load, replay_*` (+ `dirty
 
 Key cross-file rules:
 - **State layout** is documented in a comment header in `10_state.wat` and mirrored in `tools/state.json`; tests read fields by name through it. Change both together. Layout is **append-only** (keeps save migrations trivial). Save = magic `HC` + 2-byte version + state region; `load` migrates older versions.
-- **Actions** (`11_actions.wat`) each return `0` or an error code; all validation lives there, not in UI. The UI's read-only mirrors (process plan, tomorrow's rot, truck spoilage, contract / upgrade reasons in `22b_tabs.wat`) follow the sim's check order; `quote()` (13_pricing.wat) is `$sell_units` without the writes.
+- **Actions** (`11_actions.wat`) each return `0` or an error code; all validation lives there, not in UI. The UI's read-only mirrors (process plan, tomorrow's rot, truck spoilage, contract / upgrade reasons in `22b_tabs.wat`) follow the sim's check order; `quote()` (13_pricing.wat) is `$sell_units` without the writes (0 for a bad market / good or qty <= 0). Where the UI must agree exactly with an action it calls the sim's own helper instead of a copy: `$load_slots` (TRUCK_LOAD's cargo-slot dry run), `$carrier` (which truck carries a contract), `$age_step` (tonight's aging days).
 - **End Day** (`12_endday.wat`) is one function per §4 step, called in fixed order. Order is tested; don't reorder.
 - **Balance numbers live only in `03_balance.wat`** data tables, never inlined in logic.
 - **Unlocks** are per-building predicates on state; **milestones are observe-only** (pay cash, never unlock/set anything) (§12).

@@ -196,7 +196,7 @@ test('end-to-end contract via the UI: accept, load flour, tag, send, deliver: ca
   const g = await uiGame(360, 640, 200, { setup: (ex) => { putContract(ex, 'board', 0, { good: G.FLOUR, market: 1, qty: 6, deadline: 6, payout: 198 }); ex.t_give(G.FLOUR, 8, 0); } });
   g.tabTo(TAB.MARKET); g.tap(BTN.SUB + 2); g.tap(BTN.ACCEPT);
   await dispatchTo(g, 1, [[G.FLOUR, 6]], 0);
-  assert.ok(g.labels().includes('CONTRACT +$198'), JSON.stringify(g.labels()));
+  assert.ok(g.labels().includes('CONTRACT PAYS $198 (INSTEAD OF MARKET)'), JSON.stringify(g.labels()));
   assert.ok(g.labels().includes('TOWN, ARRIVES DAY 2'), JSON.stringify(g.labels()));
   g.tapR(BTN.SEND);
   assert.equal(truck(g).phase, 1);

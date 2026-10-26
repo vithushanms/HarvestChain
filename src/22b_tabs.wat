@@ -27,6 +27,7 @@
 ;; 0x937 truck upgrade cost columns (K), 0x948 good -> icon (crop model / the building that makes it)
 (data (i32.const 0x937) "\05\08\09")
 (data (i32.const 0x948) "\40\41\42\43\44\50\50\51\52\52\53\53\54")
+(data (i32.const 0x93A) "\55\53\56")          ;; route stops: Warehouse, Bakery, Cold Store models
 
 (func $gname (param $g i32) (result i32) (call $str (i32.add (global.get $STR_GOOD) (local.get $g))))
 (func $sg (param $g i32) (call $ss (call $gname (local.get $g))))
@@ -98,7 +99,7 @@
   (local.set $w (i32.sub (global.get $uw) (i32.mul (i32.const 3) (i32.add (local.get $bs) (global.get $lgap)))))
   (call $sb (global.get $SB2))
   (call $sn (call $qv (local.get $a)) (i32.gt_u (local.get $a) (i32.const 12)))
-  (if (i32.lt_u (local.get $a) (i32.const 13)) (then (call $sc (i32.const 47)) (call $sn0 (call $inv_count (local.get $a)))))
+  (if (i32.lt_u (local.get $a) (i32.const 13)) (then (call $si (global.get $STR_OF)) (call $sn0 (call $inv_count (local.get $a)))))
   (global.set $b_row (i32.const 1)) (global.set $b_sub (local.get $sub)) (global.set $b_right (global.get $SB2))
   (call $btn (i32.const 0x2FF) (global.get $ux) (global.get $uy) (local.get $w) (local.get $h) (local.get $label) (local.get $icon) (i32.const 0) (i32.const 1))
   (local.set $x (i32.add (i32.add (global.get $ux) (local.get $w)) (global.get $lgap)))
@@ -344,9 +345,10 @@
   (if (i32.eq (global.get $msub) (i32.const 1)) (then (call $sell_body)))
   (if (i32.eq (global.get $msub) (i32.const 2)) (then (call $contracts_body))))
 
-;; Price board: market news (every active event, days left), then 13 goods x Stand / Town / City.
-;; Hint goods get tomorrow's drift arrow by the name; a Surge / Glut cell its arrow; a bar under a
-;; cell while that market is saturated below 90%. Two-line rows when the columns do not fit.
+;; Price board: market news (every active event, days left), a legend, then 13 goods x Stand /
+;; Town / City. Hint goods get tomorrow's drift arrow by the name; a Surge / Glut cell its arrow
+;; before the "$" (numbers stay right-aligned); a small red "-24%" tag left of a price while that
+;; market is saturated below 90%. Two-line rows when the columns do not fit.
 (func $prices
   (local $g i32) (local $m i32) (local $p i32) (local $k i32) (local $nw i32) (local $cw i32) (local $two i32)
   (local $y i32) (local $s i32) (local $d i32) (local $ts i32) (local $rh i32) (local $lh i32)
@@ -361,6 +363,7 @@
       (call $sep) (call $s_days (i32.load8_u offset=3 (local.get $p)))
       (call $lab (global.get $I_WARN) (i32.const 61))))
     (br_if $e (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 3))))
+  (call $ui_label (i32.const -1) (call $str (global.get $STR_LEGEND)) (i32.const 37))
   (local.set $ts (call $ui_ts))
   (global.set $tscale (local.get $ts))
   (local.set $lh (call $lh))
@@ -385,20 +388,23 @@
     (local.set $m (i32.const 0))
     (loop $c
       (call $sb (global.get $SB1))
+      (local.set $s (i32.const 10000))
       (if (i32.lt_s (local.get $g) (i32.const 0))
         (then (call $si (i32.add (global.get $STR_MKT) (local.get $m))))
         (else
-          (call $sn (call $price (local.get $m) (local.get $g)) (i32.const 1))
           (local.set $d (call $event_mod (local.get $m) (local.get $g)))
           (if (i32.ne (local.get $d) (i32.const 10000)) (then (call $sc (select (i32.const 2) (i32.const 3) (i32.gt_u (local.get $d) (i32.const 10000))))))
-          (local.set $s (i32.load16_u (call $sat_ptr (local.get $m) (local.get $g))))
-          (if (i32.lt_u (local.get $s) (i32.const 9000)) (then
-            (call $ui_bar (i32.add (i32.add (global.get $ux) (local.get $nw)) (i32.add (i32.mul (local.get $m) (local.get $cw)) (i32.const 6)))
-              (i32.add (local.get $y) (i32.add (local.get $lh) (i32.const 1))) (i32.sub (local.get $cw) (i32.const 8)) (i32.add (local.get $ts) (i32.const 2))
-              (i32.sub (local.get $s) (i32.const 5000)) (i32.const 5000) (i32.const 26))))))
-      (drop (call $txt (i32.sub (i32.add (i32.add (global.get $ux) (local.get $nw)) (i32.mul (i32.add (local.get $m) (i32.const 1)) (local.get $cw)))
-                                (i32.add (call $tw (global.get $SB1)) (i32.const 2)))
-        (local.get $y) (global.get $SB1) (call $pal (select (i32.const 63) (i32.const 61) (i32.lt_s (local.get $g) (i32.const 0))))))
+          (call $sn (call $price (local.get $m) (local.get $g)) (i32.const 1))
+          (local.set $s (i32.load16_u (call $sat_ptr (local.get $m) (local.get $g))))))
+      (local.set $k (i32.sub (i32.add (i32.add (global.get $ux) (local.get $nw)) (i32.mul (i32.add (local.get $m) (i32.const 1)) (local.get $cw)))
+                             (i32.add (call $tw (global.get $SB1)) (i32.const 2))))
+      (drop (call $txt (local.get $k) (local.get $y) (global.get $SB1) (call $pal (select (i32.const 63) (i32.const 61) (i32.lt_s (local.get $g) (i32.const 0))))))
+      (if (i32.lt_u (local.get $s) (i32.const 9000)) (then
+        (call $sb (global.get $SB2)) (call $sc (i32.const 45)) (call $sn0 (i32.div_u (i32.sub (i32.const 10050) (local.get $s)) (i32.const 100))) (call $sc (i32.const 37))
+        (global.set $tscale (i32.const 1))
+        (drop (call $txt (i32.sub (local.get $k) (i32.add (call $tw (global.get $SB2)) (i32.const 3))) (i32.sub (i32.add (local.get $y) (local.get $lh)) (i32.const 7))
+          (global.get $SB2) (call $pal (i32.const 37))))
+        (global.set $tscale (local.get $ts))))
       (br_if $c (i32.lt_u (local.tee $m (i32.add (local.get $m) (i32.const 1))) (i32.const 3))))
     (global.set $uy (i32.add (global.get $uy) (select (i32.add (local.get $lh) (i32.const 4)) (local.get $rh) (i32.lt_s (local.get $g) (i32.const 0)))))
     (br_if $r (i32.lt_s (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13)))))
@@ -470,41 +476,57 @@
     (br_if $a (i32.lt_u (local.tee $s (i32.add (local.get $s) (i32.const 1))) (i32.const 3))))
   (if (i32.eqz (local.get $n)) (then (call $ui_label (i32.const -1) (call $str (global.get $STR_NONE)) (i32.const 63)))))
 
-;; Route strip Farm - Town - City with the truck placed by its days left (home: at the farm; bobs
-;; while away unless reduced motion). The leg is taken as the outbound travel days (a Fast truck's
-;; one-day return from the City shows halfway).
+;; Route strip: a dashed dirt road Farm - Town - City with a tiny 3D barn / house / tower over
+;; each stop and the destination as a red diamond. The truck drives on the road at
+;; 2k / (2T + 1) of its leg (k = days done + 1 out, days left back; T = travel days), so it never
+;; sits on a stop while away and is just short of its stop on the last day; it faces the way it
+;; goes and bobs while away (static under reduced motion).
 (func $route (param $p i32)
   (local $x0 i32) (local $w i32) (local $y i32) (local $m i32) (local $k i32) (local $x i32) (local $ts i32) (local $ph i32) (local $t i32) (local $s i32)
   (local.set $ts (call $ui_ts))
   (local.set $x0 (i32.add (global.get $ux) (i32.mul (i32.const 12) (local.get $ts))))
   (local.set $w (i32.sub (global.get $uw) (i32.mul (i32.const 24) (local.get $ts))))
-  (local.set $y (i32.add (global.get $uy) (i32.add (i32.mul (i32.const 9) (local.get $ts)) (i32.const 4))))
-  (call $rect (local.get $x0) (i32.sub (local.get $y) (i32.const 1)) (local.get $w) (i32.const 3) (call $pal (i32.const 2)))
+  (local.set $y (i32.add (global.get $uy) (i32.mul (i32.const 15) (local.get $ts))))
+  (local.set $ph (i32.load8_u offset=2 (local.get $p)))
+  (local.set $m (i32.load8_u offset=1 (local.get $p)))
+  (call $rect (local.get $x0) (i32.sub (local.get $y) (i32.const 2)) (local.get $w) (i32.const 5) (call $pal (i32.const 2)))
   (local.set $x (local.get $x0))
   (loop $d
     (call $rect (local.get $x) (local.get $y) (i32.const 3) (i32.const 1) (call $pal (i32.const 59)))
     (br_if $d (i32.lt_s (local.tee $x (i32.add (local.get $x) (i32.const 7))) (i32.add (local.get $x0) (local.get $w)))))
   (loop $n
     (local.set $x (i32.add (local.get $x0) (i32.shr_s (i32.mul (local.get $k) (local.get $w)) (i32.const 1))))
-    (call $rrect (i32.sub (local.get $x) (i32.const 3)) (i32.sub (local.get $y) (i32.const 3)) (i32.const 7) (i32.const 7) (i32.const 2) (call $pal (i32.const 61)))
-    (call $rect (i32.sub (local.get $x) (i32.const 1)) (i32.sub (local.get $y) (i32.const 1)) (i32.const 3) (i32.const 3)
-      (call $pal (select (i32.const 38) (i32.const 59) (i32.and (i32.ne (i32.load8_u offset=2 (local.get $p)) (i32.const 0)) (i32.eq (local.get $k) (i32.load8_u offset=1 (local.get $p)))))))
+    ;; 0x93A: barn (Warehouse), house (Bakery), tower (Cold Store) models
+    (call $ui_icon (i32.load8_u (i32.add (i32.const 0x93A) (local.get $k))) (i32.sub (local.get $x) (i32.mul (i32.const 12) (local.get $ts)))
+      (i32.sub (local.get $y) (i32.mul (i32.const 22) (local.get $ts))) (i32.mul (i32.const 24) (local.get $ts)))
+    ;; stop marker: the destination a big red diamond, the others small cream ones (ink rims)
+    (local.set $t (i32.and (i32.ne (local.get $ph) (i32.const 0)) (i32.eq (local.get $k) (local.get $m))))
+    (call $diamond (local.get $x) (local.get $y) (select (i32.const 6) (i32.const 3) (local.get $t)) (call $pal (i32.const 61)))
+    (call $diamond (local.get $x) (local.get $y) (select (i32.const 5) (i32.const 2) (local.get $t)) (call $pal (select (i32.const 38) (i32.const 59) (local.get $t))))
     (local.set $s (call $str (select (i32.add (global.get $STR_MKT) (local.get $k)) (global.get $STR_TAB) (local.get $k))))
-    (drop (call $txt (i32.sub (local.get $x) (i32.shr_s (call $tw (local.get $s)) (i32.const 1))) (i32.add (local.get $y) (i32.const 6)) (local.get $s) (call $pal (i32.const 63))))
+    (drop (call $txt (i32.sub (local.get $x) (i32.shr_s (call $tw (local.get $s)) (i32.const 1))) (i32.add (local.get $y) (i32.const 8)) (local.get $s) (call $pal (i32.const 63))))
     (br_if $n (i32.lt_u (local.tee $k (i32.add (local.get $k) (i32.const 1))) (i32.const 3))))
-  (local.set $ph (i32.load8_u offset=2 (local.get $p)))
-  (local.set $m (i32.load8_u offset=1 (local.get $p)))
-  (local.set $k (i32.load8_u offset=3 (local.get $p)))
-  ;; out: (T - left) / T of the way to its market, back: left / T (T = travel days)
   (local.set $t (call $travel_days (local.get $m)))
-  (if (i32.eq (local.get $ph) (i32.const 1)) (then (local.set $k (i32.sub (local.get $t) (local.get $k)))))
+  (local.set $k (i32.load8_u offset=3 (local.get $p)))
+  (if (i32.eq (local.get $ph) (i32.const 1)) (then (local.set $k (i32.add (i32.sub (local.get $t) (local.get $k)) (i32.const 1)))))
   (local.set $x (i32.add (local.get $x0) (i32.div_s (i32.mul (i32.mul (local.get $w) (local.get $m)) (call $clamp (local.get $k) (i32.const 0) (local.get $t)))
-    (i32.shl (call $imax (local.get $t) (i32.const 1)) (i32.const 1)))))
-  (call $ui_icon (global.get $I_TRUCK) (i32.sub (local.get $x) (i32.shl (local.get $ts) (i32.const 2)))
-    (i32.sub (i32.sub (local.get $y) (i32.add (i32.mul (i32.const 9) (local.get $ts)) (i32.const 1)))
+    (i32.add (i32.shl (local.get $t) (i32.const 1)) (i32.const 1)))))
+  (global.set $flip (i32.eq (local.get $ph) (i32.const 2)))
+  (call $ui_icon (global.get $I_TRUCK) (i32.sub (local.get $x) (i32.shr_s (i32.mul (i32.const 9) (local.get $ts)) (i32.const 1)))
+    (i32.sub (i32.sub (local.get $y) (i32.mul (i32.const 7) (local.get $ts)))
       (i32.and (i32.and (i32.ne (local.get $ph) (i32.const 0)) (i32.eqz (global.get $flag_reduced))) (i32.and (i32.shr_u (global.get $now) (i32.const 8)) (i32.const 1))))
     (local.get $ts))
-  (global.set $uy (i32.add (local.get $y) (i32.add (i32.add (call $lh) (i32.const 6)) (global.get $lgap)))))
+  (global.set $flip (i32.const 0))
+  (global.set $uy (i32.add (local.get $y) (i32.add (i32.add (call $lh) (i32.const 8)) (global.get $lgap)))))
+
+;; Filled diamond of radius r centred on (x, y).
+(func $diamond (param $x i32) (param $y i32) (param $r i32) (param $c i32)
+  (local $i i32) (local $h i32)
+  (local.set $i (i32.sub (i32.const 0) (local.get $r)))
+  (loop $l
+    (local.set $h (i32.sub (local.get $r) (select (local.get $i) (i32.sub (i32.const 0) (local.get $i)) (i32.ge_s (local.get $i) (i32.const 0)))))
+    (call $rect (i32.sub (local.get $x) (local.get $h)) (i32.add (local.get $y) (local.get $i)) (i32.add (i32.shl (local.get $h) (i32.const 1)) (i32.const 1)) (i32.const 1) (local.get $c))
+    (br_if $l (i32.le_s (local.tee $i (i32.add (local.get $i) (i32.const 1))) (local.get $r)))))
 
 ;; Trucks: a card per truck (title + upgrades, status, route strip, DISPATCH, upgrade buttons),
 ;; then BUY TRUCK; the dispatch flow replaces it while running.
@@ -620,23 +642,35 @@
     (if (i32.lt_u (global.get $dc) (i32.const 3)) (then
       (local.set $a (call $acc_ptr (global.get $dc)))
       (local.set $cg (i32.load8_u (local.get $a))) (local.set $cq (i32.load8_u offset=2 (local.get $a)))))
-    ;; per good: units that spoil on the way, the contract quantity (delivered first), the rest sells
+    ;; the cargo list, a card per good: [icon] "9 SAUCE" / "CONTRACT"  "$88" (units that spoil
+    ;; on the way first, then the contract quantity is delivered, the rest sells), then the totals
     (loop $gl
       (local.set $v (i32.add (call $cargo_of (local.get $p) (local.get $g)) (call $q (local.get $g))))
       (if (local.get $v) (then
         (local.set $sp (call $spoil_n (local.get $p) (local.get $g) (call $q (local.get $g))))
+        (call $sb (global.get $SB1)) (call $sn0 (local.get $v)) (call $sp) (call $sg (local.get $g))
+        (local.set $v (i32.sub (local.get $v) (local.get $sp)))
+        (global.set $b_sub (i32.const 0))
+        (if (i32.and (i32.eq (local.get $g) (local.get $cg)) (i32.ge_s (local.get $v) (local.get $cq))) (then
+          (local.set $v (i32.sub (local.get $v) (local.get $cq))) (local.set $ok (i32.const 1))
+          (global.set $b_sub (call $str (i32.add (global.get $STR_STEPN) (i32.const 2))))))
+        (call $sb (global.get $SB2))
+        ;; the market part ($0 when it all spoils; none when the contract takes it all)
+        (if (i32.or (local.get $v) (i32.eqz (global.get $b_sub))) (then
+          (local.set $k (call $quote (local.get $m) (local.get $g) (local.get $v)))
+          (local.set $rev (i32.add (local.get $rev) (local.get $k)))
+          (call $sn (local.get $k) (i32.const 1))))
+        (global.set $b_row (i32.const 1)) (global.set $b_right (global.get $SB2))
+        (call $put (i32.const 0x2FF) (global.get $SB1) (i32.load8_u (i32.add (i32.const 0x948) (local.get $g))) (i32.const 0) (i32.const 1) (i32.const 1) (call $rowh))
         (if (local.get $sp) (then
           (call $sb (global.get $SB1)) (call $sn0 (local.get $sp)) (call $sp) (call $sg (local.get $g)) (call $si (global.get $STR_SPOIL))
-          (call $lab (global.get $I_WARN) (i32.const 37))))
-        (local.set $v (i32.sub (local.get $v) (local.get $sp)))
-        (if (i32.and (i32.eq (local.get $g) (local.get $cg)) (i32.ge_s (local.get $v) (local.get $cq))) (then
-          (local.set $v (i32.sub (local.get $v) (local.get $cq))) (local.set $ok (i32.const 1))))
-        (local.set $rev (i32.add (local.get $rev) (call $quote (local.get $m) (local.get $g) (local.get $v))))))
+          (call $lab (global.get $I_WARN) (i32.const 37))))))
       (br_if $gl (i32.lt_u (local.tee $g (i32.add (local.get $g) (i32.const 1))) (i32.const 13))))
     (call $sb (global.get $SB1)) (call $si (global.get $STR_EST)) (call $sn (local.get $rev) (i32.const 1))
     (call $lab (global.get $I_COIN) (i32.const 61))
     (if (local.get $ok) (then
-      (call $sb (global.get $SB1)) (call $si (global.get $STR_CON_PLUS)) (call $sn (i32.load16_u offset=6 (local.get $a)) (i32.const 1))
+      (call $sb (global.get $SB1)) (call $si (i32.add (global.get $STR_STEPN) (i32.const 2))) (call $si (global.get $STR_PAYS))
+      (call $sn (i32.load16_u offset=6 (local.get $a)) (i32.const 1)) (call $si (global.get $STR_INSTEAD))
       (call $lab (global.get $I_CHECK) (i32.const 61))))
     (if (call $event_active (global.get $EV_FUEL_SPIKE)) (then
       (call $sb (global.get $SB1)) (call $si (global.get $STR_FUEL)) (call $sn (call $k (global.get $K_FUEL_COST)) (i32.const 1))

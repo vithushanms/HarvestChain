@@ -168,12 +168,12 @@ test('#4 End Day while the confirm step is open drops a tag that is no longer va
   toCargo(g, 2);
   g.tapR(BTN.MAX + G.SAUCE); g.tapR(BTN.NEXT); g.tapR(BTN.TAG + 0); g.tapR(BTN.NEXT);
   assert.equal(g.ui(UI.DC), 0);
-  assert.ok(g.labels().includes('CONTRACT +$540'), JSON.stringify(g.labels()));
+  assert.ok(g.labels().some((s) => /CONTRACT PAYS \$540/.test(s)), JSON.stringify(g.labels()));
   g.key(KEY.E);                        // day 2: arrival day 4 > deadline 3
   g.frame();
   assert.equal(g.ui(UI.DSTEP), 3, 'still on the confirm step');
   assert.equal(g.ui(UI.DC), 255, 'tag dropped');
-  assert.ok(!g.labels().some((s) => /^CONTRACT/.test(s)), JSON.stringify(g.labels()));
+  assert.ok(!g.labels().some((s) => /CONTRACT PAYS/.test(s)), JSON.stringify(g.labels()));
   g.tapR(BTN.SEND);
   assert.equal(truck(g).phase, 1, JSON.stringify(g.toasts()));
   assert.equal(truck(g).contract, 255);
@@ -261,4 +261,32 @@ test('#10 placement, dispatch steps and market sub-tabs are announced', async ()
   assert.equal(g.announce(), 'TRUCK 1, STEP 3 OF 4: CONTRACT');
   g.key(KEY.ESC);
   assert.equal(g.announce(), 'TRUCK 1, STEP 2 OF 4: CARGO');
+});
+
+// ---------------------------------------------------------------- V4 / V6 text
+
+test('V4 confirm lists the cargo (qty + good + quote per line) and labels the contract payout; V6 stock reads "n OF m"', async () => {
+  const g = await uiGame(360, 640, 200, { setup: (ex) => {
+    putContract(ex, 'accepted', 0, { good: G.SAUCE, market: 2, qty: 4, deadline: 9, payout: 540 });
+    ex.t_give(G.SAUCE, 4, 0); ex.t_give(G.FLOUR, 6, 0);
+  } });
+  toCargo(g, 2);
+  g.tapR(BTN.MAX + G.SAUCE);
+  g.reach(BTN.PLUS + G.FLOUR);
+  g.tapR(BTN.PLUS + G.FLOUR); g.tapR(BTN.PLUS + G.FLOUR);
+  g.tapR(BTN.NEXT); g.tapR(BTN.TAG + 0); g.tapR(BTN.NEXT);
+  const L = g.labels(), rows = g.btns().filter((b) => b.code === 0x2FF).map((b) => b.label);
+  assert.deepEqual(rows, ['2 FLOUR', '4 SAUCE'], 'a card per good on the truck');
+  assert.ok(L.includes('CONTRACT'), JSON.stringify(L));
+  assert.ok(L.includes(`$${g.ex.quote(2, G.FLOUR, 2)}`), JSON.stringify(L));
+  assert.ok(L.includes('CONTRACT PAYS $540 (INSTEAD OF MARKET)'), JSON.stringify(L));
+  g.key(KEY.ESC); g.key(KEY.ESC);
+  g.frame();
+  assert.ok(g.labels().includes('2 OF 6'), JSON.stringify(g.labels()));
+});
+
+test('V1 the Prices tab explains the red "-n%" saturation tags', async () => {
+  const g = await uiGame(360, 640, 200, { setup: (ex) => ex.t_set_sat(1, 5, 7600) });
+  g.tabTo(2);
+  assert.ok(g.labels().includes('-% = PRICE DROP FROM SELLING'), JSON.stringify(g.labels()));
 });

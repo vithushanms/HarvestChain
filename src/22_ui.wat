@@ -72,6 +72,7 @@
 (global $ann_p (mut i32) (i32.const 0x8E00))
 (global $ann_len (mut i32) (i32.const 0))
 (global $btn_n (mut i32) (i32.const 0))
+(global $flip (mut i32) (i32.const 0))         ;; $ui_icon draws glyphs mirrored
 (global $sbp (mut i32) (i32.const 0x8C00))
 (global $sb0 (mut i32) (i32.const 0x8C00))
 (global $sblim (mut i32) (i32.const 55))       ;; builder capacity in chars (27 for draw-list fields)
@@ -213,7 +214,8 @@
     (local.set $v (i32.and (i32.shr_u (i32.load8_u (i32.add (local.get $p) (i32.shr_u (local.get $n) (i32.const 2))))
                                       (i32.shl (i32.and (local.get $n) (i32.const 3)) (i32.const 1))) (i32.const 3)))
     (if (local.get $v) (then
-      (call $rect (i32.add (local.get $x) (i32.mul (i32.rem_u (local.get $n) (i32.const 9)) (local.get $s)))
+      (local.set $m (i32.rem_u (local.get $n) (i32.const 9)))
+      (call $rect (i32.add (local.get $x) (i32.mul (select (i32.sub (i32.const 8) (local.get $m)) (local.get $m) (global.get $flip)) (local.get $s)))
                   (i32.add (local.get $y) (i32.mul (i32.div_u (local.get $n) (i32.const 9)) (local.get $s)))
                   (local.get $s) (local.get $s)
                   (call $pal (i32.load8_u (i32.add (i32.add (local.get $p) (i32.const 20)) (local.get $v)))))))
@@ -627,9 +629,9 @@
   (if (i32.ne (call $lget (global.get $L_MODE)) (i32.const 2)) (then (global.set $hover_tile (i32.const -1))))
   (global.set $btn_n (i32.const 0))
   (global.set $lab_p (i32.const 0xA100))
-  ;; placement mode: the empty owned plots glow (pulsing unless reduced motion)
-  (global.set $place_hi (i32.and (i32.ne (global.get $place) (i32.const 0))
-    (i32.or (global.get $flag_reduced) (i32.and (i32.shr_u (global.get $now) (i32.const 9)) (i32.const 1)))))
+  ;; placement mode: free plots tinted, their outline pulsing unless reduced motion
+  (global.set $place_hi (select (i32.or (i32.const 1) (i32.shl (i32.or (global.get $flag_reduced) (i32.and (i32.shr_u (global.get $now) (i32.const 9)) (i32.const 1))) (i32.const 1)))
+    (i32.const 0) (global.get $place)))
   (call $scene_time (global.get $now))
   (call $scene_draw)
   (global.set $tscale (call $ui_ts))

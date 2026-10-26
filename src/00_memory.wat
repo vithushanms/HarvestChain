@@ -3,7 +3,7 @@
 ;;                   demo strings 0x400 (see 02_data.wat), iso face table 0x600 (36 B, 21b_iso.wat),
 ;;                   UI icons 0x640 (28 x 24 B, generated, 02b_strings.wat), UI tables 0x900-0x936
 ;;                   (button styles, season icons, toast colours, tab icons, badge colours: 22_ui.wat / 22a_farm.wat),
-;;                   0x937-0x939 truck upgrade cost columns, 0x948-0x954 good -> icon (22b_tabs.wat);
+;;                   0x937-0x939 truck upgrade cost columns, 0x93A-0x93C route stop models, 0x948-0x954 good -> icon (22b_tabs.wat);
 ;;                   0x955-0xFFF free
 ;;            0x6800-0x70F7 scene model table (generated, 21c_scene.wat; size in its footer),
 ;;            0x7600-0x76C7 scene look / prop tables (21c_scene.wat), 0x7700.. UI string table

@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 219 strings, 2008 B at 0x7700 (budget 2560 B)
+;; string table: 221 strings, 2054 B at 0x7700 (budget 2560 B)
 (data (i32.const 0x7700)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -209,30 +209,32 @@
   "WRONG MARKET\00" ;; 194
   "ON ANOTHER TRUCK\00" ;; 195
   "EST. SALES \00" ;; 196
-  "CONTRACT +\00" ;; 197
-  "FUEL \00" ;; 198
-  " SPOIL ON THE WAY\00" ;; 199
-  "LOAD \00" ;; 200
-  "LOAD SOME GOODS\00" ;; 201
-  "TAP AN EMPTY PLOT FOR \00" ;; 202
-  "CANCEL\00" ;; 203
-  "LAND\00" ;; 204
-  "LOAN\00" ;; 205
-  "OWED \00" ;; 206
-  "TAKE \00" ;; 207
-  "REPAY \00" ;; 208
-  "ONE LOAN AT A TIME\00" ;; 209
-  "NOTHING OWED\00" ;; 210
-  "INTEREST IS PAID FIRST\00" ;; 211
-  "BORROWED \00" ;; 212
-  "REPAID \00" ;; 213
-  " OWNED\00" ;; 214
-  "UP TO \00" ;; 215
-  " OF \00" ;; 216
-  "TOO MANY KINDS\00" ;; 217
-  "NEEDS ANOTHER GARAGE\00" ;; 218
+  " PAYS \00" ;; 197
+  " (INSTEAD OF MARKET)\00" ;; 198
+  "FUEL \00" ;; 199
+  " SPOIL ON THE WAY\00" ;; 200
+  "LOAD \00" ;; 201
+  "LOAD SOME GOODS\00" ;; 202
+  "TAP AN EMPTY PLOT FOR \00" ;; 203
+  "CANCEL\00" ;; 204
+  "LAND\00" ;; 205
+  "LOAN\00" ;; 206
+  "OWED \00" ;; 207
+  "TAKE \00" ;; 208
+  "REPAY \00" ;; 209
+  "ONE LOAN AT A TIME\00" ;; 210
+  "NOTHING OWED\00" ;; 211
+  "INTEREST IS PAID FIRST\00" ;; 212
+  "BORROWED \00" ;; 213
+  "REPAID \00" ;; 214
+  " OWNED\00" ;; 215
+  "UP TO \00" ;; 216
+  " OF \00" ;; 217
+  "TOO MANY KINDS\00" ;; 218
+  "NEEDS ANOTHER GARAGE\00" ;; 219
+  "-% = PRICE DROP FROM SELLING\00" ;; 220
 )
-(global $STR_COUNT i32 (i32.const 219))
+(global $STR_COUNT i32 (i32.const 221))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -350,28 +352,30 @@
 (global $STR_WRONG_MKT i32 (i32.const 194))
 (global $STR_TAKEN i32 (i32.const 195))
 (global $STR_EST i32 (i32.const 196))
-(global $STR_CON_PLUS i32 (i32.const 197))
-(global $STR_FUEL i32 (i32.const 198))
-(global $STR_SPOIL i32 (i32.const 199))
-(global $STR_LOAD i32 (i32.const 200))
-(global $STR_EMPTY_T i32 (i32.const 201))
-(global $STR_PLACE i32 (i32.const 202))
-(global $STR_CANCEL i32 (i32.const 203))
-(global $STR_LAND i32 (i32.const 204))
-(global $STR_LOAN i32 (i32.const 205))
-(global $STR_OWED i32 (i32.const 206))
-(global $STR_TAKE i32 (i32.const 207))
-(global $STR_REPAY i32 (i32.const 208))
-(global $STR_ONE_LOAN i32 (i32.const 209))
-(global $STR_NOTHING_OWED i32 (i32.const 210))
-(global $STR_FIRST i32 (i32.const 211))
-(global $STR_BORROWED i32 (i32.const 212))
-(global $STR_REPAID i32 (i32.const 213))
-(global $STR_OWNED i32 (i32.const 214))
-(global $STR_UP_TO i32 (i32.const 215))
-(global $STR_OF i32 (i32.const 216))
-(global $STR_KINDS i32 (i32.const 217))
-(global $STR_ANOTHER i32 (i32.const 218))
+(global $STR_PAYS i32 (i32.const 197))
+(global $STR_INSTEAD i32 (i32.const 198))
+(global $STR_FUEL i32 (i32.const 199))
+(global $STR_SPOIL i32 (i32.const 200))
+(global $STR_LOAD i32 (i32.const 201))
+(global $STR_EMPTY_T i32 (i32.const 202))
+(global $STR_PLACE i32 (i32.const 203))
+(global $STR_CANCEL i32 (i32.const 204))
+(global $STR_LAND i32 (i32.const 205))
+(global $STR_LOAN i32 (i32.const 206))
+(global $STR_OWED i32 (i32.const 207))
+(global $STR_TAKE i32 (i32.const 208))
+(global $STR_REPAY i32 (i32.const 209))
+(global $STR_ONE_LOAN i32 (i32.const 210))
+(global $STR_NOTHING_OWED i32 (i32.const 211))
+(global $STR_FIRST i32 (i32.const 212))
+(global $STR_BORROWED i32 (i32.const 213))
+(global $STR_REPAID i32 (i32.const 214))
+(global $STR_OWNED i32 (i32.const 215))
+(global $STR_UP_TO i32 (i32.const 216))
+(global $STR_OF i32 (i32.const 217))
+(global $STR_KINDS i32 (i32.const 218))
+(global $STR_ANOTHER i32 (i32.const 219))
+(global $STR_LEGEND i32 (i32.const 220))
 ;; icons: 28 x 24 B at 0x640
 (data (i32.const 0x640)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN

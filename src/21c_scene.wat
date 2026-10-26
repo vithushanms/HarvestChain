@@ -30,7 +30,7 @@
 (global $flag_reduced (mut i32) (i32.const 0))
 (global $sel_tile (mut i32) (i32.const -1))
 (global $hover_tile (mut i32) (i32.const -1))
-(global $place_hi (mut i32) (i32.const 0))      ;; UI placement mode: empty owned plots glow
+(global $place_hi (mut i32) (i32.const 0))      ;; UI placement mode: b0 on (empty owned plots tinted green, used ones dimmed), b1 outline pulse
 (global $vp_x (mut i32) (i32.const 0))
 (global $vp_y (mut i32) (i32.const 0))
 (global $vp_w (mut i32) (i32.const 0))
@@ -796,7 +796,7 @@
 
 (func $ground (param $i i32)
   (local $wx i32) (local $wy i32) (local $p i32) (local $own i32) (local $n i32) (local $row i32)
-  (local $c i32) (local $k i32) (local $q i32) (local $dk i32) (local $lt i32) (local $bed i32) (local $glow i32)
+  (local $c i32) (local $k i32) (local $q i32) (local $dk i32) (local $lt i32) (local $bed i32) (local $glow i32) (local $pl i32)
   (local.set $wx (i32.shl (i32.and (local.get $i) (i32.const 7)) (i32.const 4)))
   (local.set $wy (i32.shl (i32.shr_u (local.get $i) (i32.const 3)) (i32.const 4)))
   (local.set $p (call $tile_ptr (local.get $i)))
@@ -819,8 +819,10 @@
       (global.set $dlev (i32.add (i32.const 3) (i32.and (i32.shr_u (local.get $n) (i32.const 4)) (i32.const 3))))
       (if (i32.eq (global.get $sc_wx) (i32.const 4)) (then (global.set $dlev (i32.const 2))))))   ;; frost: sparse rime
   (call $iso_quad (local.get $wx) (local.get $wy) (i32.const 0) (i32.const 16) (i32.const 16) (local.get $c))
-  (local.set $glow (i32.or (i32.or (i32.eq (local.get $i) (global.get $sel_tile)) (i32.eq (local.get $i) (global.get $hover_tile)))
-    (i32.and (global.get $place_hi) (i32.and (local.get $own) (i32.eqz (i32.load8_u (local.get $p)))))))
+  (local.set $glow (i32.or (i32.eq (local.get $i) (global.get $sel_tile)) (i32.eq (local.get $i) (global.get $hover_tile))))
+  ;; placement: 1 = a free plot (soft green), 2 = a used one (dimmed)
+  (local.set $pl (select (i32.add (i32.const 1) (i32.ne (i32.load8_u (local.get $p)) (i32.const 0))) (i32.const 0)
+    (i32.and (global.get $place_hi) (local.get $own))))
   (if (local.get $bed) (then
     ;; tilled bed inset one unit, three furrow ridges (lit crest + shaded trough)
     (local.set $k (select (global.get $H_SOIL) (global.get $H_TILLED) (i32.eq (global.get $sc_wx) (i32.const 2))))
@@ -845,8 +847,9 @@
       (call $pline (call $iso_pk (i32.add (local.get $wx) (i32.const 9)) (i32.add (local.get $wy) (i32.const 8)) (i32.const 0))
                    (call $iso_pk (i32.add (local.get $wx) (i32.const 12)) (i32.add (local.get $wy) (i32.const 13)) (i32.const 0)) (local.get $dk))))))
   (global.set $pmode (i32.const 1))
-  (if (local.get $glow) (then (call $iso_quad (local.get $wx) (local.get $wy) (i32.const 0) (i32.const 16) (i32.const 16)
-    (call $hc (select (global.get $H_WHEAT) (global.get $H_PAPER) (i32.eq (local.get $i) (global.get $sel_tile))) (i32.const 3)))))
+  (if (i32.or (local.get $glow) (local.get $pl)) (then (call $iso_quad (local.get $wx) (local.get $wy) (i32.const 0) (i32.const 16) (i32.const 16)
+    (select (call $hc (global.get $H_INK) (i32.const 0)) (call $hc (select (select (global.get $H_WHEAT) (global.get $H_PAPER) (i32.eq (local.get $i) (global.get $sel_tile)))
+      (global.get $H_CORN) (i32.eqz (local.get $pl))) (i32.const 3)) (i32.eq (local.get $pl) (i32.const 2))))))
   (global.set $pmode (i32.const 0))
   (if (i32.eqz (local.get $bed)) (then
     ;; tufts (wild), flowers in spring
@@ -1207,6 +1210,12 @@
   (call $props_front)
   (call $particles (local.get $L))
   (call $hilite (global.get $hover_tile) (i32.const 0))
+  ;; placement: free plots get a pulsing outline (steady under reduced motion)
+  (local.set $i (i32.const 0))
+  (loop $o
+    (if (i32.and (i32.and (global.get $place_hi) (i32.const 2)) (i32.and (call $in_grid (local.get $i)) (i32.eqz (i32.load8_u (call $tile_ptr (local.get $i))))))
+      (then (call $hilite (local.get $i) (i32.const 0))))
+    (br_if $o (i32.lt_u (local.tee $i (i32.add (local.get $i) (i32.const 1))) (i32.const 64))))
   (call $hilite (global.get $sel_tile) (i32.const 1))
   (call $badges)
   (global.set $tint_a (i32.const 0))

@@ -142,7 +142,8 @@ export const STRINGS = [
   ['WRONG_MKT', 'WRONG MARKET'],
   ['TAKEN', 'ON ANOTHER TRUCK'],
   ['EST', 'EST. SALES '],
-  ['CON_PLUS', 'CONTRACT +'],
+  ['PAYS', ' PAYS '],
+  ['INSTEAD', ' (INSTEAD OF MARKET)'],
   ['FUEL', 'FUEL '],
   ['SPOIL', ' SPOIL ON THE WAY'],
   ['LOAD', 'LOAD '],
@@ -165,6 +166,7 @@ export const STRINGS = [
   ['OF', ' OF '],
   ['KINDS', 'TOO MANY KINDS'],
   ['ANOTHER', 'NEEDS ANOTHER GARAGE'],
+  ['LEGEND', '-% = PRICE DROP FROM SELLING'],
 ];
 
 // Icons: name, [c1, c2, c3] palette indices (hue*4 + step), 9 rows of 9 chars ('.' = clear).
