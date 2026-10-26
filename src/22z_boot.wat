@@ -22,3 +22,18 @@
   (call $set_flags
     (select (local.get $b) (global.get $flag_reduced) (i32.eq (local.get $bit) (i32.const 1)))
     (select (local.get $b) (global.get $flag_large) (i32.eqz (local.get $bit)))))
+
+;; Test hook (stripped from the shipping build): t_hit(code, k) = field k (0 x, 1 y, 2 w, 3 h; logical
+;; framebuffer px) of the topmost hit region with that code, or -1. Lets the e2e specs derive tap
+;; targets from the module instead of hard-coding coordinates.
+(func $t_hit (param $code i32) (param $k i32) (result i32)
+  (local $n i32) (local $p i32)
+  (local.set $n (call $hit_n))
+  (loop $l
+    (if (local.get $n) (then
+      (local.set $n (i32.sub (local.get $n) (i32.const 1)))
+      (local.set $p (i32.add (i32.add (global.get $R_LAYOUT) (global.get $L_HIT)) (i32.mul (local.get $n) (i32.const 20))))
+      (if (i32.eq (i32.load offset=16 (local.get $p)) (local.get $code))
+        (then (return (i32.load (i32.add (local.get $p) (i32.shl (local.get $k) (i32.const 2)))))))
+      (br $l))))
+  (i32.const -1))

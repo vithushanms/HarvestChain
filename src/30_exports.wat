@@ -139,6 +139,7 @@
 (export "ui_boot"     (func $ui_boot))
 (export "get_flags"   (func $get_flags))
 (export "set_pref"    (func $set_pref))
+(export "t_hit"       (func $t_hit))
 (export "t_ui"         (func $t_ui))
 (export "t_ui_btn"     (func $t_ui_btn))
 (export "t_ui_toast"   (func $t_ui_toast))
