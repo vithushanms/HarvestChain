@@ -80,8 +80,9 @@
 (func $fresh (param $seed i32)
   (call $ui_new_game (local.get $seed))
   (global.set $has_save (i32.const 1))
-  ;; the guided first days (22d_onboard.wat) start with every new game until done or skipped
-  (if (i32.eqz (global.get $tut_done)) (then (call $tut_go (i32.const 1)))))
+  ;; the guided first days (22d_onboard.wat) start with every new game until done or skipped; once
+  ;; done, an ALL SET card left open does not follow into the new game
+  (if (i32.eqz (global.get $tut_done)) (then (call $tut_go (i32.const 1))) (else (global.set $tut (i32.const 0)))))
 (func $next_seed (result i32)
   (local $s i32)
   (local.set $s (call $lget (global.get $L_SEED)))

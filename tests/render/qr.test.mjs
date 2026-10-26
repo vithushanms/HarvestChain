@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import jsQR from 'jsqr';
-import { loadGame } from '../helpers.mjs';
+import { loadGame, mergeGolden } from '../helpers.mjs';
 import { generate, extract, QR_FILE, QR_MASK } from '../../tools/gen-qr.mjs';
 
 const GOLDEN = 'tests/render/golden-render.json';
@@ -275,10 +275,7 @@ test('deterministic: identical input gives an identical matrix; goldens for 3 fi
     assert.deepEqual(matrix(g), a, `${k} repeatable`);
     hashes[k] = createHash('sha256').update(Uint8Array.from(a.flat())).digest('hex');
   }
-  if (process.env.UPDATE_GOLDEN === '1') {
-    const old = existsSync(GOLDEN) ? JSON.parse(readFileSync(GOLDEN, 'utf8')) : {};
-    writeFileSync(GOLDEN, JSON.stringify({ ...old, ...hashes }, null, 2) + '\n');
-  }
+  if (process.env.UPDATE_GOLDEN === '1') mergeGolden(GOLDEN, hashes);
   const gold = JSON.parse(readFileSync(GOLDEN, 'utf8'));
   for (const [k, v] of Object.entries(hashes)) assert.equal(v, gold[k], `golden ${k} (UPDATE_GOLDEN=1 after a deliberate change)`);
 });

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadGame, readState } from '../helpers.mjs';
+import { loadGame, readState, mergeGolden } from '../helpers.mjs';
 import { SCENES, sceneGame, drawScene, farm, CROP, BLD, W, GROW } from './scenes.mjs';
 import { generate as genModels, extract as extractModels } from '../../tools/gen-models.mjs';
 
@@ -38,10 +38,7 @@ test('scene goldens: >= 8 canned scenes at 360x640 and 1280x800', async () => {
     hashes[`${name}-${g.ex.fb_w()}x${g.ex.fb_h()}`] = fbHash(g);
   }
   assert.ok(Object.keys(hashes).length >= 16);
-  if (process.env.UPDATE_GOLDEN === '1') {
-    const old = existsSync(GOLDEN) ? JSON.parse(readFileSync(GOLDEN, 'utf8')) : {};
-    writeFileSync(GOLDEN, JSON.stringify({ ...old, ...hashes }, null, 2) + '\n');
-  }
+  if (process.env.UPDATE_GOLDEN === '1') mergeGolden(GOLDEN, hashes);
   assert.ok(existsSync(GOLDEN), `${GOLDEN} is missing: run with UPDATE_GOLDEN=1 to create it, then review and commit`);
   const gold = JSON.parse(readFileSync(GOLDEN, 'utf8'));
   for (const [k, v] of Object.entries(hashes)) assert.equal(v, gold[k], `golden ${k} (UPDATE_GOLDEN=1 after a deliberate art change)`);

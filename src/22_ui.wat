@@ -725,7 +725,7 @@
   (global.set $arm (i32.const 0)) (global.set $in_st (i32.const 0)) (global.set $press (i32.const 0)) (global.set $keys (i32.const 0))
   (global.set $slide_t (i32.const -2)) (global.set $shake_t (i32.const -2))
   (memory.fill (global.get $TOASTS) (i32.const 0) (i32.const 192))
-  (global.set $tab (i32.const 0)) (global.set $msub (i32.const 0)) (global.set $place (i32.const 0)) (global.set $dsp (i32.const -1))
+  (global.set $tab (i32.const 0)) (global.set $msub (i32.const 0)) (global.set $place (i32.const 0)) (global.set $place_hi (i32.const 0)) (global.set $dsp (i32.const -1))
   (call $qreset)
   (global.set $scr (i32.const 0)) (global.set $scr_ret (i32.const 0)) (i32.store8 (global.get $SUMMARY) (i32.const 0))
   (call $layout_panel (i32.const 0))

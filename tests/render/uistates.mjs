@@ -29,8 +29,10 @@ export const UI = { SEL: 0, SHEET: 1, PICK: 2, SCROLL: 3, SCROLL_MAX: 4, HOVER: 
 const LABELS = 0xA100;   // text of every $ui_label drawn last frame, NUL-separated (22_ui.wat)
 const R_HIT = 0x8200;
 
-export async function uiGame(w = 360, h = 640, dpr = 200, o = {}) {
-  const g = await loadGame();
+// g0: reuse an existing instance (a "dirty" memory: the determinism battery renders states in one
+// instance after other states); its UI is reset the way a real NEW GAME does.
+export async function uiGame(w = 360, h = 640, dpr = 200, o = {}, g0 = null) {
+  const g = g0 ?? await loadGame();
   const ex = g.ex;
   ex.t_lab_on(1);
   ex.resize(w, h, dpr);
@@ -268,9 +270,9 @@ for (const [name, s] of UI_STATE_LIST) {
 }
 
 // Build a UI state at a size and return the game handle with a freshly drawn frame.
-export async function uiState(name, w = 360, h = 640, dpr = 200) {
+export async function uiState(name, w = 360, h = 640, dpr = 200, g0 = null) {
   const s = UI_STATES[name];
-  const g = await uiGame(w, h, dpr, s.o);
+  const g = await uiGame(w, h, dpr, s.o, g0);
   g.frame();
   s.run(g);
   g.ex.set_flags(1, s.o.large ? 1 : 0);   // freeze ambient motion (scene time 0) for a stable image

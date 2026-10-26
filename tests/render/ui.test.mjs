@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { STATE, readState } from '../helpers.mjs';
+import { STATE, readState, mergeGolden } from '../helpers.mjs';
 import { farm, CROP, BLD } from './scenes.mjs';
 import { uiGame, uiState, UI_STATES, UI_STATE_LIST, HIT, BTN, KEY, UI } from './uistates.mjs';
 import { generate as genStrings, strBytes, FILE as STR_FILE } from '../../tools/gen-strings.mjs';
@@ -468,9 +468,6 @@ test('UI golden render hashes', async () => {
     const fb = g.mem().slice(g.ex.fb_ptr(), g.ex.fb_ptr() + g.ex.fb_w() * g.ex.fb_h() * 4);
     got[`${name}-${w}x${h}`] = createHash('sha256').update(fb).digest('hex');
   }
-  if (process.env.UPDATE_GOLDEN) {
-    writeFileSync(GOLD, JSON.stringify({ ...gold, ...got }, null, 2) + '\n');
-    return;
-  }
+  if (process.env.UPDATE_GOLDEN === '1') { mergeGolden(GOLD, got); return; }
   for (const [k, v] of Object.entries(got)) assert.equal(v, gold[k], `${k} changed (UPDATE_GOLDEN=1 after review)`);
 });

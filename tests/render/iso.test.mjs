@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadGame } from '../helpers.mjs';
+import { loadGame, mergeGolden } from '../helpers.mjs';
 import { palette } from '../../tools/gen-palette.mjs';
 
 const R_FB = 0x18000;
@@ -242,10 +242,7 @@ test('iso demo: never touches sim state or the RNG; framebuffer hash stable and 
     assert.ok(seen.size > 30, `distinct colours ${seen.size}`);
     hashes[`iso-${w}x${h}`] = a;
   }
-  if (process.env.UPDATE_GOLDEN === '1') {
-    const old = existsSync(GOLDEN) ? JSON.parse(readFileSync(GOLDEN, 'utf8')) : {};
-    writeFileSync(GOLDEN, JSON.stringify({ ...old, ...hashes }, null, 2) + '\n');
-  }
+  if (process.env.UPDATE_GOLDEN === '1') mergeGolden(GOLDEN, hashes);
   assert.ok(existsSync(GOLDEN), `${GOLDEN} is missing: run with UPDATE_GOLDEN=1 to create it, then review and commit`);
   const gold = JSON.parse(readFileSync(GOLDEN, 'utf8'));
   for (const k of Object.keys(hashes)) assert.equal(hashes[k], gold[k], k);

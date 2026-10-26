@@ -482,3 +482,16 @@ test('merge 7c: set_now-stamped taps drive the tutorial; the overlay keeps the c
   assert.equal(g.tut(TUT.DONE), 1);
   assert.deepEqual(simBytes(g), before);
 });
+
+test('ALL SET left open, then a NEW GAME (a shared link opens the Title): the card does not come back (done)', async () => {
+  const g = await tutGame();
+  g.ex.set_pref(4, 7); g.settle();
+  assert.equal(g.tut(TUT.STEP), 7);
+  assert.equal(g.tut(TUT.DONE), 1);
+  assert.equal(g.load(CODES.BOT40), 0); g.settle();
+  assert.equal(g.ui(UI.SCR), SCR.TITLE);
+  g.tap(OVL.NEW); g.t += 500; g.tap(OVL.NEW); g.settle();
+  assert.equal(g.ui(UI.SCR), SCR.FARM);
+  assert.equal(g.tut(TUT.STEP), 0);
+  assert.equal(g.hit(TB.SKIP), undefined);
+});
