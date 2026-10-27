@@ -27,7 +27,7 @@ test('index.html makes no external requests', () => {
 
 test('index.html wires the loader responsibilities', () => {
   for (const needle of ['game.wasm', 'instantiateStreaming', 'hc.save', 'hc.prefs', 'serviceWorker', 'putImageData',
-    'aria-live', 'visibilitychange', 'getRandomValues', 'ui_boot', 'set_pref', 'replay_load', 'replay_restore', 'set_origin', 'want_copy', 'ack_copy', 'share_url_ptr', 'hc.log', 'onpaste', 'replaceState', 'image-rendering:pixelated', 'touch-action:none', 'set_metrics', 'cur_day', 'getEntriesByType?.', 'transferSize', 'set_now']) {
+    'aria-live', 'visibilitychange', 'getRandomValues', 'ui_boot', 'set_pref', 'replay_load', 'replay_restore', 'set_origin', 'want_copy', 'ack_copy', 'want_open', 'open_ptr', 'share_url_ptr', 'hc.log', 'onpaste', 'replaceState', 'image-rendering:pixelated', 'touch-action:none', 'set_metrics', 'cur_day', 'getEntriesByType?.', 'transferSize', 'set_now']) {
     assert.ok(html.includes(needle), `index.html lacks ${needle}`);
   }
   assert.ok(!html.includes('%'.concat('BG%')) && !html.includes('/*KEYS*/'), 'unreplaced build placeholder');

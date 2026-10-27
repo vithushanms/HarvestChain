@@ -20,7 +20,7 @@
 ;; Hit codes (panel range): 0x3C0 CONTINUE 0x3C1 NEW GAME 0x3C2 DAILY SEED 0x3C3 HOW TO PLAY
 ;;   0x3C4 LARGE TEXT 0x3C5 AUTO GAZETTE / DON'T SHOW 0x3C6 JOURNAL 0x3C7 START DAY (back)
 ;;   0x3C8 COPY CODE (share slot, 24_replay.wat; 0x3D0.. replay codes there) 0x3C9 CONTINUE IN ENDLESS 0x3CA TRY AGAIN
-;;   0x3CB BACK (page) 0x3CC NEXT / DONE 0x3CD RESULTS (from the Journal); 0x2FF inert milestone rows.
+;;   0x3CB BACK (page) 0x3CC NEXT / DONE 0x3CD RESULTS (from the Journal); 0x3DF READ ABOUT THIS GAME, 0x3E0 GITHUB (Title); 0x2FF inert milestone rows.
 ;; R_LAYOUT: 0xAA00..0xAA3F last End Day summary, 0xAA40..0xAC3F announce / summary text builder (512 B).
 ;; Announcements: "TITLE. <label lines>, <button labels>", toggles with " ON" / " OFF", the font's
 ;; star / arrow glyphs as words and the '^' middle dot as a comma; the Journal says "n OF 7 DONE"
@@ -37,6 +37,7 @@
 (global $nest (mut i32) (i32.const 0))
 (global $oh_icon (mut i32) (i32.const 0))      ;; card header icon / title ($ovl_head)
 (global $oh_title (mut i32) (i32.const 0))
+(global $open_req (mut i32) (i32.const 0))     ;; 1 blog, 2 repo: the loader opens the link (want_open / ack_open)
 (global $rp_top (mut i32) (i32.const 0))       ;; replay viewer card top (the farm fits above it)
 (global $ANNBUF i32 (i32.const 0xAA40))
 (global $SUMMARY i32 (i32.const 0xAA00))
@@ -96,6 +97,9 @@
 ;; Overlay buttons (and the Build tab's JOURNAL). Only Gazette / Journal / How to play close.
 (func $ovl_tap (param $c i32)
   (if (i32.eq (local.get $c) (global.get $HIT_CLOSE)) (then (call $back) (return)))
+  ;; Title reference links: the loader opens them (want_open)
+  (if (i32.or (i32.eq (local.get $c) (i32.const 0x3DF)) (i32.eq (local.get $c) (i32.const 0x3E0))) (then
+    (global.set $open_req (i32.sub (local.get $c) (i32.const 0x3DE))) (return)))
   ;; share / replay codes (24_replay.wat)
   (if (i32.or (i32.eq (local.get $c) (i32.const 0x3C8)) (i32.ge_u (local.get $c) (i32.const 0x3D0))) (then (call $rp_tap (local.get $c)) (return)))
   (global.set $dirty (i32.const 1))
@@ -478,10 +482,19 @@
 ;; Title: the lit farm under a warm dim, extruded HARVESTCHAIN lettering, tagline, the button stack,
 ;; the zero-asset footer and the load line (Task 7 metrics; "--" until measured).
 ;; Top of the Title's button stack (c pair-row columns) above the 26 px footer; the farm fits above.
+;; Columns of the two link buttons: side by side only when READ ABOUT THIS GAME fits a half column at
+;; scale 1 (icon and padding included), else one per line.
+(func $lcols (result i32)
+  (local $t i32) (local $w i32)
+  (local.set $t (global.get $tscale)) (global.set $tscale (i32.const 1))
+  (local.set $w (i32.add (call $tw (call $str (global.get $STR_READ_ABOUT))) (i32.add (i32.const 9) (i32.shl (global.get $lgap) (i32.const 2)))))
+  (global.set $tscale (local.get $t))
+  (select (i32.const 2) (i32.const 1)
+    (i32.ge_s (i32.shr_s (i32.sub (global.get $uw) (global.get $lgap)) (i32.const 1)) (local.get $w))))
 ;; Rows: CONTINUE (with a save), NEW GAME, DAILY SEED, then HOW TO PLAY | JOURNAL and the two
 ;; toggles: 2 rows side by side, or 4 rows one per line.
 (func $stack_top (param $c i32) (result i32)
-  (i32.sub (i32.sub (global.get $fb_h) (i32.add (i32.mul (i32.sub (i32.add (i32.add (global.get $has_save) (global.get $rp_pend)) (i32.const 8)) (i32.shl (local.get $c) (i32.const 1)))
+  (i32.sub (i32.sub (global.get $fb_h) (i32.add (i32.mul (i32.sub (i32.add (i32.add (global.get $has_save) (global.get $rp_pend)) (i32.add (i32.const 8) (i32.sub (i32.const 3) (call $lcols)))) (i32.shl (local.get $c) (i32.const 1)))
     (i32.add (call $btnh) (global.get $lgap))) (i32.const 26)))
     (i32.shl (global.get $lgap) (i32.const 1))))
 ;; Pair-row columns: one per line only in large text when the large labels would not fit side by
@@ -554,6 +567,11 @@
   (call $put (i32.const 0x3C6) (call $str (i32.add (global.get $STR_SCR) (i32.const 2))) (global.get $I_BOOK) (i32.const 0) (i32.const 1) (local.get $p) (local.get $bh))
   (call $toggle (i32.const 0x3C4) (global.get $STR_LARGE) (local.get $d) (local.get $p) (local.get $bh))
   (call $toggle (i32.const 0x3C5) (global.get $STR_AUTO_GAZ) (i32.eqz (global.get $flag_gazoff)) (local.get $p) (local.get $bh))
+  ;; the reference links: at the small scale, so READ ABOUT THIS GAME fits (never mixed with large text)
+  (global.set $flag_large (i32.const 0))
+  (local.set $p (call $lcols))
+  (call $put (i32.const 0x3DF) (call $str (global.get $STR_READ_ABOUT)) (global.get $I_BOOK) (i32.const 0) (i32.const 1) (local.get $p) (local.get $bh))
+  (call $put (i32.const 0x3E0) (call $str (global.get $STR_GITHUB)) (global.get $I_ARROW_R) (i32.const 0) (i32.const 1) (local.get $p) (local.get $bh))
   (global.set $flag_large (local.get $d))
   ;; footer: zero asset files, load time and transfer size
   (global.set $tscale (i32.const 1))
@@ -626,3 +644,12 @@
         (else (call $sc (local.get $c))))))
     (local.set $p (i32.add (local.get $p) (i32.const 1)))
     (br $l))))
+
+;; The loader opens the Title's reference link (1 blog, 2 repo) in the tap's gesture, then acks.
+;; The two link URLs live at 0x640 (blog, 84 B) and 0x6A0 (repo, 50 B); open_ptr / open_len describe the pending one.
+(data (i32.const 0x640) "https://vithushansylvester.com/writing/what-is-left-when-the-programmer-is-not-human")
+(data (i32.const 0x6A0) "https://github.com/vithushanms/HarvestChain#readme")
+(func $open_ptr (result i32) (select (i32.const 0x640) (i32.const 0x6A0) (i32.eq (global.get $open_req) (i32.const 1))))
+(func $open_len (result i32) (select (i32.const 84) (i32.const 50) (i32.eq (global.get $open_req) (i32.const 1))))
+(func $want_open (result i32) (global.get $open_req))
+(func $ack_open (global.set $open_req (i32.const 0)))

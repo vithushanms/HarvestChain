@@ -98,7 +98,7 @@ test('random walk (5k steps of Esc / Enter / J / taps): <= 4 Esc always reach a 
 test('toggles announce their state: on tap and in the screen announcement', async () => {
   const g = await uiGame(360, 640, 200, { boot: 0 });
   g.frame();
-  assert.match(g.announce(), /LARGE TEXT OFF, AUTO GAZETTE OFF$/);
+  assert.match(g.announce(), /LARGE TEXT OFF, AUTO GAZETTE OFF, READ ABOUT THIS GAME, GITHUB$/);
   g.tap(OVL.LARGE);
   assert.equal(g.announce(), 'LARGE TEXT ON');
   g.tap(OVL.LARGE);
@@ -116,7 +116,7 @@ test('toggles announce their state: on tap and in the screen announcement', asyn
 
 test('screen announcements: exact text, no glyph codes, summary first, nothing cut off', async () => {
   const t = await state('ui-title');
-  assert.equal(t.announce(), 'HARVESTCHAIN. NEW GAME, DAILY SEED #20387, HOW TO PLAY, JOURNAL, LARGE TEXT OFF, AUTO GAZETTE OFF');
+  assert.equal(t.announce(), 'HARVESTCHAIN. NEW GAME, DAILY SEED #20387, HOW TO PLAY, JOURNAL, LARGE TEXT OFF, AUTO GAZETTE OFF, READ ABOUT THIS GAME, GITHUB');
   const r = await state('ui-results');
   assert.equal(r.announce(), 'YEAR 3 COMPLETE. DAY 240 OF 240, NET WORTH $17,801, REPUTATION 21 X 100 = 2,100, CONTRACTS 22 X 50 = 1,100, '
     + 'SOLD 14 WINE, SCORE 21,001, HARVESTCHAIN DAY 240, SCORE 21,001, STAR 4, 22 CONTRACTS, SHARE CODE READY: 12 CHARS, 1 DAY, LOADED IN -- MS, -- KB, COPY CODE, WATCH REPLAY, CONTINUE IN ENDLESS, NEW GAME, JOURNAL');
@@ -187,7 +187,7 @@ test('pointer type 3 cancels a press on a button, a plot and a sheet drag: no ta
 // ---------------------------------------------------------------- M2 Title large text
 
 test('Title in large text on a phone: the pair rows stack one per line (full width); side by side otherwise', async () => {
-  for (const [w, h, d, large, save, stacked] of [[360, 640, 200, true, 1, true], [320, 568, 200, true, 1, true], [360, 640, 200, false, 1, false],
+  for (const [w, h, d, large, save, stacked] of [[360, 640, 200, true, 1, true], [320, 568, 200, true, 1, false], [360, 640, 200, false, 1, false],
     [1280, 800, 100, false, 0, false], [1024, 600, 100, true, 1, false]]) {
     const g = await uiGame(w, h, d, { boot: save, large });
     g.frame();

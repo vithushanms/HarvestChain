@@ -182,6 +182,13 @@ function copy() {
   ex.ack_copy(0);
   try { navigator.clipboard.writeText(t).then(guard(() => { ex.ack_copy(1); schedule(); }), () => {}); } catch {}
 }
+// Title links: the module asks during a pointer / key handler (a user gesture) and holds the URL.
+function open_() {
+  if (!ex.want_open()) return;
+  const u = str(ex.open_ptr(), ex.open_len());
+  ex.ack_open();
+  try { window.open(u, '_blank', 'noopener,noreferrer'); } catch {}
+}
 function prefs() {
   try { return Object(JSON.parse(ls('hc.prefs'))); } catch { return {}; }   // null / a number -> no prefs
 }
@@ -191,7 +198,7 @@ function pt(e, type) {
   const r = cv.getBoundingClientRect();
   lastT = performance.now();
   timed(() => ex.pointer(Math.round(e.clientX - r.left), Math.round(e.clientY - r.top), type));
-  copy();
+  copy(); open_();
   schedule();
 }
 // cancel the active pointer: type 3 ends the press with no tap, scroll or dismiss (src/22_ui.wat)
@@ -243,7 +250,7 @@ function bind() {
     if (e.repeat) return;                       // module acts once per press; drop auto-repeat
     held.add(c);
     timed(() => ex.key(c, 1));
-    copy();
+    copy(); open_();
     schedule();
   });
   onkeydown = key(1);

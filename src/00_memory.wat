@@ -1,7 +1,7 @@
 ;; Memory and region map (spec §14.3). One linear memory, fixed layout, no allocator.
 ;;   0x00000  4 KB   scratch (0x000-0x0FF free), palette 0x100, Bayer 0x200, fonts 0x210/0x360,
 ;;                   demo strings 0x400 (see 02_data.wat), iso face table 0x600 (36 B, 21b_iso.wat),
-;;                   0x640-0x8FF free (the icon table moved out in the Task 7a fixes), UI tables 0x900-0x936
+;;                   0x640-0x6FF Title link URLs (22c_screens.wat), 0x700-0x8FF free (the icon table moved out in the Task 7a fixes), UI tables 0x900-0x936
 ;;                   (button styles, season icons, toast colours, tab icons, badge colours: 22_ui.wat / 22a_farm.wat),
 ;;                   0x937-0x939 truck upgrade cost columns, 0x93A-0x93C route stop models, 0x948-0x954 good -> icon (22b_tabs.wat);
 ;;                   0x955-0x972 screen header icons, Enter buttons, How-to models, confetti colours,

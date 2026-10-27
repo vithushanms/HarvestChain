@@ -224,6 +224,8 @@ export const STRINGS = [
   ['SHARED', 'SHARED RUN'],
   ['COPY', 'COPY CODE'],
   ['COPIED', 'COPIED!'],
+  ['READ_ABOUT', 'READ ABOUT THIS GAME'],
+  ['GITHUB', 'GITHUB'],
   ['SHARE', 'SHARE CODE READY: '],
   ['CHARS', ' CHARS'],
   ['TOO_LONG', 'RUN TOO LONG TO SHARE'],

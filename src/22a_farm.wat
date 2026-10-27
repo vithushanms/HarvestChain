@@ -345,7 +345,7 @@
   (global.set $tscale (call $ui_ts)))
 
 (func $draw_top
-  (local $n i32) (local $c i32)
+  (local $n i32) (local $c i32) (local $x i32) (local $wa i32) (local $wb i32) (local $t i32) (local $g i32)
   (call $rect_r (global.get $LR_TOPBAR) (i32.const 61))
   (call $hline (i32.const 0) (i32.sub (call $lay_h (global.get $LR_TOPBAR)) (i32.const 1)) (call $lay_w (global.get $LR_TOPBAR)) (call $pal (i32.const 60)))
   (call $sb (global.get $SB0))
@@ -365,7 +365,22 @@
     (call $ui_badge (i32.add (call $lay_x (global.get $LR_HARVALL)) (call $lay_w (global.get $LR_HARVALL)))
       (i32.sub (call $lay_y (global.get $LR_HARVALL)) (i32.const 1)) (local.get $n))))
   (call $btn_r (global.get $HIT_ENDDAY) (global.get $LR_ENDDAY) (call $str (global.get $STR_END_DAY)) (global.get $I_MOON) (i32.const 1)
-    (i32.ne (i32.and (i32.load8_u (global.get $S_STATUS)) (i32.const 1)) (i32.const 1))))
+    (i32.ne (i32.and (i32.load8_u (global.get $S_STATUS)) (i32.const 1)) (i32.const 1)))
+  ;; the reference links (Title: 0x3DF / 0x3E0) fill the gap between the cards and HARVEST when the
+  ;; bar is one row and both fit at scale 1; narrower bars leave them to the Title
+  (if (i32.eq (call $lay_y (i32.const 3)) (call $lay_y (global.get $LR_HARVALL))) (then
+    (local.set $g (global.get $lgap))
+    (local.set $t (global.get $tscale)) (global.set $tscale (i32.const 1))
+    (local.set $wa (i32.add (call $tw (call $str (global.get $STR_READ_ABOUT))) (i32.add (i32.const 9) (i32.mul (local.get $g) (i32.const 6)))))
+    (local.set $wb (i32.add (call $tw (call $str (global.get $STR_GITHUB))) (i32.add (i32.const 9) (i32.mul (local.get $g) (i32.const 6)))))
+    (global.set $tscale (local.get $t))
+    (local.set $x (i32.add (i32.add (call $lay_x (i32.const 3)) (call $lay_w (i32.const 3))) (local.get $g)))
+    (if (i32.ge_s (i32.sub (i32.sub (call $lay_x (global.get $LR_HARVALL)) (local.get $g)) (local.get $x))
+                  (i32.add (i32.add (local.get $wa) (local.get $wb)) (local.get $g))) (then
+      (call $btn (i32.const 0x3DF) (local.get $x) (call $lay_y (i32.const 3)) (local.get $wa) (call $lay_h (i32.const 3))
+        (call $str (global.get $STR_READ_ABOUT)) (global.get $I_BOOK) (i32.const 0) (i32.const 1))
+      (call $btn (i32.const 0x3E0) (i32.add (i32.add (local.get $x) (local.get $wa)) (local.get $g)) (call $lay_y (i32.const 3)) (local.get $wb) (call $lay_h (i32.const 3))
+        (call $str (global.get $STR_GITHUB)) (global.get $I_ARROW_R) (i32.const 0) (i32.const 1)))))))
 ;; $btn over layout rect id.
 (func $btn_r (param $code i32) (param $id i32) (param $label i32) (param $icon i32) (param $style i32) (param $en i32)
   (call $btn (local.get $code) (call $lay_x (local.get $id)) (call $lay_y (local.get $id)) (call $lay_w (local.get $id)) (call $lay_h (local.get $id))

@@ -10,7 +10,7 @@
 ;; (64 + crop = ripe crop, 80 + building).
 
 ;; >>> GENERATED strings: do not hand-edit (npm run gen)
-;; string table: 323 strings, 3443 B at 0x7200 (spec budget 2560 B)
+;; string table: 325 strings, 3471 B at 0x7200 (spec budget 2560 B)
 (data (i32.const 0x7200)
   "WHEAT\00" ;; 0
   "CORN\00" ;; 1
@@ -315,29 +315,31 @@
   "SHARED RUN\00" ;; 300
   "COPY CODE\00" ;; 301
   "COPIED!\00" ;; 302
-  "SHARE CODE READY: \00" ;; 303
-  " CHARS\00" ;; 304
-  "RUN TOO LONG TO SHARE\00" ;; 305
-  "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 306
-  "TOO LONG FOR QR - \00" ;; 307
-  "AN EMPTY PLOT\00" ;; 308
-  "PLANT, PICK WHEAT\00" ;; 309
-  "END DAY TO GROW CROPS\00" ;; 310
-  "OPEN THE MARKET TAB\00" ;; 311
-  "SELL YOUR WHEAT\00" ;; 312
-  "+ TO CHOOSE HOW MANY\00" ;; 313
-  "BUILD A MILL TO MAKE FLOUR\00" ;; 314
-  "OPEN THE TRUCKS TAB\00" ;; 315
-  "SEND A TRUCK TO TOWN\00" ;; 316
-  "LOAD GOODS, THEN NEXT\00" ;; 317
-  "ALL SET! KEEP GROWING.\00" ;; 318
-  " - SELL MORE WHEAT\00" ;; 319
-  "SKIP\00" ;; 320
-  "REPLAY TUTORIAL\00" ;; 321
-  "TAP \00" ;; 322
+  "READ ABOUT THIS GAME\00" ;; 303
+  "GITHUB\00" ;; 304
+  "SHARE CODE READY: \00" ;; 305
+  " CHARS\00" ;; 306
+  "RUN TOO LONG TO SHARE\00" ;; 307
+  "SHARE ONLY FOR RUNS STARTED THIS SESSION\00" ;; 308
+  "TOO LONG FOR QR - \00" ;; 309
+  "AN EMPTY PLOT\00" ;; 310
+  "PLANT, PICK WHEAT\00" ;; 311
+  "END DAY TO GROW CROPS\00" ;; 312
+  "OPEN THE MARKET TAB\00" ;; 313
+  "SELL YOUR WHEAT\00" ;; 314
+  "+ TO CHOOSE HOW MANY\00" ;; 315
+  "BUILD A MILL TO MAKE FLOUR\00" ;; 316
+  "OPEN THE TRUCKS TAB\00" ;; 317
+  "SEND A TRUCK TO TOWN\00" ;; 318
+  "LOAD GOODS, THEN NEXT\00" ;; 319
+  "ALL SET! KEEP GROWING.\00" ;; 320
+  " - SELL MORE WHEAT\00" ;; 321
+  "SKIP\00" ;; 322
+  "REPLAY TUTORIAL\00" ;; 323
+  "TAP \00" ;; 324
 )
 (global $STR_BASE i32 (i32.const 0x7200))
-(global $STR_COUNT i32 (i32.const 323))
+(global $STR_COUNT i32 (i32.const 325))
 (global $STR_GOOD i32 (i32.const 0))
 (global $STR_BLD i32 (i32.const 13))
 (global $STR_WX i32 (i32.const 23))
@@ -360,7 +362,7 @@
 (global $STR_OVL i32 (i32.const 256))
 (global $STR_TYP i32 (i32.const 269))
 (global $STR_GLYPH i32 (i32.const 288))
-(global $STR_TUT i32 (i32.const 308))
+(global $STR_TUT i32 (i32.const 310))
 (global $STR_DAY i32 (i32.const 68))
 (global $STR_END_DAY i32 (i32.const 69))
 (global $STR_HARVEST i32 (i32.const 70))
@@ -528,11 +530,13 @@
 (global $STR_SHARED i32 (i32.const 300))
 (global $STR_COPY i32 (i32.const 301))
 (global $STR_COPIED i32 (i32.const 302))
-(global $STR_SHARE i32 (i32.const 303))
-(global $STR_CHARS i32 (i32.const 304))
-(global $STR_TOO_LONG i32 (i32.const 305))
-(global $STR_NO_SHARE i32 (i32.const 306))
-(global $STR_QR_LONG i32 (i32.const 307))
+(global $STR_READ_ABOUT i32 (i32.const 303))
+(global $STR_GITHUB i32 (i32.const 304))
+(global $STR_SHARE i32 (i32.const 305))
+(global $STR_CHARS i32 (i32.const 306))
+(global $STR_TOO_LONG i32 (i32.const 307))
+(global $STR_NO_SHARE i32 (i32.const 308))
+(global $STR_QR_LONG i32 (i32.const 309))
 ;; icons: 31 x 24 B at 0xa00
 (data (i32.const 0xa00)
   "\50\15\90\be\91\66\5e\da\6b\a9\a9\a5\9f\96\9a\1a\a9\1a\50\15\00\10\16\17" ;; 0 COIN
