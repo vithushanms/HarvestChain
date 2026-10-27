@@ -6,7 +6,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>HarvestChain</title>
+<title>HarvestChain: Farm Strategy Game in WebAssembly</title>
+<meta name="description" content="Turn-based farm supply-chain strategy game in hand-written WebAssembly with a 3D isometric renderer.">
 <meta name="theme-color" content="%BG%">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href='%MANIFEST%'>
@@ -15,6 +16,7 @@ html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;backgrou
 canvas{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 #a{position:fixed;clip-path:inset(50%)}
 </style>
+<script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 <canvas id="c" role="img" aria-label="HarvestChain farm game. Keys: E end day, H harvest, 1-5 tabs"></canvas>

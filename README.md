@@ -1,6 +1,19 @@
-# HarvestChain
+# HarvestChain: a farm supply-chain strategy game in hand-written WebAssembly
 
-A small turn-based farm supply-chain strategy game: grow, process, sell, deliver. It is written entirely in hand-written WebAssembly text (`.wat`), including an integer-only software renderer that draws a lit isometric 3D farm. It ships as three static files (`index.html`, `game.wasm` and `sw.js`) with no framework, no asset files and no backend. It plays on a phone in portrait (360×640 and up) and on a desktop from one build.
+**[Play it live: harvestchain.vithushansylvester.com](https://harvestchain.vithushansylvester.com)**
+
+**HarvestChain is a free, turn-based farm supply-chain strategy game written entirely in hand-written WebAssembly text (`.wat`).** You grow crops, process them into goods, sell them and truck them to market over a 240-day run. The module contains the simulation, an integer-only software renderer that draws a lit isometric 3D farm, the UI, replays and QR share codes. It ships as three static files (`index.html`, `game.wasm` and `sw.js`) of about 40 KB gzipped in total, with no framework, no asset files and no backend. It plays offline on a phone in portrait (360×640 and up) and on a desktop from one build, and it is open source under the MIT license.
+
+| | |
+|---|---|
+| **Genre** | Turn-based farm, crafting and supply-chain strategy (grow → process → sell → distribute) |
+| **Written in** | WebAssembly text format (`.wat`), written by an AI agent ([Claude Code](https://claude.com/claude-code)) |
+| **Rendering** | Integer-only software 3D isometric renderer; no WebGL, no game engine |
+| **Size** | About 40 KB gzipped (`game.wasm` 36.7 KB + `index.html` 3.6 KB + `sw.js` 0.3 KB), 0 image files, 0 font files |
+| **Platforms** | Any modern browser, phone or desktop; installable offline through a service worker |
+| **Determinism** | Same seed and input log give byte-identical state on every device, which powers replays and share codes |
+| **Dependencies** | None at runtime; no backend, no account |
+| **License** | MIT |
 
 <p align="center">
   <img src="docs/screenshots/title.png" alt="Title screen" width="23%">
@@ -11,11 +24,11 @@ A small turn-based farm supply-chain strategy game: grow, process, sell, deliver
   <img src="docs/screenshots/desktop.png" alt="Desktop layout of a developed farm with a windmill, orchard and truck" width="70%">
 </p>
 
-The shots are rendered headlessly by `node tools/dump-ppm.mjs` (see [Development](#development)). The phone shots are 360×640 at 2× and the desktop shot is 640×400 logical at 2×.
+The screenshots show the title screen, the Farm tab, the Market tab and a developed farm on desktop. They are rendered headlessly by `node tools/dump-ppm.mjs` (see [Development](#development)). The phone shots are 360×640 at 2× and the desktop shot is 640×400 logical at 2×.
 
 The design spec is [`requirement-spec.md`](requirement-spec.md). The implementation plans are in [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
-## Why it exists: skipping the layers made for humans
+## Why it exists: a WebAssembly game with no framework, engine or bundler
 
 Most software is built in layers that exist so people can read and write it: a language, a framework, a component library, a bundler, a transpiler, a package tree. HarvestChain asks what is left if the author is an AI agent ([Claude Code](https://claude.com/claude-code)) and the target is the machine's own portable format, WebAssembly.
 
@@ -27,11 +40,11 @@ The left side is an illustration of a common stack, not a measured build. The ri
 
 What that buys, all of it measured or enforced in this repo:
 - **No runtime layers.** One wasm module with no imports, no allocator and no garbage collector. The 3D renderer, the UI toolkit, the replay system and the QR encoder are all in it.
-- **Tiny.** The whole game is about 40 KB gzipped over the wire: 0 image files, 0 font files, 1 wasm. A full redraw takes about 0.5 ms and End Day about 5 µs.
+- **Tiny.** The whole game, a 3D farm strategy game with replays and QR share codes, is about 40 KB gzipped over the wire: 0 image files, 0 font files, 1 wasm. A full redraw takes about 0.5 ms and End Day about 5 µs.
 - **Deterministic by construction.** Integer-only maths and a fixed RNG draw order mean the same seed and input log give byte-identical state on every device. That is what makes replays and share codes work.
 - **No framework to fall behind.** The deliverable is three static files. There is no dependency tree to update and no backend.
 
-The honest edge of the claim: `index.html` is about 3.4 KB gz of JavaScript glue that only loads the module, forwards input, blits the framebuffer and touches `localStorage`, the clipboard and the service worker. It holds no game logic. The browser has to supply those capabilities, because wasm cannot reach them by itself.
+The honest edge of the claim: `index.html` is about 3.6 KB gz of JavaScript glue that only loads the module, forwards input, blits the framebuffer and touches `localStorage`, the clipboard and the service worker. It holds no game logic. The browser has to supply those capabilities, because wasm cannot reach them by itself.
 
 Writing WAT by hand is not a sensible choice for a person. It is a reasonable one for an agent that does not tire of stack machines, and the guardrails live in tests and build checks, not in the language: size budgets, a ban on `f32`/`f64`, determinism checks and render-purity tests. See [Architecture](#architecture).
 
@@ -130,7 +143,7 @@ The service worker needs `http://localhost` or HTTPS. Opened from `file://`, the
 ## Architecture
 
 ```
-index.html (loader, ~3.4 KB gz) ──instantiateStreaming──▶ game.wasm (no imports)
+index.html (loader, ~3.6 KB gz) ──instantiateStreaming──▶ game.wasm (no imports)
   resize / pointer / wheel / key / set_now ──▶  input state machine, layout, hit regions
   frame(now) while it returns non-zero  ──▶  scene + UI drawn into an RGBA framebuffer in linear memory
   putImageData(fb)  ◀──  fb_ptr / fb_w / fb_h
@@ -178,14 +191,14 @@ sw.js: cache-first for ./, index.html, game.wasm
 
 ## Sizes and performance
 
-Measured on 2026-10-26 (Apple M3 Pro, Node 24, Chromium from Playwright 1.57). The game's own stats overlay shows the same numbers live.
+Sizes re-measured on 2026-10-27; timings measured on 2026-10-26 (Apple M3 Pro, Node 24, Chromium from Playwright 1.57). The game's own stats overlay shows the same numbers live.
 
 | | raw | gzip -9 |
 |---|---|---|
-| `game.wasm` | 67,795 B | 36,291 B |
-| `index.html` | 6,903 B | 3,440 B |
-| `sw.js` | 502 B | 318 B |
-| **total transfer** | | **40,049 B** |
+| `game.wasm` | 68,366 B | 36,650 B |
+| `index.html` | 7,285 B | 3,595 B |
+| `sw.js` | 502 B | 326 B |
+| **total transfer** | | **40,563 B** |
 
 | Measure | Result |
 |---|---|
@@ -212,6 +225,35 @@ The service worker is cache-first, so a new deploy shows up **one load late**: t
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, `check:dist` and the e2e suite on every push and pull request, and uploads `dist/` as an artifact. It does not deploy.
 
+## FAQ
+
+**What is HarvestChain?**
+A free, turn-based farm supply-chain strategy game. You plant crops, process them into flour, bread, sauce, juice and wine, then sell them at the Farm Stand or truck them to Town and the City over a 240-day run.
+
+**Is the whole game really written in WebAssembly?**
+Yes. The simulation, the isometric 3D software renderer, the UI, input handling, replays and QR codes are all hand-written WebAssembly text (`.wat`) in one module. The only JavaScript is a small loader (`index.html`) that loads the module, forwards input, draws the framebuffer to a canvas and reaches `localStorage`, the clipboard and the service worker.
+
+**Who wrote the code?**
+An AI agent, [Claude Code](https://claude.com/claude-code). The point of the project is to see what software looks like when the author is not a human and the target is WebAssembly itself. See [Why it exists](#why-it-exists-a-webassembly-game-with-no-framework-engine-or-bundler).
+
+**How big is it?**
+About 40 KB gzipped in total: `game.wasm` 36.7 KB, `index.html` 3.6 KB and `sw.js` 0.3 KB, with no image or font files. See [Sizes and performance](#sizes-and-performance).
+
+**Does it work offline, and does it need an account or a server?**
+It works offline after the first load through a service worker. There is no backend and no account, and the game makes no network request after the files load. The only extra request is the optional Vercel Web Analytics script, which exists only on the Vercel deployment (page views, no cookies). Saves live in your browser's `localStorage`.
+
+**Can I play on a phone?**
+Yes. The layout is portrait-first from 360×640 and up, touch targets are at least 44 CSS px, and the same build scales to desktop with mouse and keyboard.
+
+**What does deterministic mean here, and what are share codes?**
+All maths is integer-only and every random number is drawn in a fixed order, so the same seed and input log give byte-identical state on any device. A run is therefore just a seed plus an input log. The Results screen turns it into a share code or link that anyone can open to watch the replay or take over the run.
+
+**How do I build or run it myself?**
+Install Node.js 24, then `npm install`, `npm run dist` and serve `dist/` over HTTP. See [Running it](#running-it).
+
+**What license is it under?**
+MIT. See [`LICENSE`](LICENSE).
+
 ## Known limitations and spec deviations
 
 - There is no sound (a spec non-goal).
@@ -222,7 +264,7 @@ CI (`.github/workflows/ci.yml`) runs the unit tests, `check:dist` and the e2e su
 - The following deviate from the spec by ruling:
   - The `game.wasm` ceiling is **40 KB gz / 100 KB raw**; the spec target is 20 KB gz. The build warns above the target and fails above the ceiling.
   - `index.html` is ≤ 4 KB gz; the spec says 3 KB.
-  - Total transfer is about 39 KB gz; the spec target is 24 KB.
+  - Total transfer is about 40 KB gz; the spec target is 24 KB.
   - The string table is **3.4 KB**; the spec budget is 2.5 KB.
   - Share codes use a compact varint + RLE log with **no DEFLATE**.
   - The starting Wheat is unripe on day 1, so the tutorial spans two days.
