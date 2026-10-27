@@ -3,3 +3,5 @@ build/
 .superpowers/
 .claude/
 dist/
+.vercel
+.env*

@@ -196,6 +196,12 @@ Measured on 2026-10-26 (Apple M3 Pro, Node 24, Chromium from Playwright 1.57). T
 
 The redraws are `frame()` calls in Node (wasm only). The browser adds `putImageData`.
 
+## Deploying (Vercel)
+
+Live at https://harvestchain.vercel.app.
+
+`vercel.json` builds with `npm run dist` and serves `dist/`. It also sets `Cache-Control: no-cache` on `/sw.js`, so a new service worker is picked up promptly. To deploy from your machine, run `vercel deploy --prod`. Vercel serves `.wasm` as `application/wasm` over HTTPS, which `instantiateStreaming` and the service worker need.
+
 ## Deploying (GitHub Pages)
 
 1. Run `npm run dist`.
